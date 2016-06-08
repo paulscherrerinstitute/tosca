@@ -23,7 +23,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
     const char* addrstr = args[0].sval;
     int address = args[1].ival;
     int size = args[2].ival;
-    
+
     if (!addrstr)
     {
         printf("usage: toscaMap A16|A24|A32|CRCSR|USER|SHM, address, size\n");
@@ -196,7 +196,7 @@ static void toscaRegistrar(void)
     memDisplayInstallAddrHandler("A16#*", toscaAddrHandler, VME_A16 | VME_PROG | VME_SUPER);
     memDisplayInstallAddrHandler("A24#*", toscaAddrHandler, VME_A24 | VME_PROG | VME_SUPER);
     memDisplayInstallAddrHandler("A32#*", toscaAddrHandler, VME_A32 | VME_PROG | VME_SUPER);
-    
+
     /* best access these with wordsize = -4 */
     memDisplayInstallAddrHandler("USER",  toscaAddrHandler, TOSCA_USER1);
     memDisplayInstallAddrHandler("USER1", toscaAddrHandler, TOSCA_USER1);

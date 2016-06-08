@@ -41,7 +41,7 @@ long toscaDevLibMapAddr(
     volatile void **ppPhysicalAddress)
 {
     volatile void *mapAddress;
-    
+
     /* toscaMap() keeps track of and shares already existing maps.
        No need to track already existing maps here.
     */
@@ -134,23 +134,23 @@ long toscaDevLibProbe(
     int i;
     int readval;
     void* readptr;
-    
+
     if (isWrite)
         readptr = &readval;
     else
         readptr = pValue;
 
     vme_addr = toscaMapLookupAddr(ptr);
-    
+
     if (vme_addr.bus == -1) return S_dev_addressNotFound;
-    
+
     /* I would really like to pause all other threads and processes here. */
     /* At least make sure that we are alone here. */
     epicsMutexMustLock(probeMutex);
-    
+
     /* Read once to clear BERR bit. */
     toscaMapGetVmeErr(vme_addr.bus);
-    
+
     for (i = 1; i < 1000; i++)  /* We don't want to loop forever. */
     {
         switch (wordSize)
@@ -178,10 +178,10 @@ long toscaDevLibProbe(
                 return S_dev_badArgument;
         }
         vme_err = toscaMapGetVmeErr(vme_addr.bus);
-        
+
         if (!vme_err.err)
             return S_dev_success;
-            
+
         /* Now check if the error came from our access. */
         debug("Our access was %s %#llx", toscaAddrSpaceStr(vme_addr.aspace), vme_addr.address);
         if (vme_err.source == 0 && /* Error from PCIe, maybe our access. */
@@ -230,7 +230,7 @@ long toscaDevLibProbe(
         /* Error was not from us, do we have more than one error? */
         if (!(vme_err.status & (1<<30) /* VME_Error_Over */))
         {
-            /* No second error thus our access was OK. */ 
+            /* No second error thus our access was OK. */
             epicsMutexUnlock(probeMutex);
             return S_dev_success;
         }
@@ -332,7 +332,7 @@ long toscaDevLibConnectInterruptVME(
     debug("vectorNumber=%d function=%s, parameter=%p",
         vectorNumber, fname=symbolName(function,0), parameter);
     if (fname) free(fname);
-    
+
     if (vectorNumber > 255) return S_dev_badArgument;
     handler = malloc(sizeof(struct intr_handler));
     if (!handler) return S_dev_noMemory;
@@ -368,7 +368,7 @@ long toscaDevLibDisconnectInterruptVME(
     debug("vectorNumber=%d function=%s",
         vectorNumber, fname=symbolName(function,0));
     if (fname) free(fname);
-    
+
     epicsMutexMustLock(intrListMutex);
     for (phandler = &interrupts[vectorNumber].handlers; *phandler; phandler = &(*phandler)->next)
     {
@@ -438,5 +438,5 @@ static void toscaDevLibRegistrar ()
 {
     pdevLibVirtualOS = &toscaVirtualOS;
 }
-   
+
 epicsExportRegistrar(toscaDevLibRegistrar);

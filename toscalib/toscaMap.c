@@ -45,7 +45,6 @@ static size_t tCsrSize = 0;
 static volatile void* toscaMapInternal(int bus, int aspace, vmeaddr_t address, size_t size)
 {
     struct map **pmap;
-    const unsigned int toscaGranulatity = 0xFFFFF; /* 1 MiB */
     volatile void *ptr;
     size_t offset;
     int fd;
@@ -87,8 +86,8 @@ static volatile void* toscaMapInternal(int bus, int aspace, vmeaddr_t address, s
         */
         struct vme_master vme_window = {0};
 
-        vme_window.vme_addr = address & ~toscaGranulatity;
-        vme_window.size = size + (address & toscaGranulatity);
+        vme_window.vme_addr = address & ~0xffffful;
+        vme_window.size = size + (address & 0xffffful);
         vme_window.aspace = aspace & 0x0fff;
         vme_window.cycle = aspace & 0xf000;
         vme_window.dwidth = VME_D32;
