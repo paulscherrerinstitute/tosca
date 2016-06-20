@@ -42,7 +42,7 @@ static struct map {
 static volatile uint32_t* tCsr = NULL;
 static size_t tCsrSize = 0;
 
-static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t size)
+volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
 {
     struct map **pmap;
     volatile void *ptr;
@@ -50,6 +50,7 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
     int fd;
     char filename[50];
 
+    LOCK
     debug("aspace=%#x(%s), address=%#llx, size=%#zx",
             aspace, toscaAddrSpaceStr(aspace),
             address,
@@ -71,6 +72,7 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
                     (*pmap)->info.address, (*pmap)->info.size,
                     (address - (*pmap)->info.address));
             {
+                UNLOCK
                 return (*pmap)->info.ptr + (address - (*pmap)->info.address);
             }
         }
@@ -95,6 +97,7 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
         if (fd < 0)
         {
             debugErrno("open %s", filename);
+            UNLOCK
             return NULL;
         }
 
@@ -102,6 +105,7 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
         {
             debugErrno("ioctl VME_SET_MASTER");
             close(fd);
+            UNLOCK
             return NULL;
         }
 
@@ -112,6 +116,7 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
         {
             debugErrno("ioctl VME_GET_MASTER");
             close(fd);
+            UNLOCK
             return NULL;
         }
         debug("window address=%#llx size=%#llx",
@@ -135,6 +140,7 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
         if (fd < 0)
         {
             debugErrno("open %s", filename);
+            UNLOCK
             return NULL;
         }
         fstat(fd, &filestat);
@@ -143,6 +149,7 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
         {
             errno = EINVAL;
             debug("address or size too big");
+            UNLOCK
             return NULL;
         }
         size = tCsrSize;                          /* Whole TCSR space */
@@ -157,6 +164,7 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
     {
         debugErrno("mmap");
         close(fd);
+        UNLOCK
         return NULL;
     }
     close(fd);
@@ -165,6 +173,7 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
     if (!*pmap)
     {
         debugErrno("malloc");
+        UNLOCK
         return NULL;
     }
     (*pmap)->info.ptr = ptr;
@@ -172,18 +181,9 @@ static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t siz
     (*pmap)->info.address = address;
     (*pmap)->info.size = size;
     (*pmap)->next = NULL;
+    UNLOCK
 
     return ptr + offset;
-}
-
-/* wrapper to lock access to map list */
-volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
-{
-    volatile void*ptr;
-    LOCK
-    ptr = toscaMapInternal(aspace, address,size);
-    UNLOCK;
-    return ptr;
 }
 
 toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info))
