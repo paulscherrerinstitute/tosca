@@ -229,11 +229,6 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
     {                                                      \
         struct intr_handler* handler;                      \
         FOREACH_HANDLER(handler, index) {                  \
-            char* fname;                                   \
-            debug("%s vec=%u: %s(%p)",                     \
-                toscaIntrBitStr(bit), vec,                 \
-                fname=symbolName(handler->function,0),     \
-                handler->parameter), free(fname);          \
             int status = callback((toscaIntrHandlerInfo_t) \
                 {bit, vec, handler->function,              \
                  handler->parameter, handler->count});     \
