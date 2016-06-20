@@ -88,8 +88,13 @@ typedef struct {
 int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t));
 
 int toscaIntrCallHandlers(intrmask_t intrmask, unsigned int vec);
+/* Connected handlers are called from the toscaIntrLoop with three arguments: parameter, intrmaskbit, vec */
 
 int toscaIntrReenable(intrmask_t intrmask, unsigned int vec);
+/* This must be called after the interrupt handlers are done */
+
+/* toscaIntrLoop puts toscaIntrWait, toscaIntrCallHandlers and toscaIntrReenable together in one loop */
+/* Start it in a separate worker thread (one for each VME vec). */
 
 typedef struct {
     intrmask_t intrmask;
@@ -103,7 +108,5 @@ void toscaIntrLoop(void* arg);
 /* A shortcut for VME any level witout timeout or signals */
 #define TOSCA_INTR_LOOP_ARG_VME(vec) &(toscaIntrLoopArg_t){ INTR_VME_LVL_ANY, vec, NULL, NULL }
 
-/* toscaIntrLoop must be started in a separate worker thread (one for each VME vec). */
-/* Connected handlers are called from the toscaIntrLoop with three arguments: parameter, intrmaskbit, vec */
 
 #endif

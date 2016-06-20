@@ -162,11 +162,11 @@ intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct tim
     status = pselect(fdmax + 1, &readfs, NULL, NULL, timeout, sigmask);
     if (status < 1) return 0; /* Error, timeout, or signal */
 
-    #define CHECK_FD(index, bit)                              \
-    if (FD(index) > 0 && FD_ISSET(FD(index), &readfs)) {      \
-        COUNT(index)++;                                       \
-        return bit;                                           \
-    }                                                         \
+    #define CHECK_FD(index, bit)                         \
+    if (FD(index) > 0 && FD_ISSET(FD(index), &readfs)) { \
+        COUNT(index)++;                                  \
+        return bit;                                      \
+    }                                                    \
 
     FOREACH_MASKBIT(intrmask, vec, CHECK_FD);
 
@@ -217,18 +217,20 @@ typedef struct {
 
 int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t))
 {
-    #define REPORT_HANDLER(index, bit)                                                   \
-    {                                                                                    \
-        struct intr_handler* handler;                                                    \
-        FOREACH_HANDLER(handler, index) {                                                \
-            char* fname;                                                                 \
-            debug("%s vec=%u: %s(%p)",                                                   \
-                toscaIntrBitStr(bit), vec,                                               \
-                fname=symbolName(handler->function,0), handler->parameter), free(fname); \
-            int status = callback((toscaIntrHandlerInfo_t){bit, vec,                     \
-                handler->function, handler->parameter, handler->count});                 \
-            if (status != 0) return status;                                              \
-        }                                                                                \
+    #define REPORT_HANDLER(index, bit)                     \
+    {                                                      \
+        struct intr_handler* handler;                      \
+        FOREACH_HANDLER(handler, index) {                  \
+            char* fname;                                   \
+            debug("%s vec=%u: %s(%p)",                     \
+                toscaIntrBitStr(bit), vec,                 \
+                fname=symbolName(handler->function,0),     \
+                handler->parameter), free(fname);          \
+            int status = callback((toscaIntrHandlerInfo_t) \
+                {bit, vec, handler->function,              \
+                 handler->parameter, handler->count});     \
+            if (status != 0) return status;                \
+        }                                                  \
     }
 
     FOREACH_MASKBIT(intrmask, vec, REPORT_HANDLER);
@@ -237,16 +239,19 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
 
 int toscaIntrCallHandlers(intrmask_t intrmask, unsigned int vec)
 {
-    #define CALL_HANDLER(index, bit)                                                             \
-    {                                                                                            \
-        struct intr_handler* handler;                                                            \
-        FOREACH_HANDLER(handler, index) {                                                        \
-            char* fname;                                                                         \
-            debug("%s %s(%p, %d, %u)",                                                           \
-                toscaIntrBitStr(bit),                                                            \
-                fname=symbolName(handler->function,0), handler->parameter, i, vec), free(fname); \
-            handler->function(handler->parameter, i, vec);                                       \
-        }                                                                                        \
+    #define CALL_HANDLER(index, bit)                          \
+    {                                                         \
+        struct intr_handler* handler;                         \
+        FOREACH_HANDLER(handler, index) {                     \
+            char* fname;                                      \
+            handler->count++;                                 \
+            debug("%s #%llu %s(%p, %d, %u) #%llu",            \
+                toscaIntrBitStr(bit), COUNT(index),           \
+                fname=symbolName(handler->function,0),        \
+                handler->parameter, i, vec, handler->count),  \
+                free(fname);                                  \
+            handler->function(handler->parameter, i, vec);    \
+        }                                                     \
     }
 
     FOREACH_MASKBIT(intrmask, vec, CALL_HANDLER);
@@ -255,10 +260,8 @@ int toscaIntrCallHandlers(intrmask_t intrmask, unsigned int vec)
 
 int toscaIntrReenable(intrmask_t intrmask, unsigned int vec)
 {
-    #define RE_ENABLE_INTR(index, bit)                                                   \
-    {                                                                                    \
-        write(FD(index), NULL, 0);  /* re-enable interrupt */                            \
-    }
+    #define RE_ENABLE_INTR(index, bit)                        \
+        write(FD(index), NULL, 0);  /* re-enable interrupt */
 
     FOREACH_MASKBIT(intrmask, vec, RE_ENABLE_INTR);
 
