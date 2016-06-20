@@ -43,21 +43,21 @@ static struct intr_handler* handlers[TOSCA_NUM_INTR];
 #define HANDLERS(index) handlers[index]
 #define FOREACH_HANDLER(h, index) for(h = HANDLERS(index); h; h = h->next)
 
-#define FOR_BITS_IN_MASK(first, last, index, maskbit, action)    \
-    do { int i; for (i=first; i <= last; i++) if (intrmask & maskbit) action(index, maskbit) } while (0)
+#define FOR_BITS_IN_MASK(first, last, index, maskbit, action) \
+    { int i; for (i=first; i <= last; i++) if (intrmask & maskbit) action(index, maskbit) }
 
 #define FOREACH_MASKBIT(mask, vec, action) \
-do {                                                                        \
-    /* handle VME_SYSFAIL, VME_ACFAIL, VME_ERROR */                         \
-    if ((mask) & INTR_VME_FAIL_ANY)                                         \
-        FOR_BITS_IN_MASK(0, 2, IX(ERR, i), INTR_VME_FAIL(i), action);       \
-    /* handle VME_LVL */                                                    \
-    if ((mask) & INTR_VME_LVL_ANY)                                          \
-        FOR_BITS_IN_MASK(1, 7, IX(VME, i, vec), INTR_VME_LVL(i), action);   \
-    /* handle USER */                                                       \
-    if ((mask) & (INTR_USER1_ANY | INTR_USER2_ANY))                         \
-        FOR_BITS_IN_MASK(0, 31, IX(USER, i), INTR_USER1_INTR(i), action);   \
-} while (0)
+{                                                                        \
+    /* handle VME_SYSFAIL, VME_ACFAIL, VME_ERROR */                      \
+    if ((mask) & INTR_VME_FAIL_ANY)                                      \
+        FOR_BITS_IN_MASK(0, 2, IX(ERR, i), INTR_VME_FAIL(i), action)     \
+    /* handle VME_LVL */                                                 \
+    if ((mask) & INTR_VME_LVL_ANY)                                       \
+        FOR_BITS_IN_MASK(1, 7, IX(VME, i, vec), INTR_VME_LVL(i), action) \
+    /* handle USER */                                                    \
+    if ((mask) & (INTR_USER1_ANY | INTR_USER2_ANY))                      \
+        FOR_BITS_IN_MASK(0, 31, IX(USER, i), INTR_USER1_INTR(i), action) \
+}
 
 const char* toscaIntrBitStr(intrmask_t intrmaskbit)
 {
@@ -119,18 +119,19 @@ intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct tim
 
     FD_ZERO(&readfs);
 
-    #define ADD_FD(index, name, ...)                                  \
-    do {                                                              \
-        if (FD(index) == 0) {                                         \
-            sprintf(filename, name , ## __VA_ARGS__ );                \
-            FD(index) = open(filename, O_RDWR);                       \
-            if (FD(index)< 0) debug("open %s failed: %m", filename);  \
-        }                                                             \
-        if (FD(index) >= 0) {                                         \
-            FD_SET(FD(index), &readfs);                               \
-            if (FD(index) > fdmax) fdmax = FD(index);                 \
-        }                                                             \
-    } while (0)
+    #define ADD_FD(index, name, ...)                                 \
+    {                                                                \
+        if (FD(index) == 0) {                                        \
+            sprintf(filename, name , ## __VA_ARGS__ );               \
+            debug ("open %s", filename);                             \
+            FD(index) = open(filename, O_RDWR);                      \
+            if (FD(index)< 0) debug("open %s failed: %m", filename); \
+        }                                                            \
+        if (FD(index) >= 0) {                                        \
+            FD_SET(FD(index), &readfs);                              \
+            if (FD(index) > fdmax) fdmax = FD(index);                \
+        }                                                            \
+    }
 
     if (intrmask & (INTR_USER1_ANY | INTR_USER2_ANY))
         for (i = 0; i < 32; i++)
