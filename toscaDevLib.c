@@ -142,14 +142,14 @@ long toscaDevLibProbe(
 
     vme_addr = toscaMapLookupAddr(ptr);
 
-    if (vme_addr.card == -1) return S_dev_addressNotFound;
+    if (!vme_addr.aspace) return S_dev_addressNotFound;
 
     /* I would really like to pause all other threads and processes here. */
     /* At least make sure that we are alone here. */
     epicsMutexMustLock(probeMutex);
 
     /* Read once to clear BERR bit. */
-    toscaMapGetVmeErr(vme_addr.card);
+    toscaMapGetVmeErr();
 
     for (i = 1; i < 1000; i++)  /* We don't want to loop forever. */
     {
@@ -177,7 +177,7 @@ long toscaDevLibProbe(
                 epicsMutexUnlock(probeMutex);
                 return S_dev_badArgument;
         }
-        vme_err = toscaMapGetVmeErr(vme_addr.card);
+        vme_err = toscaMapGetVmeErr();
 
         if (!vme_err.err)
             return S_dev_success;

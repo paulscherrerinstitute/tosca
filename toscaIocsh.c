@@ -67,7 +67,7 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
 {
     size_t addr = strtoul(args[0].sval, NULL, 0);
     toscaMapAddr_t vme_addr = toscaMapLookupAddr((void*)addr);
-    if (vme_addr.card == -1)
+    if (!vme_addr.aspace)
         printf("%p is not a TOSCA address\n", (void*)addr);
     else
         printf("%s:%#0llx\n", toscaAddrSpaceStr(vme_addr.aspace), vme_addr.address);
@@ -100,7 +100,7 @@ static void toscaMapFindFunc(const iocshArgBuf *args)
 {
     size_t addr = strtoul(args[0].sval, NULL, 0);
     toscaMapInfo_t info = toscaMapFind((void*)addr);
-    if (info.card == -1)
+    if (!info.aspace)
         printf("%p is not a TOSCA address\n", (void*)addr);
     else
         toscaMapPrintInfo(info);

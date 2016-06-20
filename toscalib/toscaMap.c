@@ -42,7 +42,7 @@ static struct map {
 static volatile uint32_t* tCsr = NULL;
 static size_t tCsrSize = 0;
 
-static volatile void* toscaMapInternal(int card, int aspace, vmeaddr_t address, size_t size)
+static volatile void* toscaMapInternal(int aspace, vmeaddr_t address, size_t size)
 {
     struct map **pmap;
     volatile void *ptr;
@@ -50,8 +50,7 @@ static volatile void* toscaMapInternal(int card, int aspace, vmeaddr_t address, 
     int fd;
     char filename[50];
 
-    debug("card=%i, aspace=%#x(%s), address=%#llx, size=%#zx",
-            card,
+    debug("aspace=%#x(%s), address=%#llx, size=%#zx",
             aspace, toscaAddrSpaceStr(aspace),
             address,
             size);
@@ -60,13 +59,11 @@ static volatile void* toscaMapInternal(int card, int aspace, vmeaddr_t address, 
 
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
-        debug("check card=%i, aspace=%#x(%s), address=%#llx, size=%#zx",
-                (*pmap)->info.card,
+        debug("check aspace=%#x(%s), address=%#llx, size=%#zx",
                 (*pmap)->info.aspace, toscaAddrSpaceStr((*pmap)->info.aspace),
                 (*pmap)->info.address,
                 (*pmap)->info.size);
-        if (card == (*pmap)->info.card &&
-            aspace == (*pmap)->info.aspace &&
+        if (aspace == (*pmap)->info.aspace &&
             address >= (*pmap)->info.address &&
             address + size <= (*pmap)->info.address + (*pmap)->info.size)
         {
@@ -93,7 +90,7 @@ static volatile void* toscaMapInternal(int card, int aspace, vmeaddr_t address, 
         vme_window.dwidth = VME_D32;
         vme_window.enable = 1;
 
-        sprintf(filename, "/dev/bus/vme/m%i", card);
+        sprintf(filename, "/dev/bus/vme/m0");
         fd = open(filename, O_RDWR);
         if (fd < 0)
         {
@@ -133,11 +130,6 @@ static volatile void* toscaMapInternal(int card, int aspace, vmeaddr_t address, 
         /* Handle TCSR in compatible way */
         struct stat filestat = {0};
 
-        if (card != 0)
-        {
-            debug("Can map TCSR only for card 0");
-            return NULL;
-        }
         sprintf(filename, "/sys/bus/pci/drivers/tosca/0000:03:00.0/resource3");
         fd = open(filename, O_RDWR);
         if (fd < 0)
@@ -176,7 +168,6 @@ static volatile void* toscaMapInternal(int card, int aspace, vmeaddr_t address, 
         return NULL;
     }
     (*pmap)->info.ptr = ptr;
-    (*pmap)->info.card = card;
     (*pmap)->info.aspace = aspace;
     (*pmap)->info.address = address;
     (*pmap)->info.size = size;
@@ -186,11 +177,11 @@ static volatile void* toscaMapInternal(int card, int aspace, vmeaddr_t address, 
 }
 
 /* wrapper to lock access to map list */
-volatile void* toscaMapx(int card, int aspace, vmeaddr_t address, size_t size)
+volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
 {
     volatile void*ptr;
     LOCK
-    ptr = toscaMapInternal(0, aspace, address,size);
+    ptr = toscaMapInternal(aspace, address,size);
     UNLOCK;
     return ptr;
 }
@@ -206,7 +197,7 @@ toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info))
     }
     UNLOCK
     if (map) return map->info;
-    else return (toscaMapInfo_t) { -1 };
+    else return (toscaMapInfo_t) { 0, 0, 0, NULL };
 }
 
 toscaMapInfo_t toscaMapFind(const volatile void* ptr)
@@ -221,9 +212,7 @@ toscaMapInfo_t toscaMapFind(const volatile void* ptr)
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr)
 {
     toscaMapInfo_t info = toscaMapFind(ptr);
-    if (info.card == -1)
-        return (toscaMapAddr_t) { -1 };
-    return (toscaMapAddr_t) { info.card, info.aspace, info.address + (ptr - info.ptr) };
+    return (toscaMapAddr_t) { info.aspace, info.address + (ptr - info.ptr) };
 }
 
 const char* toscaAddrSpaceStr(int aspace)

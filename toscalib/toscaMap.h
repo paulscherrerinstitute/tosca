@@ -28,9 +28,7 @@ extern int toscaMapDebug;
 typedef uint64_t vmeaddr_t;
 
 /* Map a Tosca resource to user space. Reuse maps if possible. */
-/* Bus 0 is the "local" TOSCA */
-volatile void* toscaMapx(int card, int aspace, vmeaddr_t address, size_t size);
-#define toscaMap(aspace, address, size) toscaMapx(0, aspace, address, size)
+volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size);
 
 /* For aspace use
      (At the moment Tosca does not support A64.)
@@ -44,9 +42,8 @@ volatile void* toscaMapx(int card, int aspace, vmeaddr_t address, size_t size);
 /* Convert aspace code to string. */
 const char* toscaAddrSpaceStr(int aspace);
 
-/* Several map lookup functions. card will be -1 if map is not found. */
+/* Several map lookup functions. aspace will be 0 if map is not found. */
 typedef struct {
-    int card;
     int aspace;
     vmeaddr_t address;
     size_t size;
@@ -62,7 +59,6 @@ toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info));
 
 /* Find a VME address from a user space pointer. */
 typedef struct {
-    int card;
     int aspace;
     vmeaddr_t address;
 } toscaMapAddr_t;
@@ -77,7 +73,7 @@ typedef struct {
       unsigned int err:1;     /* Error has happened since last readout. */
       unsigned int over:1;    /* [not implemented] */
       unsigned int write:1;   /* Error was on write access. */
-      unsigned int timeout:1; /* Error was a card timeout */
+      unsigned int timeout:1; /* Error was a bus timeout */
       unsigned int source:2;  /* 0=PCIe 2=IDMA 3=USER */
       unsigned int id:17;     /* [What is this?] */
       unsigned int length:5;  /* [In words? For block transfer modes?] */
