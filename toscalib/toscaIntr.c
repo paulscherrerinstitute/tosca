@@ -7,8 +7,13 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <pthread.h>
 #include "symbolname.h"
 #include "toscaIntr.h"
+
+pthread_mutex_t handlerlist_mutex = PTHREAD_MUTEX_INITIALIZER;
+#define LOCK pthread_mutex_lock(&handlerlist_mutex)
+#define UNLOCK pthread_mutex_unlock(&handlerlist_mutex)
 
 int toscaIntrDebug;
 FILE* toscaIntrDebugFile = NULL;
@@ -192,7 +197,7 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
     #define INSTALL_HANDLER(index, bit)                                                  \
     {                                                                                    \
         struct intr_handler** phandler, *handler;                                        \
-        if (!(handler = malloc(sizeof(struct intr_handler)))) return -1;                 \
+        if (!(handler = malloc(sizeof(struct intr_handler)))) { UNLOCK; return -1;}      \
         handler->function = function;                                                    \
         handler->parameter = parameter;                                                  \
         handler->next = NULL;                                                            \
@@ -204,7 +209,9 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
                 fname=symbolName(handler->function,0), handler->parameter), free(fname); \
     }
     
+    LOCK; /* only need to lock installation, not calling of handlers */
     FOREACH_MASKBIT(intrmask, vec, INSTALL_HANDLER);
+    UNLOCK;
     return 0;
 }
 
