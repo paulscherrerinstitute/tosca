@@ -3,18 +3,24 @@
 
 #include <stdint.h>
 
-#define INTR_VME_LVL_1       0x01
-#define INTR_VME_LVL_2       0x02
-#define INTR_VME_LVL_3       0x04
-#define INTR_VME_LVL_4       0x08
-#define INTR_VME_LVL_5       0x10
-#define INTR_VME_LVL_6       0x20
-#define INTR_VME_LVL_7       0x40
-#define INTR_VME_LVL(n)     (INTR_VME_LVL_1<<((n)-1))
-#define INTR_VME_LVL_ANY     0x7f
-#define INTR_VME_SYSFAIL    0x100
-#define INTR_VME_ACFAIL     0x200
-#define INTR_VME_ERROR      0x400
+extern int toscaIntrDebug;
+
+typedef uint64_t intrmask_t;
+
+#define INTR_VME_LVL_1       0x01ULL
+#define INTR_VME_LVL_2       0x02ULL
+#define INTR_VME_LVL_3       0x04ULL
+#define INTR_VME_LVL_4       0x08ULL
+#define INTR_VME_LVL_5       0x10ULL
+#define INTR_VME_LVL_6       0x20ULL
+#define INTR_VME_LVL_7       0x40ULL
+#define INTR_VME_LVL(n)    (INTR_VME_LVL_1<<((n)-1))
+#define INTR_VME_LVL_ANY     0x7fULL
+#define INTR_VME_SYSFAIL    0x100ULL
+#define INTR_VME_ACFAIL     0x200ULL
+#define INTR_VME_ERROR      0x400ULL
+#define INTR_VME_FAIL(n)   (INTR_VME_SYSFAIL<<(n))
+#define INTR_VME_FAIL_ANY   0x700ULL
 
 #define INTR_USER1_INTR0    0x000100000000ULL
 #define INTR_USER1_INTR1    0x000200000000ULL
@@ -54,12 +60,50 @@
 #define INTR_USER2_INTR(n) (INTR_USER2_INTR0<<(n))
 #define INTR_USER2_ANY      0xffff000000000000ULL
 
-extern int toscaIntrDebug;
+const char* toscaIntrBitStr(intrmask_t intrmaskbit);
 
-int toscaWaitForIntr(uint64_t mask, uint8_t vector, struct timeval *timeout);
-/* mask is any combination of the INTR_* bits */
-/* vector is for VME_LVL_* only and is ignored for other INTR_* bits */
+intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct timespec *timeout, const sigset_t *sigmask);
+#define toscaIntrWaitVME(vec) toscaIntrWait(INTR_VME_LVL_ANY, vec, NULL, NULL)
+#define toscaIntrWaitUSR1() toscaIntrWait(INTR_USER1_ANY, 0, NULL, NULL)
+#define toscaIntrWaitUSR2() toscaIntrWait(INTR_USER2_ANY, 0, NULL, NULL)
+
+/* intrmask is any combination of the INTR_* bits */
+/* vec is for VME_LVL_* only and is ignored for other INTR_* bits */
 /* timeout may be NULL to wait forever */
-/* returns the INTR_* flag that triggered the interrupt or -1 on timeout */
+/* sigmask may be NULL not to wait for signals */
+/* returns a handle to be used in other fundtions or 0 on timeout, signal or error */
+
+int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*function)(), void* parameter);
+#define toscaIntrConnectHandlerVME(vec, function, parameter) toscaIntrConnectHandler(INTR_VME_LVL_ANY, vec, function, parameter)
+/* returns 0 on success */
+
+typedef struct {
+    intrmask_t intrmaskbit;
+    unsigned int vec;
+    void (*function)();
+    void *parameter;
+    unsigned long long count;
+} toscaIntrHandlerInfo_t;
+
+int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t));
+
+int toscaIntrCallHandlers(intrmask_t intrmask, unsigned int vec);
+
+int toscaIntrReenable(intrmask_t intrmask, unsigned int vec);
+
+typedef struct {
+    intrmask_t intrmask;
+    unsigned int vec;
+    struct timespec *timeout;
+    sigset_t* sigmask;
+} toscaIntrLoopArg_t;
+
+void toscaIntrLoop(void* arg);
+/* The arg must be a pointer to toscaIntrLoopArg_t and may become invalid after starting toscaIntrLoop. */
+/* A shortcut for VME any level witout timeout or signals */
+#define TOSCA_INTR_LOOP_ARG_VME(vec) &(toscaIntrLoopArg_t){ INTR_VME_LVL_ANY, vec, NULL, NULL }
+
+/* toscaIntrLoop must be started in a separate worker thread (one for each VME vec). */
+/* Connected handlers are called from the toscaIntrLoop with three arguments: parameter, intrmaskbit, vec */
 
 #endif

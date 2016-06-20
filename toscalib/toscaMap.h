@@ -29,7 +29,7 @@ typedef uint64_t vmeaddr_t;
 
 /* Map a Tosca resource to user space. Reuse maps if possible. */
 /* Bus 0 is the "local" TOSCA */
-volatile void* toscaMapx(int bus, int aspace, vmeaddr_t address, size_t size);
+volatile void* toscaMapx(int card, int aspace, vmeaddr_t address, size_t size);
 #define toscaMap(aspace, address, size) toscaMapx(0, aspace, address, size)
 
 /* For aspace use
@@ -44,8 +44,14 @@ volatile void* toscaMapx(int bus, int aspace, vmeaddr_t address, size_t size);
 /* Convert aspace code to string. */
 const char* toscaAddrSpaceStr(int aspace);
 
-/* Several map lookup functions. bus will be -1 if map is not found. */
-typedef struct {int bus; int aspace; vmeaddr_t address; size_t size; volatile void* ptr;} toscaMapInfo_t;
+/* Several map lookup functions. card will be -1 if map is not found. */
+typedef struct {
+    int card;
+    int aspace;
+    vmeaddr_t address;
+    size_t size;
+    volatile void* ptr;
+} toscaMapInfo_t;
 
 /* Get map info from a user space pointer. */
 toscaMapInfo_t toscaMapFind(const volatile void* ptr);
@@ -55,7 +61,11 @@ toscaMapInfo_t toscaMapFind(const volatile void* ptr);
 toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info));
 
 /* Find a VME address from a user space pointer. */
-typedef struct {int bus; int aspace; vmeaddr_t address;} toscaMapAddr_t;
+typedef struct {
+    int card;
+    int aspace;
+    vmeaddr_t address;
+} toscaMapAddr_t;
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);
 
 /* Read (and clear) VME error status. Error is latched and not overwritten until read. */
@@ -67,7 +77,7 @@ typedef struct {
       unsigned int err:1;     /* Error has happened since last readout. */
       unsigned int over:1;    /* [not implemented] */
       unsigned int write:1;   /* Error was on write access. */
-      unsigned int timeout:1; /* Error was a bus timeout */
+      unsigned int timeout:1; /* Error was a card timeout */
       unsigned int source:2;  /* 0=PCIe 2=IDMA 3=USER */
       unsigned int id:17;     /* [What is this?] */
       unsigned int length:5;  /* [In words? For block transfer modes?] */

@@ -4,14 +4,16 @@
 #include <errno.h>
 #include <epicsTypes.h>
 #include <epicsExport.h>
+#include <devLibVME.h>
 
 #include "memDisplay.h"
+#include "symbolname.h"
+
 #include "toscaMap.h"
-#include "devLibVME.h"
+#include "toscaIntr.h"
 
 static const iocshFuncDef toscaMapDef =
     { "toscaMap", 3, (const iocshArg *[]) {
-    &(iocshArg) { "busnumber", iocshArgInt },
     &(iocshArg) { "A16|A24|A32|CRCSR", iocshArgString },
     &(iocshArg) { "address", iocshArgInt },
     &(iocshArg) { "size", iocshArgInt },
@@ -65,10 +67,10 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
 {
     size_t addr = strtoul(args[0].sval, NULL, 0);
     toscaMapAddr_t vme_addr = toscaMapLookupAddr((void*)addr);
-    if (vme_addr.bus == -1)
+    if (vme_addr.card == -1)
         printf("%p is not a TOSCA address\n", (void*)addr);
     else
-        printf("bus %d: %s:%#0llx\n", vme_addr.bus, toscaAddrSpaceStr(vme_addr.aspace), vme_addr.address);
+        printf("%s:%#0llx\n", toscaAddrSpaceStr(vme_addr.aspace), vme_addr.address);
 }
 
 static const iocshFuncDef toscaMapShowDef =
@@ -77,8 +79,8 @@ static const iocshFuncDef toscaMapShowDef =
 
 int toscaMapPrintInfo(toscaMapInfo_t info)
 {
-    printf("bus %d: %-9s 0x%08llx (0x%08zx = %3d %ciB) @ %p\n",
-        info.bus, toscaAddrSpaceStr(info.aspace), info.address,
+    printf("%-9s 0x%08llx (0x%08zx = %3d %ciB) @ %p\n",
+        toscaAddrSpaceStr(info.aspace), info.address,
         info.size, info.size >= 0x00100000 ? (info.size >> 20) : (info.size >> 10), info.size >= 0x00100000 ? 'M' : 'K',
         info.ptr);
     return 0;
@@ -98,7 +100,7 @@ static void toscaMapFindFunc(const iocshArgBuf *args)
 {
     size_t addr = strtoul(args[0].sval, NULL, 0);
     toscaMapInfo_t info = toscaMapFind((void*)addr);
-    if (info.bus == -1)
+    if (info.card == -1)
         printf("%p is not a TOSCA address\n", (void*)addr);
     else
         toscaMapPrintInfo(info);
@@ -173,6 +175,41 @@ static void toscaCsrClearFunc(const iocshArgBuf *args)
     if (toscaCsrClear(args[0].ival, args[1].ival) == -1) perror(NULL);
 }
 
+static const iocshFuncDef toscaIntrShowDef =
+    { "toscaIntrShow", 0, (const iocshArg *[]) {
+}};
+
+int toscaIntrHandlerPrintInfo(toscaIntrHandlerInfo_t handlerInfo)
+{
+    char* fname;
+    
+    if (handlerInfo.intrmaskbit & INTR_VME_LVL_ANY)
+    {
+        printf("%s %3u %s(%p) %llu\n",
+            toscaIntrBitStr(handlerInfo.intrmaskbit), handlerInfo.vec,
+            fname=symbolName(handlerInfo.function,0), handlerInfo.parameter, handlerInfo.count);
+        free(fname);
+    }
+    else
+    {
+        printf("%s %s(%p) %llu\n",
+            toscaIntrBitStr(handlerInfo.intrmaskbit),
+            fname=symbolName(handlerInfo.function,0), handlerInfo.parameter, handlerInfo.count);
+        free(fname);
+    }
+    
+    return 0;
+}
+
+static void toscaIntrShowFunc(const iocshArgBuf *args)
+{
+    unsigned int vectorNumber;
+    
+    for (vectorNumber = 0; vectorNumber < 256; vectorNumber++)
+        toscaIntrForeachHandler(INTR_VME_LVL_ANY, vectorNumber, toscaIntrHandlerPrintInfo);
+    toscaIntrForeachHandler(-1ULL-INTR_VME_LVL_ANY, 0, toscaIntrHandlerPrintInfo);
+}
+
 /* register with 'md' command */
 static volatile void* toscaAddrHandler(size_t address, size_t size, size_t aspace)
 {
@@ -213,9 +250,11 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaCsrWriteDef, toscaCsrWriteFunc);
     iocshRegister(&toscaCsrSetDef, toscaCsrSetFunc);
     iocshRegister(&toscaCsrClearDef, toscaCsrClearFunc);
+    iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
 }
 
 epicsExportRegistrar(toscaRegistrar);
 
 epicsExportAddress(int, toscaMapDebug);
+epicsExportAddress(int, toscaIntrDebug);
 

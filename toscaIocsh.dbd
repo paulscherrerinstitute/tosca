@@ -1,2 +1,3 @@
 registrar(toscaRegistrar)
 variable(toscaMapDebug, int)
+variable(toscaIntrDebug, int)

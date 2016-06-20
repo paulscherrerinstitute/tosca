@@ -142,14 +142,14 @@ long toscaDevLibProbe(
 
     vme_addr = toscaMapLookupAddr(ptr);
 
-    if (vme_addr.bus == -1) return S_dev_addressNotFound;
+    if (vme_addr.card == -1) return S_dev_addressNotFound;
 
     /* I would really like to pause all other threads and processes here. */
     /* At least make sure that we are alone here. */
     epicsMutexMustLock(probeMutex);
 
     /* Read once to clear BERR bit. */
-    toscaMapGetVmeErr(vme_addr.bus);
+    toscaMapGetVmeErr(vme_addr.card);
 
     for (i = 1; i < 1000; i++)  /* We don't want to loop forever. */
     {
@@ -177,7 +177,7 @@ long toscaDevLibProbe(
                 epicsMutexUnlock(probeMutex);
                 return S_dev_badArgument;
         }
-        vme_err = toscaMapGetVmeErr(vme_addr.bus);
+        vme_err = toscaMapGetVmeErr(vme_addr.card);
 
         if (!vme_err.err)
             return S_dev_success;
@@ -263,96 +263,58 @@ long toscaDevLibWriteProbe(
 
 /** VME interrupts *****************/
 
-static int vme_level_mask = 0;
-
 long toscaDevLibDisableInterruptLevelVME(unsigned int level)
 {
-    /* We can't really disable the interrupts.
-       We can only ignore them.
-    */
-    debug("level=%d", level);
-    if (level < 1 || level > 7) return S_dev_badArgument;
-    vme_level_mask &= ~(1<<level);
-    return S_dev_success;
+    /* We can't disable the interrupts. */
+    return S_dev_intDissFail;
 }
 
 long toscaDevLibEnableInterruptLevelVME(unsigned int level)
 {
-    debug("level=%d", level);
-    if (level < 1 || level > 7) return S_dev_badArgument;
-    vme_level_mask |= (1<<level);
+    /* Interrupts are always enabled. */
     return S_dev_success;
 }
 
 int toscaIntrPrio = 80;
 epicsExportAddress(int, toscaIntrPrio);
 epicsMutexId intrListMutex;
-
-struct intr_handler {
-    void (*function)();
-    void *parameter;
-    struct intr_handler* next;
-};
-
-struct {
-    struct intr_handler* handlers;
-    epicsThreadId thread;
-} interrupts[256];
-
-void toscaDevLibInterruptHandlerThread(void* arg)
-{
-    int level, vectorNumber = (int)arg;
-    struct intr_handler* handler;
-    debug("thread start: vectorNumber=%d", vectorNumber);
-    while (1)
-    {
-        level = toscaWaitForIntr(INTR_VME_LVL_ANY, vectorNumber, NULL);
-        debug("vectorNumber=%d got interrupt level=%d", vectorNumber, level);
-        if (!(level & vme_level_mask)) continue; /* Ignore "disabled" interrupts. */
-        for (handler = interrupts[vectorNumber].handlers; handler; handler = handler->next)
-        {
-            char* fname=NULL;
-            debug("vectorNumber=%d level=%d: %s(%p)",
-                vectorNumber, level,
-                fname=symbolName(handler->function,0), handler->parameter);
-            if (fname) free(fname);
-            handler->function(handler->parameter);
-        }
-    }
-}
+epicsThreadId toscaDevLibInterruptThreads[256];
 
 long toscaDevLibConnectInterruptVME(
     unsigned int vectorNumber,
     void (*function)(),
     void  *parameter)
 {
-    struct intr_handler **phandler, *handler;
     char* fname=NULL;
 
     debug("vectorNumber=%d function=%s, parameter=%p",
-        vectorNumber, fname=symbolName(function,0), parameter);
-    if (fname) free(fname);
+        vectorNumber, fname=symbolName(function,0), parameter), free(fname);
 
     if (vectorNumber > 255) return S_dev_badArgument;
-    handler = malloc(sizeof(struct intr_handler));
-    if (!handler) return S_dev_noMemory;
-    handler->function = function;
-    handler->parameter = parameter;
-    handler->next = NULL;
-
+    
     epicsMutexMustLock(intrListMutex);
-    for (phandler = &interrupts[vectorNumber].handlers; *phandler; phandler = &(*phandler)->next);
-    *phandler = handler;
-    if (!interrupts[vectorNumber].thread)
+    if (!toscaDevLibInterruptThreads[vectorNumber])
     {
         char threadname[16];
-
+        
         sprintf(threadname, "intrVME%d", vectorNumber);
         debug("starting handler thread %s", threadname);
-        interrupts[vectorNumber].thread = epicsThreadCreate(threadname, toscaIntrPrio,
+        toscaDevLibInterruptThreads[vectorNumber] = epicsThreadCreate(threadname, toscaIntrPrio,
             epicsThreadGetStackSize(epicsThreadStackSmall),
-            toscaDevLibInterruptHandlerThread, (void*)vectorNumber);
-        if (!interrupts[vectorNumber].thread) return S_dev_noMemory;
+            toscaIntrLoop, TOSCA_INTR_LOOP_ARG_VME(vectorNumber));
+        if (!toscaDevLibInterruptThreads[vectorNumber])
+        {
+            debug("cannot start handler thread %s %m", threadname);
+            epicsMutexUnlock(intrListMutex);
+            return S_dev_noMemory;
+        }
+    }
+    debug("Connect VME vector %u interrupt handler to TOSCA", vectorNumber);
+    if (toscaIntrConnectHandler(INTR_VME_LVL_ANY, vectorNumber, function, parameter) != 0)
+    {
+        debug("could not connect VME vector %u interrupt handler", vectorNumber);
+        epicsMutexUnlock(intrListMutex);
+        return S_dev_vecInstlFail;
     }
     epicsMutexUnlock(intrListMutex);
     return S_dev_success;
@@ -362,26 +324,9 @@ long toscaDevLibDisconnectInterruptVME(
     unsigned int vectorNumber,
     void (*function)())
 {
-    struct intr_handler **phandler, *handler;
-
-    char* fname=NULL;
-    debug("vectorNumber=%d function=%s",
-        vectorNumber, fname=symbolName(function,0));
-    if (fname) free(fname);
-
-    epicsMutexMustLock(intrListMutex);
-    for (phandler = &interrupts[vectorNumber].handlers; *phandler; phandler = &(*phandler)->next)
-    {
-        if ((*phandler)->function == function)
-        /* Better to check parameter too, but we dont know it here. */
-        {
-            handler = *phandler;
-            *phandler = handler->next;
-            free(handler);
-        }
-    }
-    epicsMutexUnlock(intrListMutex);
-    return S_dev_success;
+    /* We cannot disconnect interrupts.
+    */
+    return -1;
 }
 
 int toscaDevLibInterruptInUseVME(unsigned int vectorNumber)
@@ -389,7 +334,7 @@ int toscaDevLibInterruptInUseVME(unsigned int vectorNumber)
     /* Actually this asks if a new handler cannot be connected to vectorNumber.
        Since we keep a linked list, a new handler can always be connected.
     */
-    return S_dev_success;
+    return FALSE;
 }
 
 /** VME A24 DMA memory *****************/
