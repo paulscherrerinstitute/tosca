@@ -19,8 +19,8 @@ typedef uint8_t __u8;
 #include "toscaMap.h"
 
 pthread_mutex_t maplist_mutex = PTHREAD_MUTEX_INITIALIZER;
-#define LOCK pthread_mutex_lock(&maplist_mutex);
-#define UNLOCK pthread_mutex_unlock(&maplist_mutex);
+#define LOCK pthread_mutex_lock(&maplist_mutex)
+#define UNLOCK pthread_mutex_unlock(&maplist_mutex)
 
 int toscaMapDebug;
 FILE* toscaMapDebugFile = NULL;
@@ -44,13 +44,12 @@ static size_t tCsrSize = 0;
 
 volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
 {
-    struct map **pmap;
+    struct map **pmap, *map;
     volatile void *ptr;
     size_t offset;
     int fd;
     char filename[50];
 
-    LOCK
     debug("aspace=%#x(%s), address=%#llx, size=%#zx",
             aspace, toscaAddrSpaceStr(aspace),
             address,
@@ -58,6 +57,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
 
     aspace &= ~(VME_USER | VME_DATA);
 
+    LOCK;
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
         debug("check aspace=%#x(%s), address=%#llx, size=%#zx",
@@ -72,7 +72,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
                     (*pmap)->info.address, (*pmap)->info.size,
                     (address - (*pmap)->info.address));
             {
-                UNLOCK
+                UNLOCK;
                 return (*pmap)->info.ptr + (address - (*pmap)->info.address);
             }
         }
@@ -97,7 +97,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
         if (fd < 0)
         {
             debugErrno("open %s", filename);
-            UNLOCK
+            UNLOCK;
             return NULL;
         }
 
@@ -105,7 +105,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
         {
             debugErrno("ioctl VME_SET_MASTER");
             close(fd);
-            UNLOCK
+            UNLOCK;
             return NULL;
         }
 
@@ -116,7 +116,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
         {
             debugErrno("ioctl VME_GET_MASTER");
             close(fd);
-            UNLOCK
+            UNLOCK;
             return NULL;
         }
         debug("window address=%#llx size=%#llx",
@@ -126,7 +126,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
         offset = address - vme_window.vme_addr;   /* Location within window that mapps to requested address */
         address = vme_window.vme_addr;            /* This is the start address of the fd. */
         if ((aspace & 0xfff) == VME_A16)
-            size = VME_A16_MAX;
+            size = VME_A16_MAX;                   /* Map only the small A16 space, not the big window to user space. */
         else
             size = vme_window.size ;              /* Map the whole window to user space. */
     }
@@ -140,7 +140,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
         if (fd < 0)
         {
             debugErrno("open %s", filename);
-            UNLOCK
+            UNLOCK;
             return NULL;
         }
         fstat(fd, &filestat);
@@ -149,12 +149,12 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
         {
             errno = EINVAL;
             debug("address or size too big");
-            UNLOCK
+            UNLOCK;
             return NULL;
         }
-        size = tCsrSize;                          /* Whole TCSR space */
-        offset = address;                         /* Location within fd that mapps to requested address */
-        address = 0;                              /* This is the start address of the fd. */
+        size = tCsrSize;  /* Map whole TCSR space */
+        offset = address; /* Location within fd that mapps to requested address */
+        address = 0;      /* This is the start address of the fd. */
     }
 
     ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -164,24 +164,25 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
     {
         debugErrno("mmap");
         close(fd);
-        UNLOCK
+        UNLOCK;
         return NULL;
     }
     close(fd);
 
-    *pmap = malloc(sizeof(struct map));
-    if (!*pmap)
+    map = malloc(sizeof(struct map));
+    if (!map)
     {
         debugErrno("malloc");
-        UNLOCK
+        UNLOCK;
         return NULL;
     }
-    (*pmap)->info.ptr = ptr;
-    (*pmap)->info.aspace = aspace;
-    (*pmap)->info.address = address;
-    (*pmap)->info.size = size;
-    (*pmap)->next = NULL;
-    UNLOCK
+    (map)->info.ptr = ptr;
+    (map)->info.aspace = aspace;
+    (map)->info.address = address;
+    (map)->info.size = size;
+    (map)->next = NULL;
+    *pmap = map;
+    UNLOCK;
 
     return ptr + offset;
 }
@@ -190,13 +191,11 @@ toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info))
 {
     struct map *map;
 
-    LOCK
     for (map = maps; map; map = map->next)
     {
-        if (func(map->info) != 0) break;
+        if (func(map->info) != 0) break; /* loop until user func returns non 0 */
     }
-    UNLOCK
-    if (map) return map->info;
+    if (map) return map->info;           /* info of map where user func returned non 0 */
     else return (toscaMapInfo_t) { 0, 0, 0, NULL };
 }
 
