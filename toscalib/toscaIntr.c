@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <limits.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>

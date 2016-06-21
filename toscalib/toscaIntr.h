@@ -2,6 +2,7 @@
 #define toscaIntr_h
 
 #include <stdint.h>
+#include <signal.h>
 
 extern int toscaIntrDebug;
 
@@ -71,7 +72,7 @@ intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct tim
 /* vec is for VME_LVL_* only and is ignored for other INTR_* bits */
 /* timeout may be NULL to wait forever */
 /* sigmask may be NULL not to wait for signals */
-/* returns a handle to be used in other fundtions or 0 on timeout, signal or error */
+/* returns a handle to be used in other functions or 0 on timeout, signal or error */
 
 int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*function)(), void* parameter);
 #define toscaIntrConnectHandlerVME(vec, function, parameter) toscaIntrConnectHandler(INTR_VME_LVL_ANY, vec, function, parameter)

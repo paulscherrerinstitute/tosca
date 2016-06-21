@@ -1,17 +1,10 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
-#include <setjmp.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <errno.h>
+#include <stdio.h>
 
 #include <devLib.h>
-#include <errlog.h>
-#include <epicsTypes.h>
-#include <cantProceed.h>
 #include <epicsMutex.h>
-#include <epicsTimer.h>
+#include <epicsTypes.h>
+#include <epicsThread.h>
 #include <epicsExport.h>
 
 #include "symbolname.h"

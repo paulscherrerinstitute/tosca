@@ -1,10 +1,9 @@
-#include <iocsh.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <epicsTypes.h>
+#include <iocsh.h>
 #include <epicsExport.h>
-#include <devLibVME.h>
 
 #include "memDisplay.h"
 #include "symbolname.h"
