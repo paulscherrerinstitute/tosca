@@ -69,7 +69,7 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
     if (!vme_addr.aspace)
         printf("%p is not a TOSCA address\n", (void*)addr);
     else
-        printf("%s:%#0llx\n", toscaAddrSpaceStr(vme_addr.aspace), vme_addr.address);
+        printf("%s:%#0llx\n", toscaAddrSpaceToStr(vme_addr.aspace), vme_addr.address);
 }
 
 static const iocshFuncDef toscaMapShowDef =
@@ -79,7 +79,7 @@ static const iocshFuncDef toscaMapShowDef =
 int toscaMapPrintInfo(toscaMapInfo_t info)
 {
     printf("%-9s 0x%08llx (0x%08zx = %3d %ciB) @ %p\n",
-        toscaAddrSpaceStr(info.aspace), info.address,
+        toscaAddrSpaceToStr(info.aspace), info.address,
         info.size, info.size >= 0x00100000 ? (info.size >> 20) : (info.size >> 10), info.size >= 0x00100000 ? 'M' : 'K',
         info.ptr);
     return 0;

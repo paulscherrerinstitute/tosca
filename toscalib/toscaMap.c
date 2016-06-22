@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef uint64_t __u64;
 typedef uint32_t __u32;
@@ -49,7 +50,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
     char filename[50];
 
     debug("aspace=%#x(%s), address=%#llx, size=%#zx",
-            aspace, toscaAddrSpaceStr(aspace),
+            aspace, toscaAddrSpaceToStr(aspace),
             address,
             size);
 
@@ -59,7 +60,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
         debug("check aspace=%#x(%s), address=%#llx, size=%#zx",
-                (*pmap)->info.aspace, toscaAddrSpaceStr((*pmap)->info.aspace),
+                (*pmap)->info.aspace, toscaAddrSpaceToStr((*pmap)->info.aspace),
                 (*pmap)->info.address,
                 (*pmap)->info.size);
         if (aspace == (*pmap)->info.aspace &&
@@ -212,7 +213,7 @@ toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr)
     return (toscaMapAddr_t) { info.aspace, info.address + (ptr - info.ptr) };
 }
 
-const char* toscaAddrSpaceStr(int aspace)
+const char* toscaAddrSpaceToStr(int aspace)
 {
     switch (aspace & ~(VME_USER | VME_DATA))
     {
@@ -244,6 +245,84 @@ const char* toscaAddrSpaceStr(int aspace)
 
         default: return "invalid";
     }
+}
+
+int toscaStrToAddrSpace(const char* str)
+{
+    int aspace;
+    if (!str) return 0;
+    switch (str[0])
+    {
+        case 'C':
+            if (strcmp(str+1,"RCSR") == 0 || strcmp(str+1,"SR") == 0)
+                return VME_CRCSR;
+            return 0;
+        case 'V':
+            if (strcmp(str+1, "ME_CSR") == 0)
+                return VME_CRCSR;
+            if (strncmp(str+1, "ME_A", 4) != 0) return 0;
+            str += 4;
+        case 'A':
+        {
+            switch (strtol(str+1, NULL, 10))
+            {
+                case 16:
+                    aspace = VME_A16;
+                    break;
+                case 24:
+                    aspace = VME_A24;
+                    break;
+                case 32:
+                    aspace = VME_A32;
+                    break;
+                default:
+                    return 0;
+            }
+            switch (str[3])
+            {
+                case '*':
+                    aspace |= VME_SUPER;
+                    break;
+                case '#':
+                    aspace |= VME_PROG;
+                    break;
+                default:
+                    return aspace;
+            }
+            switch (str[4])
+            {
+                case '*':
+                    aspace |= VME_SUPER;
+                    break;
+                case '#':
+                    aspace |= VME_PROG;
+                    break;
+            }
+            return aspace;
+        }
+        case 'U':
+            if (strncmp(str+1,"SER", 3) == 0 || strncmp(str+1,"SR", 2) == 0)
+            {
+                switch (str[strlen(str)-1])
+                {
+                    case '1':
+                    case 'R':
+                        return TOSCA_USER1;
+                    case '2':
+                        return TOSCA_USER2;
+                }
+            }
+            return 0;
+        case 'S':
+            if (strcmp(str+1,"HMEM") == 0 || strcmp(str+1,"H_MEM") == 0 || strcmp(str+1,"HM") == 0)
+                return TOSCA_SHMEM;
+            return 0;
+        case 'T':
+            if (strcmp(str+1,"CSR") == 0)
+                return TOSCA_CSR;
+            return 0;
+    }
+    return 0;
 }
 
 uint32_t toscaCsrRead(unsigned int address)

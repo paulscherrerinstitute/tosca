@@ -176,7 +176,7 @@ long toscaDevLibProbe(
             return S_dev_success;
 
         /* Now check if the error came from our access. */
-        debug("Our access was %s %#llx", toscaAddrSpaceStr(vme_addr.aspace), vme_addr.address);
+        debug("Our access was %s %#llx", toscaAddrSpaceToStr(vme_addr.aspace), vme_addr.address);
         if (vme_err.source == 0 && /* Error from PCIe, maybe our access. */
             isWrite == vme_err.write) /* Read/write access matches. */
             switch (vme_err.mode) /* Check address space of error. */

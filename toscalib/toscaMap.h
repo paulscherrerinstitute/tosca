@@ -39,8 +39,9 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size);
    * for Tosca configuration space registers: TOSCA_CSR
 */
 
-/* Convert aspace code to string. */
-const char* toscaAddrSpaceStr(int aspace);
+/* Convert aspace code to/from string. */
+const char* toscaAddrSpaceToStr(int aspace);
+int toscaStrToAddrSpace(const char* str);
 
 /* Several map lookup functions. aspace will be 0 if map is not found. */
 typedef struct {
