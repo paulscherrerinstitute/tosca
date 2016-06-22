@@ -11,21 +11,37 @@
 #include "toscaMap.h"
 #include <epicsExport.h>
 
-#define NS 0
-#define WS 2
-#define DS 4
-#define QS 8
+int toscaRegDevDebug;
+epicsExportAddress(int, toscaRegDevDebug);
+FILE* toscaRegDevDebugFile = NULL;
+
+#define debug_internal(m, fmt, ...) if(m##Debug) fprintf(m##DebugFile?m##DebugFile:stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
+#define debugErrno(fmt, ...) debug(fmt " failed: %s", ##__VA_ARGS__, strerror(errno))
+#define debug(fmt, ...) debug_internal(toscaRegDev, fmt, ##__VA_ARGS__)
 
 struct regDevice
 {
     volatile void* baseptr;
-    int swap;
+    unsigned long dmalimit;
+    unsigned int blockmode;
+    unsigned int blocksize;
+    uint8_t swap;
+    uint8_t intr;
 };
 
 void toscaDevReport(regDevice *device, int level)
 {
     toscaMapAddr_t addr = toscaMapLookupAddr(device->baseptr);
-    printf("Tosca %s:0x%llx\n", toscaAddrSpaceToStr(addr.aspace), addr.address);
+    printf("Tosca %s:0x%llx", toscaAddrSpaceToStr(addr.aspace), addr.address);
+    if (device->swap)
+        printf(", swap=%s",
+            device->swap == 2 ? "WS" : device->swap == 4 ? "DS" : device->swap == 8 ? "QS" : "??");
+    if (device->blockmode)
+        printf(", block mode");
+    else
+        if (device->dmalimit <= 1) printf(", DMA=%s", device->dmalimit ? "always" : "never");
+        else printf(", DMA>=%ld elem", device->dmalimit);
+    printf("\n");
 }
 
 int toscaDevRead(
@@ -84,6 +100,7 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
     int aspace;
     volatile void* baseptr;
     regDevice* device;
+    const char *p;
     
     if (!name)
     {
@@ -108,7 +125,7 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
         return -1;
     }
     
-    printf("toscaDevConfigure(name=%s, resource=%s, address=0x%zx size=0x%zx, flags=%s)\n",
+    debug("toscaDevConfigure(name=%s, resource=%s, address=0x%zx size=0x%zx, flags=%s)",
         name, resource, address, size, flags);
     
     if (regDevFind(name))
@@ -135,27 +152,38 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
         return -1;
     }
     device->baseptr = baseptr;
-
-    if ((aspace & 0xfff) >= TOSCA_USER1)
-        device->swap = DS;  /* for Tosca resources */
-    else
-        device->swap = 0;   /* for VME resources */
+    if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHMEM|TOSCA_CSR)) device->swap = 4;
+    device->blocksize = 512;
+    device->dmalimit = 1000;
 
     if (flags)
     {
-        if (strstr(flags, "NS")) device->swap = NS;
-        if (strstr(flags, "WS")) device->swap = WS;
-        if (strstr(flags, "DS")) device->swap = DS;
-        if (strstr(flags, "QS")) device->swap = QS;
+        if (strstr(flags, "NS")) device->swap = 0;
+        if (strstr(flags, "WS")) device->swap = 2;
+        if (strstr(flags, "DS")) device->swap = 4;
+        if (strstr(flags, "QS")) device->swap = 8;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-        if (strstr(flags, "WB")) device->swap = WS;
-        if (strstr(flags, "DB")) device->swap = DS;
-        if (strstr(flags, "QB")) device->swap = QS;
+        if (strstr(flags, "WB")) device->swap = 2;
+        if (strstr(flags, "DB")) device->swap = 4;
+        if (strstr(flags, "QB")) device->swap = 8;
 #else
-        if (strstr(flags, "WL")) device->swap = WS;
-        if (strstr(flags, "DL")) device->swap = DS;
-        if (strstr(flags, "QL")) device->swap = QS;
+        if (strstr(flags, "WL")) device->swap = 2;
+        if (strstr(flags, "DL")) device->swap = 4;
+        if (strstr(flags, "QL")) device->swap = 8;
 #endif
+        if (strstr(flags, "block")) device->blockmode = 1;
+        if ((p = strstr(flags, "DMA=")))
+        {
+            device->dmalimit = strtol(flags+4, NULL, 0);
+        }
+        if ((p = strstr(flags, "intr=")))
+        {
+            device->intr = strtol(flags+5, NULL, 0);
+        }
+        if ((p = strstr(flags, "bs=")))
+        {
+            device->blocksize = strtol(flags+3, NULL, 0);
+        }
     }
     
     if (regDevRegisterDevice(name, &toscaDev, device, size) != SUCCESS)
