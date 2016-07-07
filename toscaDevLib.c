@@ -4,12 +4,10 @@
 #include <devLib.h>
 #include <epicsMutex.h>
 #include <epicsTypes.h>
-#include <epicsThread.h>
+#include "toscaDev.h"
 #include <epicsExport.h>
 
 #include "symbolname.h"
-#include "toscaMap.h"
-#include "toscaIntr.h"
 #include "vme.h"
 
 /* EPICS has no way to request VME supervisory or user mode. Use Supervisory for all maps. */
@@ -273,6 +271,23 @@ epicsExportAddress(int, toscaIntrPrio);
 epicsMutexId intrListMutex;
 epicsThreadId toscaDevLibInterruptThreads[256];
 
+
+epicsThreadId toscaStartIntrThread(const char* threadname, intrmask_t intrmask, unsigned int vec)
+{
+    epicsThreadId tid;
+
+    debug("starting handler thread %s", threadname);
+    tid = epicsThreadCreate(threadname, toscaIntrPrio,
+        epicsThreadGetStackSize(epicsThreadStackSmall),
+        toscaIntrLoop, &(toscaIntrLoopArg_t){ intrmask, vec });
+    if (!tid)
+    {
+        debug("cannot start handler thread %s %m", threadname);
+        return NULL;
+    }
+    return tid;
+}
+
 long toscaDevLibConnectInterruptVME(
     unsigned int vectorNumber,
     void (*function)(),
@@ -291,13 +306,9 @@ long toscaDevLibConnectInterruptVME(
         char threadname[16];
         
         sprintf(threadname, "intrVME%d", vectorNumber);
-        debug("starting handler thread %s", threadname);
-        toscaDevLibInterruptThreads[vectorNumber] = epicsThreadCreate(threadname, toscaIntrPrio,
-            epicsThreadGetStackSize(epicsThreadStackSmall),
-            toscaIntrLoop, TOSCA_INTR_LOOP_ARG_VME(vectorNumber));
+        toscaDevLibInterruptThreads[vectorNumber] = toscaStartIntrThread(threadname, INTR_VME_LVL_ANY, vectorNumber);
         if (!toscaDevLibInterruptThreads[vectorNumber])
         {
-            debug("cannot start handler thread %s %m", threadname);
             epicsMutexUnlock(intrListMutex);
             return S_dev_noMemory;
         }
