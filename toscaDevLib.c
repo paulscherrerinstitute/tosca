@@ -4,7 +4,7 @@
 #include <devLib.h>
 #include <epicsMutex.h>
 #include <epicsTypes.h>
-#include "toscaDev.h"
+#include "toscaDevLib.h"
 #include <epicsExport.h>
 
 #include "symbolname.h"
