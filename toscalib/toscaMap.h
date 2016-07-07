@@ -35,7 +35,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size);
    * for VME address spaces A16, A24, A32: VME_A16, VME_A24, VME_A32 optionally | VME_SUPER or VME_PROG
    * for VME CR/CSR addres space: VME_CRCSR
    * for Tosca FPGA USR: TOSCA_USER
-   * for Tosca shared memory: TOSCA_SHMEM
+   * for Tosca shared memory: TOSCA_SHM
    * for Tosca configuration space registers: TOSCA_CSR
 */
 
