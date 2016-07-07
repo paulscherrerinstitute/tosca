@@ -49,7 +49,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
     else
     if (strcmp(addrstr,"USER4") == 0) aspace = VME_USER4;
     else
-    if (strcmp(addrstr,"SHMEM") == 0) aspace = TOSCA_SHMEM;
+    if (strcmp(addrstr,"SHM") == 0) aspace = TOSCA_SHM;
     else
     if (strcmp(addrstr,"TCSR") == 0) aspace = TOSCA_CSR;
     else
@@ -237,7 +237,7 @@ static void toscaRegistrar(void)
     memDisplayInstallAddrHandler("USER",  toscaAddrHandler, TOSCA_USER1);
     memDisplayInstallAddrHandler("USER1", toscaAddrHandler, TOSCA_USER1);
     memDisplayInstallAddrHandler("USER2", toscaAddrHandler, TOSCA_USER2);
-    memDisplayInstallAddrHandler("SHMEM", toscaAddrHandler, TOSCA_SHMEM);
+    memDisplayInstallAddrHandler("SHM",   toscaAddrHandler, TOSCA_SHM);
     memDisplayInstallAddrHandler("TCSR",  toscaAddrHandler, TOSCA_CSR);
 
     iocshRegister(&toscaMapDef, toscaMapFunc);
