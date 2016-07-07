@@ -105,7 +105,7 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
     if (!name)
     {
         iocshCmd("help toscaDevConfigure");
-        printf("resources: USER1 (or USER), USER2, SHMEM, TCSR, CRCSR, A16, A24, A32\n"
+        printf("resources: USER1 (or USER), USER2, SHM, TCSR, CRCSR, A16, A24, A32\n"
                "   (add * for 'supervisory' and # for 'program' access to Axx modes)\n"
                "flags:\n"
                "   - swap: NS (none), WS (word), DS (double word) QS (quad word)\n"
@@ -152,7 +152,7 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
         return -1;
     }
     device->baseptr = baseptr;
-    if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHMEM|TOSCA_CSR)) device->swap = 4;
+    if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM|TOSCA_CSR)) device->swap = 4;
     device->blocksize = 512;
     device->dmalimit = 1000;
 
