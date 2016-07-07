@@ -54,7 +54,8 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
             address,
             size);
 
-    aspace &= ~(VME_USER | VME_DATA);
+    if (!(aspace & VME_SUPER)) aspace |= VME_USER;
+    if (!(aspace & VME_PROG)) aspace |= VME_DATA;
 
     LOCK;
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
@@ -166,7 +167,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
         UNLOCK;
         return NULL;
     }
-    close(fd);
+    /* close(fd); */
 
     map = malloc(sizeof(struct map));
     if (!map)
@@ -240,7 +241,7 @@ const char* toscaAddrSpaceToStr(int aspace)
 
         case TOSCA_USER1: return "USER1";
         case TOSCA_USER2: return "USER2";
-        case TOSCA_SHMEM: return "SHMEM";
+        case TOSCA_SHM:   return "SHM";
         case TOSCA_CSR:   return "TCSR";
 
         default: return "invalid";
@@ -314,8 +315,8 @@ int toscaStrToAddrSpace(const char* str)
             }
             return 0;
         case 'S':
-            if (strcmp(str+1,"HMEM") == 0 || strcmp(str+1,"H_MEM") == 0 || strcmp(str+1,"HM") == 0)
-                return TOSCA_SHMEM;
+            if (strcmp(str+1,"HM") == 0 || strcmp(str+1,"H_MEM") == 0 || strcmp(str+1,"HMEM") == 0)
+                return TOSCA_SHM;
             return 0;
         case 'T':
             if (strcmp(str+1,"CSR") == 0)
