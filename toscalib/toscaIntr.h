@@ -105,10 +105,6 @@ typedef struct {
 } toscaIntrLoopArg_t;
 
 void toscaIntrLoop(void* arg);
-/* The arg must be a pointer to toscaIntrLoopArg_t and may become invalid after starting toscaIntrLoop. */
-/* A shortcut for VME any level witout timeout or signals */
-#define TOSCA_INTR_LOOP_ARG_VME(vec) &(toscaIntrLoopArg_t){ INTR_VME_LVL_ANY, vec, NULL, NULL }
-/* A shortcut for any mask witout vec, timeout or signals */
-#define TOSCA_INTR_LOOP_ARG(mask) &(toscaIntrLoopArg_t){ mask, 0, NULL, NULL }
+/* The arg must be a pointer to a persistent toscaIntrLoopArg_t. */
 
 #endif

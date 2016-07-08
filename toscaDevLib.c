@@ -18,7 +18,7 @@ epicsExportAddress(int, toscaDevLibDebug);
 FILE* toscaDevLibDebugFile = NULL;
 
 #define debug_internal(m, fmt, ...) if(m##Debug) fprintf(m##DebugFile?m##DebugFile:stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
-#define debugErrno(fmt, ...) debug(fmt " failed: %s", ##__VA_ARGS__, strerror(errno))
+#define debugErrno(fmt, ...) debug(fmt " failed: %m", ##__VA_ARGS__)
 #define debug(fmt, ...) debug_internal(toscaDevLib, fmt, ##__VA_ARGS__)
 
 /** VME mapping *****************/
@@ -275,14 +275,21 @@ epicsThreadId toscaDevLibInterruptThreads[256];
 epicsThreadId toscaStartIntrThread(const char* threadname, intrmask_t intrmask, unsigned int vec)
 {
     epicsThreadId tid;
-
+    toscaIntrLoopArg_t* theadArgs = calloc(1, sizeof(toscaIntrLoopArg_t));
+    if (!theadArgs)
+    {
+        debugErrno("calloc theadArgs");
+        return NULL;
+    }
+    theadArgs->intrmask = intrmask;
+    theadArgs->vec = vec;
     debug("starting handler thread %s", threadname);
     tid = epicsThreadCreate(threadname, toscaIntrPrio,
         epicsThreadGetStackSize(epicsThreadStackSmall),
-        toscaIntrLoop, &(toscaIntrLoopArg_t){ intrmask, vec });
+        toscaIntrLoop, theadArgs);
     if (!tid)
     {
-        debug("cannot start handler thread %s %m", threadname);
+        debugErrno("starting handler thread %s", threadname);
         return NULL;
     }
     return tid;
@@ -305,7 +312,7 @@ long toscaDevLibConnectInterruptVME(
     {
         char threadname[16];
         
-        sprintf(threadname, "intrVME%d", vectorNumber);
+        sprintf(threadname, "iVME%d", vectorNumber);
         toscaDevLibInterruptThreads[vectorNumber] = toscaStartIntrThread(threadname, INTR_VME_LVL_ANY, vectorNumber);
         if (!toscaDevLibInterruptThreads[vectorNumber])
         {
