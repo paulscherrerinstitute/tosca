@@ -54,9 +54,11 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
             address,
             size);
 
-    if (!(aspace & VME_SUPER)) aspace |= VME_USER;
-    if (!(aspace & VME_PROG)) aspace |= VME_DATA;
-
+    if (aspace & (VME_A16 | VME_A24 | VME_A32 | VME_A64))
+    {
+        if (!(aspace & VME_SUPER)) aspace |= VME_USER;
+        if (!(aspace & VME_PROG)) aspace |= VME_DATA;
+    }
     LOCK;
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
@@ -78,7 +80,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
         }
     }
 
-    if (aspace != TOSCA_CSR) /* handle TOSCA_CSR later */
+    if (!(aspace & TOSCA_CSR)) /* handle TOSCA_CSR later */
     {
         /* Tosca requires windows aligned to 1 MiB
            Thus round down address to the full MiB and adjust size.
@@ -109,7 +111,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
             return NULL;
         }
 
-        /* If the request fits into an existing window we get that one instead.
+        /* If the request fits into an existing window we get that one instead of the requested one.
            That window may have a different start adddress, e.g. aligned to 4 MiB.
         */
         if (ioctl(fd, VME_GET_MASTER, &vme_window) != 0)
@@ -123,8 +125,8 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
                 vme_window.vme_addr, vme_window.size);
 
         /* Find the MMU pages in the window we need to map */
-        offset = address - vme_window.vme_addr;   /* Location within window that mapps to requested address */
-        address = vme_window.vme_addr;            /* This is the start address of the fd. */
+        offset = address - vme_window.vme_addr;   /* Location within window that maps to requested address */
+        address = vme_window.vme_addr;            /* Start address of the fd. */
         if ((aspace & 0xfff) == VME_A16)
             size = VME_A16_MAX;                   /* Map only the small A16 space, not the big window to user space. */
         else
@@ -132,7 +134,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
     }
     else /* TOSCA_CSR */
     {
-        /* Handle TCSR in compatible way */
+        /* Handle TCSR in compatible way to other address spaces */
         struct stat filestat = {0};
 
         sprintf(filename, "/sys/bus/pci/drivers/tosca/0000:03:00.0/resource3");
@@ -153,7 +155,7 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
             return NULL;
         }
         size = tCsrSize;  /* Map whole TCSR space */
-        offset = address; /* Location within fd that mapps to requested address */
+        offset = address; /* Location within fd that maps to requested address */
         address = 0;      /* This is the start address of the fd. */
     }
 
@@ -357,7 +359,7 @@ int toscaCsrClear(unsigned int address, uint32_t value)
     return 0;
 }
 
-toscaMapVmeErr_t toscaMapGetVmeErr()
+toscaMapVmeErr_t toscaGetVmeErr()
 {
     int addr = toscaCsrRead(0x418); /* last VME error address modulo 32 bit */
     int stat = toscaCsrRead(0x41C); /* last VME error access code */

@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <malloc.h>
 #include <errno.h>
 #include <epicsTypes.h>
 #include <iocsh.h>
@@ -10,10 +11,11 @@
 
 #include "toscaMap.h"
 #include "toscaIntr.h"
+#include "toscaDma.h"
 
 static const iocshFuncDef toscaMapDef =
     { "toscaMap", 3, (const iocshArg *[]) {
-    &(iocshArg) { "A16|A24|A32|CRCSR", iocshArgString },
+    &(iocshArg) { "A16|A24|A32|CRCSR|USER|SHM|TCSR", iocshArgString },
     &(iocshArg) { "address", iocshArgInt },
     &(iocshArg) { "size", iocshArgInt },
 }};
@@ -25,9 +27,9 @@ static void toscaMapFunc(const iocshArgBuf *args)
     int address = args[1].ival;
     int size = args[2].ival;
 
-    if (!addrstr)
+    if (!addrstr) 
     {
-        printf("usage: toscaMap A16|A24|A32|CRCSR|USER|SHM, address, size\n");
+        iocshCmd("help toscaMap");
         return;
     }
     if (strncmp(addrstr,"VME_", 4) == 0) { addrstr+=4; }
@@ -105,13 +107,13 @@ static void toscaMapFindFunc(const iocshArgBuf *args)
         toscaMapPrintInfo(info);
 }
 
-static const iocshFuncDef toscaMapGetVmeErrDef =
-    { "toscaMapGetVmeErr", 0, (const iocshArg *[]) {
+static const iocshFuncDef toscaGetVmeErrDef =
+    { "toscaGetVmeErr", 0, (const iocshArg *[]) {
 }};
 
-static void toscaMapGetVmeErrFunc(const iocshArgBuf *args)
+static void toscaGetVmeErrFunc(const iocshArgBuf *args)
 {
-    toscaMapVmeErr_t err = toscaMapGetVmeErr();
+    toscaMapVmeErr_t err = toscaGetVmeErr();
     printf("0x%08x,0x%08x (%s %s%c%s %s id=%d len=%d %s:0x%x)\n",
         err.address,
         err.status,
@@ -155,7 +157,7 @@ static void toscaCsrWriteFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaCsrSetDef =
     { "toscaCsrSet", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "value", iocshArgInt },
+    &(iocshArg) { "setbits", iocshArgInt },
 }};
 
 static void toscaCsrSetFunc(const iocshArgBuf *args)
@@ -166,7 +168,7 @@ static void toscaCsrSetFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaCsrClearDef =
     { "toscaCsrClear", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "value", iocshArgInt },
+    &(iocshArg) { "clearbits", iocshArgInt },
 }};
 
 static void toscaCsrClearFunc(const iocshArgBuf *args)
@@ -209,6 +211,42 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
     toscaIntrForeachHandler(-1ULL-INTR_VME_LVL_ANY, 0, toscaIntrHandlerPrintInfo);
 }
 
+
+static const iocshFuncDef toscaDmaTransferDef =
+    { "toscaDmaTransfer", 6, (const iocshArg *[]) {
+    &(iocshArg) { "route", iocshArgInt },
+    &(iocshArg) { "source_addr", iocshArgInt },
+    &(iocshArg) { "dest_addr", iocshArgInt },
+    &(iocshArg) { "size", iocshArgInt },
+    &(iocshArg) { "dwidth", iocshArgInt },
+    &(iocshArg) { "cycle", iocshArgInt },
+}};
+
+static void toscaDmaTransferFunc(const iocshArgBuf *args)
+{
+    if (!args[0].ival) 
+    {
+        iocshCmd("help toscaDmaTransfer");
+        return;
+    }
+
+    toscaDmaTransfer(args[0].ival, args[1].ival, args[2].ival, args[3].ival, args[4].ival, args[5].ival);
+}
+
+static const iocshFuncDef mallocDef =
+    { "malloc", 2, (const iocshArg *[]) {
+    &(iocshArg) { "size", iocshArgInt },
+    &(iocshArg) { "alignment", iocshArgInt },
+}};
+
+static void mallocFunc(const iocshArgBuf *args)
+{
+    if (args[1].ival)
+        printf ("%p\n", memalign(args[0].ival, args[1].ival));
+    else
+        printf ("%p\n", valloc(args[0].ival));
+}
+
 /* register with 'md' command */
 static volatile void* toscaAddrHandler(size_t address, size_t size, size_t aspace)
 {
@@ -244,16 +282,19 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaMapLookupAddrDef, toscaMapLookupAddrFunc);
     iocshRegister(&toscaMapShowDef, toscaMapShowFunc);
     iocshRegister(&toscaMapFindDef, toscaMapFindFunc);
-    iocshRegister(&toscaMapGetVmeErrDef, toscaMapGetVmeErrFunc);
+    iocshRegister(&toscaGetVmeErrDef, toscaGetVmeErrFunc);
     iocshRegister(&toscaCsrReadDef, toscaCsrReadFunc);
     iocshRegister(&toscaCsrWriteDef, toscaCsrWriteFunc);
     iocshRegister(&toscaCsrSetDef, toscaCsrSetFunc);
     iocshRegister(&toscaCsrClearDef, toscaCsrClearFunc);
     iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
+    iocshRegister(&toscaDmaTransferDef, toscaDmaTransferFunc);
+    iocshRegister(&mallocDef, mallocFunc);
 }
 
 epicsExportRegistrar(toscaRegistrar);
 
 epicsExportAddress(int, toscaMapDebug);
 epicsExportAddress(int, toscaIntrDebug);
+epicsExportAddress(int, toscaDmaDebug);
 

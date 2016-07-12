@@ -9,6 +9,14 @@
 
 #include "regDev.h"
 #include "toscaMap.h"
+#include "toscaDma.h"
+
+typedef uint64_t __u64;
+typedef uint32_t __u32;
+typedef uint8_t __u8;
+#include "vme.h"
+#include "vme_user.h"
+
 #include <epicsExport.h>
 
 int toscaRegDevDebug;
@@ -21,10 +29,14 @@ FILE* toscaRegDevDebugFile = NULL;
 
 struct regDevice
 {
+    size_t baseaddr;
     volatile void* baseptr;
     unsigned long dmalimit;
     unsigned int blockmode;
     unsigned int blocksize;
+    unsigned int dmaRead;
+    unsigned int dmaWrite;
+    unsigned int cycle;
     uint8_t swap;
     uint8_t intr;
 };
@@ -54,6 +66,14 @@ int toscaDevRead(
     regDevTransferComplete callback,
     char* user)
 {
+    if (device->dmaRead && nelem > device->dmalimit)
+    {
+        int status = toscaDmaTransfer(device->dmaRead, device->baseaddr + offset, (size_t)pdata, nelem*dlen, 4, 0);
+        if (status)
+            fprintf(stderr, "%s: toscaDmaTransfer failed: %m\n", __FUNCTION__);
+        return status;
+    }
+
     if (device->swap)
         regDevCopy(device->swap, nelem*dlen/device->swap, device->baseptr, pdata, NULL, REGDEV_DO_SWAP);
     else
@@ -72,22 +92,38 @@ int toscaDevWrite(
     regDevTransferComplete callback,
     char* user)
 {
+    if (!pmask && device->dmaWrite && nelem > device->dmalimit)
+    {
+        int status = toscaDmaTransfer(device->dmaWrite, (size_t) pdata, device->baseaddr + offset, nelem*dlen, 4, 0);
+        if (status)
+            fprintf(stderr, "%s: toscaDmaTransfer failed: %m\n", __FUNCTION__);
+        return status;
+    }
+
     if (device->swap)
     {
+        /* TODO: check alignment of offset and nelem*dlen with device->swap */
         if (pmask && dlen != device->swap) /* mask with different dlen than swap */
         {
             int i;
             epicsUInt64 mask;
             for (i = 0; i < 8/dlen; i++) memcpy((char*)&mask + dlen * i, pmask, dlen);
-            regDevCopy(device->swap, nelem*dlen/device->swap, device->baseptr, pdata, &mask, REGDEV_DO_SWAP);
+            regDevCopy(device->swap, nelem*dlen/device->swap, device->baseptr + offset, pdata, &mask, REGDEV_DO_SWAP);
         }
         else
-            regDevCopy(device->swap, nelem*dlen/device->swap, device->baseptr, pdata, pmask, REGDEV_DO_SWAP);
+            regDevCopy(device->swap, nelem*dlen/device->swap, device->baseptr + offset, pdata, pmask, REGDEV_DO_SWAP);
     }
     else
-        regDevCopy(dlen, nelem, device->baseptr, pdata, pmask, REGDEV_NO_SWAP);
+        regDevCopy(dlen, nelem, device->baseptr + offset, pdata, pmask, REGDEV_NO_SWAP);
     return SUCCESS;
 };
+
+void* toscaDevDmaAlloc(regDevice *device, void* ptr, size_t size)
+{
+    if (ptr) free(ptr);
+    if (size) return valloc(size); /* in principle we can use any memory, but aligned is more efficient */
+    return NULL;
+}
 
 struct regDevSupport toscaDev = {
     .report = toscaDevReport,
@@ -151,10 +187,28 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
         fprintf(stderr, "toscaDevConfigure: cannot allocate device structure: %m\n");
         return -1;
     }
+    device->baseaddr = address;
     device->baseptr = baseptr;
     if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM|TOSCA_CSR)) device->swap = 4;
     device->blocksize = 512;
     device->dmalimit = 1000;
+    device->cycle = 0;
+    if (aspace & TOSCA_USER1)
+    {
+        device->dmaRead  = VME_DMA_USER_TO_MEM;
+        device->dmaWrite = VME_DMA_MEM_TO_USER;
+    }
+    if (aspace & TOSCA_SHM)
+    {
+        device->dmaRead  = VME_DMA_SHM_TO_MEM;
+        device->dmaWrite = VME_DMA_MEM_TO_SHM;
+    }
+    if (aspace & VME_A32)
+    {
+        device->dmaRead  = VME_DMA_VME_TO_MEM;
+        device->dmaWrite = VME_DMA_MEM_TO_VME;
+        device->cycle = VME_SCT;
+    }
 
     if (flags)
     {
@@ -184,14 +238,74 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
         {
             device->blocksize = strtol(flags+3, NULL, 0);
         }
+        if ((p = strstr(flags, "MBLT")))
+        {
+            device->dmaRead  = VME_DMA_VME_TO_MEM;
+            device->dmaWrite = VME_DMA_MEM_TO_VME;
+            device->cycle = VME_MBLT;
+        }
+        else if ((p = strstr(flags, "BLT")))
+        {
+            device->dmaRead  = VME_DMA_VME_TO_MEM;
+            device->dmaWrite = VME_DMA_MEM_TO_VME;
+            device->cycle = VME_BLT;
+        }
+        else if ((p = strstr(flags, "2eVMEFast")))
+        {
+            device->dmaRead  = VME_DMA_VME_TO_MEM;
+            device->dmaWrite = VME_DMA_MEM_TO_VME;
+            device->cycle = VME_2eVMEFast;
+        }
+        else if ((p = strstr(flags, "2eVME")))
+        {
+            device->dmaRead  = VME_DMA_VME_TO_MEM;
+            device->dmaWrite = VME_DMA_MEM_TO_VME;
+            device->cycle = VME_2eVME;
+        }
+        else if ((p = strstr(flags, "2eSST320")))
+        {
+            device->dmaRead  = VME_DMA_VME_TO_MEM;
+            device->dmaWrite = VME_DMA_MEM_TO_VME;
+            device->cycle = VME_2eSST320;
+        }
+        else if ((p = strstr(flags, "2eSST267")))
+        {
+            device->dmaRead  = VME_DMA_VME_TO_MEM;
+            device->dmaWrite = VME_DMA_MEM_TO_VME;
+            device->cycle = VME_2eSST267;
+        }
+        else if ((p = strstr(flags, "2eSST160")))
+        {
+            device->dmaRead  = VME_DMA_VME_TO_MEM;
+            device->dmaWrite = VME_DMA_MEM_TO_VME;
+            device->cycle = VME_2eSST160;
+        }
+        else if ((p = strstr(flags, "2eSSTB")))
+        {
+            device->dmaRead  = VME_DMA_VME_TO_MEM;
+            device->dmaWrite = VME_DMA_MEM_TO_VME;
+            device->cycle = VME_2eSSTB;
+        }
+        else if ((p = strstr(flags, "2eSST")))
+        {
+            device->dmaRead  = VME_DMA_VME_TO_MEM;
+            device->dmaWrite = VME_DMA_MEM_TO_VME;
+            device->cycle = VME_2eSST;
+        }
     }
-    
+    if (device->cycle && !(aspace & VME_A32))
+    {
+        fprintf(stderr, "toscaDevConfigure: %s only possible on VME A32 address space\n",
+            toscaDmaTypeToStr(VME_DMA_VME, device->cycle));
+        return -1;
+    }
+
     if (regDevRegisterDevice(name, &toscaDev, device, size) != SUCCESS)
     {
         fprintf(stderr, "toscaDevConfigure: regDevRegisterDevice() failed\n");
         return -1;
     }
-    
+    regDevRegisterDmaAlloc(device, toscaDevDmaAlloc);
     return 0;
 }
 

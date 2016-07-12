@@ -140,7 +140,7 @@ long toscaDevLibProbe(
     epicsMutexMustLock(probeMutex);
 
     /* Read once to clear BERR bit. */
-    toscaMapGetVmeErr();
+    toscaGetVmeErr();
 
     for (i = 1; i < 1000; i++)  /* We don't want to loop forever. */
     {
@@ -168,7 +168,7 @@ long toscaDevLibProbe(
                 epicsMutexUnlock(probeMutex);
                 return S_dev_badArgument;
         }
-        vme_err = toscaMapGetVmeErr();
+        vme_err = toscaGetVmeErr();
 
         if (!vme_err.err)
             return S_dev_success;

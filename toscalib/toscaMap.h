@@ -82,7 +82,7 @@ typedef struct {
      };
    };
 } toscaMapVmeErr_t;
-toscaMapVmeErr_t toscaMapGetVmeErr();
+toscaMapVmeErr_t toscaGetVmeErr();
 
 /* Access to the configuration space registers (CSR) of the local TOSCA.
    Values are automatically converted to and from host byte order.
