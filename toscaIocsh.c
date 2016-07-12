@@ -80,7 +80,7 @@ static const iocshFuncDef toscaMapShowDef =
 
 int toscaMapPrintInfo(toscaMapInfo_t info)
 {
-    printf("%-9s 0x%08llx (0x%08zx = %3d %ciB) @ %p\n",
+    printf("%-9s 0x%08llx [0x%08zx = %3d %ciB] @ %p\n",
         toscaAddrSpaceToStr(info.aspace), info.address,
         info.size, info.size >= 0x00100000 ? (info.size >> 20) : (info.size >> 10), info.size >= 0x00100000 ? 'M' : 'K',
         info.ptr);
