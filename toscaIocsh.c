@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <errno.h>
 #include <epicsTypes.h>
 #include <iocsh.h>
@@ -14,49 +13,67 @@
 #include "toscaDma.h"
 
 static const iocshFuncDef toscaMapDef =
-    { "toscaMap", 3, (const iocshArg *[]) {
-    &(iocshArg) { "A16|A24|A32|CRCSR|USER|SHM|TCSR", iocshArgString },
-    &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "size", iocshArgInt },
+    { "toscaMap", 2, (const iocshArg *[]) {
+    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SHM|TCSR):address", iocshArgString },
+    &(iocshArg) { "size", iocshArgString },
 }};
+
+size_t strToSize(const char* str)
+{
+    char* p;
+    size_t size = strtoul(str, &p, 0);
+    switch (*p)
+    {
+        case 'k':
+        case 'K':
+            size *= 0x400;
+            break;
+        case 'M':
+            size *= 0x100000;
+            break;
+        case 'G':
+            size *= 0x40000000;
+            break;
+    }
+    return size;
+}
 
 static void toscaMapFunc(const iocshArgBuf *args)
 {
     int aspace;
-    const char* addrstr = args[0].sval;
-    int address = args[1].ival;
-    int size = args[2].ival;
+    int size;
+    size_t address;
+    volatile void* addr;
+    char* p;
 
-    if (!addrstr) 
+    if (!args[0].sval) 
     {
         iocshCmd("help toscaMap");
         return;
     }
-    if (strncmp(addrstr,"VME_", 4) == 0) { addrstr+=4; }
-    if (strcmp(addrstr,"A16") == 0) aspace = VME_A16;
-    else
-    if (strcmp(addrstr,"A24") == 0) aspace = VME_A24;
-    else
-    if (strcmp(addrstr,"A32") == 0) aspace = VME_A32;
-    else
-    if (strcmp(addrstr,"CRCSR") == 0) aspace = VME_CRCSR;
-    else
-    if (strcmp(addrstr,"USER") == 0) aspace = TOSCA_USER;
-    else
-    if (strcmp(addrstr,"USER1") == 0) aspace = VME_USER1;
-    else
-    if (strcmp(addrstr,"USER2") == 0) aspace = VME_USER2;
-    else
-    if (strcmp(addrstr,"USER3") == 0) aspace = VME_USER3;
-    else
-    if (strcmp(addrstr,"USER4") == 0) aspace = VME_USER4;
-    else
-    if (strcmp(addrstr,"SHM") == 0) aspace = TOSCA_SHM;
-    else
-    if (strcmp(addrstr,"TCSR") == 0) aspace = TOSCA_CSR;
-    else
-    aspace = strtoul(addrstr, NULL, 0);
-    printf("%p\n", toscaMap(aspace, address, size));
+    p = strchr(args[0].sval, ':');
+    if (!p)
+    {
+        fprintf(stderr, "missing address space\n");
+        return;
+    }
+    *p++ = 0;
+    aspace = toscaStrToAddrSpace(args[0].sval);
+    if (!aspace)
+    {
+        fprintf(stderr, "invalid address space %s\n", args[0].sval);
+        return;
+    }
+    address = strtoul(p, NULL, 0);
+
+    size = strToSize(args[1].sval);
+    addr = toscaMap(aspace, address, size);
+    if (!addr)
+    {
+        fprintf(stderr, "mapping failed: %m\n");
+        return;
+    }
+    printf("%p\n", addr);
 }
 
 static const iocshFuncDef toscaMapLookupAddrDef =
@@ -80,7 +97,7 @@ static const iocshFuncDef toscaMapShowDef =
 
 int toscaMapPrintInfo(toscaMapInfo_t info)
 {
-    printf("%-9s 0x%08llx [0x%08zx = %3d %ciB] @ %p\n",
+    printf("%-9s 0x%08llx [0x%08zx =%4d %ciB] @ %p\n",
         toscaAddrSpaceToStr(info.aspace), info.address,
         info.size, info.size >= 0x00100000 ? (info.size >> 20) : (info.size >> 10), info.size >= 0x00100000 ? 'M' : 'K',
         info.ptr);
@@ -213,48 +230,90 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
 
 
 static const iocshFuncDef toscaDmaTransferDef =
-    { "toscaDmaTransfer", 6, (const iocshArg *[]) {
-    &(iocshArg) { "route", iocshArgInt },
-    &(iocshArg) { "source_addr", iocshArgInt },
-    &(iocshArg) { "dest_addr", iocshArgInt },
-    &(iocshArg) { "size", iocshArgInt },
-    &(iocshArg) { "dwidth", iocshArgInt },
-    &(iocshArg) { "cycle", iocshArgInt },
+    { "toscaDmaTransfer", 4, (const iocshArg *[]) {
+    &(iocshArg) { "[addrspace:]sourceaddr", iocshArgString },
+    &(iocshArg) { "[addrspace:]destaddr", iocshArgString },
+    &(iocshArg) { "size", iocshArgString },
+    &(iocshArg) { "swap(WS|DS|QS)", iocshArgString },
 }};
 
 static void toscaDmaTransferFunc(const iocshArgBuf *args)
 {
-    if (!args[0].ival) 
+    int source = 0, dest = 0, swap = 0;
+    size_t source_addr, dest_addr, size;
+    char* p;
+    
+    if (!args[0].sval || !args[1].sval) 
     {
         iocshCmd("help toscaDmaTransfer");
+        printf("addrspaces: USER, SHM, A32, BLT, MBLT, 2eVME, 2eVMEFast, 2eSST(160|267|320)\n");
         return;
     }
 
-    toscaDmaTransfer(args[0].ival, args[1].ival, args[2].ival, args[3].ival, args[4].ival, args[5].ival);
-}
-
-static const iocshFuncDef mallocDef =
-    { "malloc", 2, (const iocshArg *[]) {
-    &(iocshArg) { "size", iocshArgInt },
-    &(iocshArg) { "alignment", iocshArgInt },
-}};
-
-static void mallocFunc(const iocshArgBuf *args)
-{
-    if (args[1].ival)
-        printf ("%p\n", memalign(args[0].ival, args[1].ival));
+    p = strchr(args[0].sval, ':');
+    if (p)
+    {
+        *p++ = 0;
+        source = toscaDmaStrToType(args[0].sval);
+        if (source == -1)
+        {
+            fprintf(stderr, "invalid DMA source %s\n", args[0].sval);
+            return;
+        }
+    }
     else
-        printf ("%p\n", valloc(args[0].ival));
+        p = args[0].sval;
+    source_addr = strtoul(p, NULL, 0);
+
+    p = strchr(args[1].sval, ':');
+    if (p)
+    {
+        *p++ = 0;
+        dest = toscaDmaStrToType(args[1].sval);
+        if (dest == -1)
+        {
+            fprintf(stderr, "invalid DMA dest %s\n", args[1].sval);
+            return;
+        }
+    }
+    else
+        p = args[1].sval;
+    dest_addr = strtoul(p, NULL, 0);
+    
+    size = strToSize(args[2].sval);
+
+    if (args[3].sval)
+    {
+        if (strcmp(args[3].sval, "WS") == 0)
+            swap = 2;
+        else
+        if (strcmp(args[3].sval, "DS") == 0)
+            swap = 4;
+        else
+        if (strcmp(args[3].sval, "QS") == 0)
+            swap = 8;
+        else
+        {
+            fprintf(stderr, "invalid swap %s, must be WS, DS, or QS\n", args[3].sval);
+            return;
+        }
+    }
+    
+    int status = toscaDmaTransfer(source, source_addr, dest, dest_addr, size, swap);
+    if (status)
+    {
+        fprintf(stderr, "toscaDmaTransfer failed: %m\n");
+    }
 }
 
 /* register with 'md' command */
-static volatile void* toscaAddrHandler(size_t address, size_t size, size_t aspace)
-{
-    return toscaMap(aspace, address, size);
-}
-
 static void toscaRegistrar(void)
 {
+    volatile void* toscaAddrHandler(size_t address, size_t size, size_t aspace)
+    {
+        return toscaMap(aspace, address, size);
+    }
+
     memDisplayInstallAddrHandler("A16-",  toscaAddrHandler, VME_A16);
     memDisplayInstallAddrHandler("A24-",  toscaAddrHandler, VME_A24);
     memDisplayInstallAddrHandler("A32-",  toscaAddrHandler, VME_A32);
@@ -289,7 +348,6 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaCsrClearDef, toscaCsrClearFunc);
     iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
     iocshRegister(&toscaDmaTransferDef, toscaDmaTransferFunc);
-    iocshRegister(&mallocDef, mallocFunc);
 }
 
 epicsExportRegistrar(toscaRegistrar);

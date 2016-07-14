@@ -31,13 +31,11 @@ struct regDevice
 {
     size_t baseaddr;
     volatile void* baseptr;
-    unsigned long dmalimit;
+    unsigned long dmaLimit;
     unsigned int blockmode;
     unsigned int blocksize;
-    unsigned int dmaRead;
-    unsigned int dmaWrite;
-    unsigned int cycle;
-    uint8_t swap;
+    unsigned int dmaSpace;
+    int swap;
     uint8_t intr;
 };
 
@@ -51,8 +49,8 @@ void toscaDevReport(regDevice *device, int level)
     if (device->blockmode)
         printf(", block mode");
     else
-        if (device->dmalimit <= 1) printf(", DMA=%s", device->dmalimit ? "always" : "never");
-        else printf(", DMA>=%ld elem", device->dmalimit);
+        if (device->dmaLimit <= 1) printf(", DMA=%s", device->dmaLimit ? "always" : "never");
+        else printf(", DMA>=%ld elem", device->dmaLimit);
     printf("\n");
 }
 
@@ -66,9 +64,9 @@ int toscaDevRead(
     regDevTransferComplete callback,
     char* user)
 {
-    if (device->dmaRead && nelem > device->dmalimit)
+    if (device->dmaSpace && nelem > device->dmaLimit)
     {
-        int status = toscaDmaTransfer(device->dmaRead, device->baseaddr + offset, (size_t)pdata, nelem*dlen, 4, 0);
+        int status = toscaDmaToBuffer(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen, device->swap);
         if (status)
             fprintf(stderr, "%s: toscaDmaTransfer failed: %m\n", __FUNCTION__);
         return status;
@@ -92,9 +90,9 @@ int toscaDevWrite(
     regDevTransferComplete callback,
     char* user)
 {
-    if (!pmask && device->dmaWrite && nelem > device->dmalimit)
+    if (!pmask && device->dmaSpace && nelem > device->dmaLimit)
     {
-        int status = toscaDmaTransfer(device->dmaWrite, (size_t) pdata, device->baseaddr + offset, nelem*dlen, 4, 0);
+        int status = toscaDmaFromBuffer(pdata, device->baseaddr + offset, nelem*dlen, 4, 0);
         if (status)
             fprintf(stderr, "%s: toscaDmaTransfer failed: %m\n", __FUNCTION__);
         return status;
@@ -191,23 +189,14 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
     device->baseptr = baseptr;
     if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM|TOSCA_CSR)) device->swap = 4;
     device->blocksize = 512;
-    device->dmalimit = 1000;
-    device->cycle = 0;
-    if (aspace & TOSCA_USER1)
+    device->dmaLimit = 1000;
+    if (aspace & (TOSCA_USER1|TOSCA_SHM))
     {
-        device->dmaRead  = VME_DMA_USER_TO_MEM;
-        device->dmaWrite = VME_DMA_MEM_TO_USER;
-    }
-    if (aspace & TOSCA_SHM)
-    {
-        device->dmaRead  = VME_DMA_SHM_TO_MEM;
-        device->dmaWrite = VME_DMA_MEM_TO_SHM;
+        device->dmaSpace = aspace;
     }
     if (aspace & VME_A32)
     {
-        device->dmaRead  = VME_DMA_VME_TO_MEM;
-        device->dmaWrite = VME_DMA_MEM_TO_VME;
-        device->cycle = VME_SCT;
+        device->dmaSpace  = VME_SCT;
     }
 
     if (flags)
@@ -228,7 +217,7 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
         if (strstr(flags, "block")) device->blockmode = 1;
         if ((p = strstr(flags, "DMA=")))
         {
-            device->dmalimit = strtol(flags+4, NULL, 0);
+            device->dmaLimit = strtol(flags+4, NULL, 0);
         }
         if ((p = strstr(flags, "intr=")))
         {
@@ -240,63 +229,38 @@ int toscaDevConfigure(const char* name, const char* resource, size_t address, si
         }
         if ((p = strstr(flags, "MBLT")))
         {
-            device->dmaRead  = VME_DMA_VME_TO_MEM;
-            device->dmaWrite = VME_DMA_MEM_TO_VME;
-            device->cycle = VME_MBLT;
+            device->dmaSpace = VME_MBLT;
         }
         else if ((p = strstr(flags, "BLT")))
         {
-            device->dmaRead  = VME_DMA_VME_TO_MEM;
-            device->dmaWrite = VME_DMA_MEM_TO_VME;
-            device->cycle = VME_BLT;
+            device->dmaSpace = VME_BLT;
         }
         else if ((p = strstr(flags, "2eVMEFast")))
         {
-            device->dmaRead  = VME_DMA_VME_TO_MEM;
-            device->dmaWrite = VME_DMA_MEM_TO_VME;
-            device->cycle = VME_2eVMEFast;
+            device->dmaSpace = VME_2eVMEFast;
         }
         else if ((p = strstr(flags, "2eVME")))
         {
-            device->dmaRead  = VME_DMA_VME_TO_MEM;
-            device->dmaWrite = VME_DMA_MEM_TO_VME;
-            device->cycle = VME_2eVME;
+            device->dmaSpace = VME_2eVME;
         }
         else if ((p = strstr(flags, "2eSST320")))
         {
-            device->dmaRead  = VME_DMA_VME_TO_MEM;
-            device->dmaWrite = VME_DMA_MEM_TO_VME;
-            device->cycle = VME_2eSST320;
+            device->dmaSpace = VME_2eSST320;
         }
         else if ((p = strstr(flags, "2eSST267")))
         {
-            device->dmaRead  = VME_DMA_VME_TO_MEM;
-            device->dmaWrite = VME_DMA_MEM_TO_VME;
-            device->cycle = VME_2eSST267;
+            device->dmaSpace = VME_2eSST267;
         }
         else if ((p = strstr(flags, "2eSST160")))
         {
-            device->dmaRead  = VME_DMA_VME_TO_MEM;
-            device->dmaWrite = VME_DMA_MEM_TO_VME;
-            device->cycle = VME_2eSST160;
-        }
-        else if ((p = strstr(flags, "2eSSTB")))
-        {
-            device->dmaRead  = VME_DMA_VME_TO_MEM;
-            device->dmaWrite = VME_DMA_MEM_TO_VME;
-            device->cycle = VME_2eSSTB;
-        }
-        else if ((p = strstr(flags, "2eSST")))
-        {
-            device->dmaRead  = VME_DMA_VME_TO_MEM;
-            device->dmaWrite = VME_DMA_MEM_TO_VME;
-            device->cycle = VME_2eSST;
+            device->dmaSpace = VME_2eSST160;
         }
     }
-    if (device->cycle && !(aspace & VME_A32))
+    if (device->dmaSpace & (VME_SCT|VME_MBLT|VME_BLT|VME_2eVMEFast|VME_2eVME|VME_2eSST320|VME_2eSST267|VME_2eSST160)
+        && !(aspace & VME_A32))
     {
         fprintf(stderr, "toscaDevConfigure: %s only possible on VME A32 address space\n",
-            toscaDmaTypeToStr(VME_DMA_VME, device->cycle));
+            toscaDmaTypeToStr(device->dmaSpace));
         return -1;
     }
 

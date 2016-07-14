@@ -1,17 +1,35 @@
 #ifndef toscaDma_h
 #define toscaDma_h
 
-extern int toscaDmaDebug;
+#include "toscaMap.h"
 
-const char* toscaDmaRouteToStr(int route);
-const char* toscaDmaTypeToStr(int type, int cycle);
+/* VME block transfer access modes from vme.h */
+#define VME_SCT		0x1
+#define VME_BLT		0x2
+#define VME_MBLT	0x4
+#define VME_2eVME	0x8
+#define VME_2eVMEFast	0x40
+#define VME_2eSST160	0x100
+#define VME_2eSST267	0x200
+#define VME_2eSST320	0x400
+
+extern int toscaDmaDebug;
+extern FILE* toscaDmaDebugFile;
+
+const char* toscaDmaTypeToStr(int type);
+int toscaDmaStrToType(const char* str);
+
 typedef void (*toscaDmaCallback)(void* usr, int status);
 
-enum toscaDmaEndpt{ dmaPattern, dmaRAM, dmaUSER, dmaSHM, dmaVME, dmaBLT, dmaMBLT, dma2eVME, dma2eVMEFast, dma2eSST, dma2eSSTB, dma2eSST160, dma2eSST267, dma2eSST320 };
-int toscaDmaTransfer(int route, size_t source_addr, size_t dest_addr, size_t size, unsigned int dwidth, unsigned int cycle);
+int toscaDmaTransfer(int source, size_t source_addr, int dest, size_t dest_addr, size_t size, int swap);
+static inline int toscaDmaFromBuffer(void* source_addr, int dest, size_t dest_addr, size_t size, int swap)
+{
+    return toscaDmaTransfer(0, (size_t)source_addr, dest, dest_addr, size, swap);
+}
+static inline int toscaDmaToBuffer(int source, size_t source_addr, void* dest_addr, size_t size, int swap)
+{
+    return toscaDmaTransfer(source, source_addr, 0, (size_t)dest_addr, size, swap);
+}
 
-/*
-int toscaDmaTransfer(toscaDmaEndpt source, size_t source_addr, toscaDmaEndpt dest, size_t dst_addr, size_t size, unsigned int dwidth, unsigned int cycle);
-*/
 #endif
 

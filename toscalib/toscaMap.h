@@ -23,6 +23,7 @@
 
 /* set to 1 to see debug output */
 extern int toscaMapDebug;
+extern FILE* toscaMapDebugFile;
 
 /* One day we may have A64 in Tosca */
 typedef uint64_t vmeaddr_t;
