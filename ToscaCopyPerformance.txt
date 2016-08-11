@@ -1,497 +1,542 @@
-Copy of 1MiB with different methods
-===================================
+Comparison of speeds to copy of 1MiB with different methods
+===========================================================
 
 Min and max rates out of 10
 Used iocsh functions: toscaCopy and toscaDmaTransfer
 Time is measured with clock_gettime(CLOCK_MONOTONIC_RAW,...)
 All VME traffic is to own slave window mapped to SHM
 
-MEM->MEM memcpy
+memcpy
+------
+MEM->MEM
     1.320 msec (757.4 MiB/s = 794.2 MB/s)
     1.513 msec (660.7 MiB/s = 692.8 MB/s)
-MEM->MEM byte copy
-    2.798 msec (357.4 MiB/s = 374.7 MB/s)
-    2.846 msec (351.4 MiB/s = 368.5 MB/s)
-MEM->MEM word copy
-    1.945 msec (514.2 MiB/s = 539.2 MB/s)
-    2.017 msec (495.9 MiB/s = 519.9 MB/s)
-MEM->MEM word copy swap
-    2.340 msec (427.3 MiB/s = 448.0 MB/s)
-    2.393 msec (417.9 MiB/s = 438.2 MB/s)
-MEM->MEM dword copy
-    1.430 msec (699.2 MiB/s = 733.2 MB/s)
-    1.662 msec (601.6 MiB/s = 630.9 MB/s)
-MEM->MEM dword copy swap
-    1.330 msec (751.9 MiB/s = 788.5 MB/s)
-    1.512 msec (661.3 MiB/s = 693.4 MB/s)
-MEM->MEM qword copy
-    1.330 msec (751.6 MiB/s = 788.1 MB/s)
-    1.493 msec (670.0 MiB/s = 702.5 MB/s)
-MEM->MEM qword copy swap
-    1.326 msec (754.2 MiB/s = 790.9 MB/s)
-    1.520 msec (657.8 MiB/s = 689.7 MB/s)
-
-MEM->SHM memcpy
+MEM->SHM
     25.365 msec (39.4 MiB/s = 41.3 MB/s)
     25.422 msec (39.3 MiB/s = 41.2 MB/s)
-MEM->SHM byte copy
-    101.496 msec (9.9 MiB/s = 10.3 MB/s)
-    102.775 msec (9.7 MiB/s = 10.2 MB/s)
-MEM->SHM word copy
-    50.732 msec (19.7 MiB/s = 20.7 MB/s)
-    51.094 msec (19.6 MiB/s = 20.5 MB/s)
-MEM->SHM word copy swap
-    50.737 msec (19.7 MiB/s = 20.7 MB/s)
-    51.081 msec (19.6 MiB/s = 20.5 MB/s)
-MEM->SHM dword copy
-    25.359 msec (39.4 MiB/s = 41.3 MB/s)
-    25.723 msec (38.9 MiB/s = 40.8 MB/s)
-MEM->SHM dword copy swap
-    25.353 msec (39.4 MiB/s = 41.4 MB/s)
-    25.381 msec (39.4 MiB/s = 41.3 MB/s)
-MEM->SHM qword copy
-    25.372 msec (39.4 MiB/s = 41.3 MB/s)
-    25.515 msec (39.2 MiB/s = 41.1 MB/s)
-MEM->SHM qword copy swap
-    25.353 msec (39.4 MiB/s = 41.4 MB/s)
-    25.378 msec (39.4 MiB/s = 41.3 MB/s)
-MEM->SHM DMA
-    5.669 msec (176.4 MiB/s = 185.0 MB/s)
-    5.830 msec (171.5 MiB/s = 179.9 MB/s)
-MEM->SHM DMA WS
-    5.666 msec (176.5 MiB/s = 185.1 MB/s)
-    5.782 msec (173.0 MiB/s = 181.4 MB/s)
-MEM->SHM DMA DS
-    5.661 msec (176.6 MiB/s = 185.2 MB/s)
-    5.855 msec (170.8 MiB/s = 179.1 MB/s)
-MEM->SHM DMA QS
-    5.685 msec (175.9 MiB/s = 184.4 MB/s)
-    5.867 msec (170.4 MiB/s = 178.7 MB/s)
-
-SHM->MEM memcpy
-    411.413 msec (2.4 MiB/s = 2.5 MB/s)
-    416.891 msec (2.4 MiB/s = 2.5 MB/s)
-SHM->MEM byte copy
-    1660.606 msec (0.6 MiB/s = 0.6 MB/s)
-    1666.229 msec (0.6 MiB/s = 0.6 MB/s)
-SHM->MEM word copy
-    831.855 msec (1.2 MiB/s = 1.3 MB/s)
-    833.475 msec (1.2 MiB/s = 1.3 MB/s)
-SHM->MEM word copy swap
-    827.115 msec (1.2 MiB/s = 1.3 MB/s)
-    832.365 msec (1.2 MiB/s = 1.3 MB/s)
-SHM->MEM dword copy
-    413.813 msec (2.4 MiB/s = 2.5 MB/s)
-    418.549 msec (2.4 MiB/s = 2.5 MB/s)
-SHM->MEM dword copy swap
-    415.539 msec (2.4 MiB/s = 2.5 MB/s)
-    417.048 msec (2.4 MiB/s = 2.5 MB/s)
-SHM->MEM qword copy
-    415.937 msec (2.4 MiB/s = 2.5 MB/s)
-    417.125 msec (2.4 MiB/s = 2.5 MB/s)
-SHM->MEM qword copy swap
-    415.712 msec (2.4 MiB/s = 2.5 MB/s)
-    416.896 msec (2.4 MiB/s = 2.5 MB/s)
-SHM->MEM DMA
-    2.642 msec (378.6 MiB/s = 396.9 MB/s)
-    2.790 msec (358.4 MiB/s = 375.8 MB/s)
-SHM->MEM DMA WS
-    2.646 msec (377.9 MiB/s = 396.2 MB/s)
-    2.816 msec (355.1 MiB/s = 372.3 MB/s)
-SHM->MEM DMA DS
-    2.636 msec (379.3 MiB/s = 397.8 MB/s)
-    2.783 msec (359.4 MiB/s = 376.8 MB/s)
-SHM->MEM DMA QS
-    2.657 msec (376.3 MiB/s = 394.6 MB/s)
-    2.762 msec (362.1 MiB/s = 379.7 MB/s)
-
-MEM->USER memcpy
+MEM->USER
     23.585 msec (42.4 MiB/s = 44.5 MB/s)
     23.724 msec (42.2 MiB/s = 44.2 MB/s)
-MEM->USER byte copy
-    94.510 msec (10.6 MiB/s = 11.1 MB/s)
-    95.527 msec (10.5 MiB/s = 11.0 MB/s)
-MEM->USER word copy
-    47.247 msec (21.2 MiB/s = 22.2 MB/s)
-    47.482 msec (21.1 MiB/s = 22.1 MB/s)
-MEM->USER word copy swap
-    47.285 msec (21.1 MiB/s = 22.2 MB/s)
-    47.769 msec (20.9 MiB/s = 22.0 MB/s)
-MEM->USER dword copy
-    23.605 msec (42.4 MiB/s = 44.4 MB/s)
-    24.000 msec (41.7 MiB/s = 43.7 MB/s)
-MEM->USER dword copy swap
-    23.613 msec (42.3 MiB/s = 44.4 MB/s)
-    23.792 msec (42.0 MiB/s = 44.1 MB/s)
-MEM->USER qword copy
-    23.606 msec (42.4 MiB/s = 44.4 MB/s)
-    24.100 msec (41.5 MiB/s = 43.5 MB/s)
-MEM->USER qword copy swap
-    23.614 msec (42.3 MiB/s = 44.4 MB/s)
-    23.738 msec (42.1 MiB/s = 44.2 MB/s)
-MEM->USER DMA
-    5.638 msec (177.4 MiB/s = 186.0 MB/s)
-    5.728 msec (174.6 MiB/s = 183.0 MB/s)
-MEM->USER DMA WS
-    5.596 msec (178.7 MiB/s = 187.4 MB/s)
-    5.734 msec (174.4 MiB/s = 182.9 MB/s)
-MEM->USER DMA DS
-    5.652 msec (176.9 MiB/s = 185.5 MB/s)
-    5.686 msec (175.9 MiB/s = 184.4 MB/s)
-MEM->USER DMA QS
-    5.656 msec (176.8 MiB/s = 185.4 MB/s)
-    5.695 msec (175.6 MiB/s = 184.1 MB/s)
-
-USER->MEM memcpy
+MEM->A32
+    70.736 msec (14.1 MiB/s = 14.8 MB/s)
+    71.056 msec (14.1 MiB/s = 14.8 MB/s)
+SHM->MEM
+    411.413 msec (2.4 MiB/s = 2.5 MB/s)
+    416.891 msec (2.4 MiB/s = 2.5 MB/s)
+USER->MEM
     402.444 msec (2.5 MiB/s = 2.6 MB/s)
     403.344 msec (2.5 MiB/s = 2.6 MB/s)
-USER->MEM byte copy
-    1612.290 msec (0.6 MiB/s = 0.7 MB/s)
-    1614.851 msec (0.6 MiB/s = 0.6 MB/s)
-USER->MEM word copy
-    805.967 msec (1.2 MiB/s = 1.3 MB/s)
-    806.986 msec (1.2 MiB/s = 1.3 MB/s)
-USER->MEM word copy swap
-    806.169 msec (1.2 MiB/s = 1.3 MB/s)
-    806.781 msec (1.2 MiB/s = 1.3 MB/s)
-USER->MEM dword copy
-    402.791 msec (2.5 MiB/s = 2.6 MB/s)
-    403.888 msec (2.5 MiB/s = 2.6 MB/s)
-USER->MEM dword copy swap
-    403.042 msec (2.5 MiB/s = 2.6 MB/s)
-    403.520 msec (2.5 MiB/s = 2.6 MB/s)
-USER->MEM qword copy
-    402.503 msec (2.5 MiB/s = 2.6 MB/s)
-    403.505 msec (2.5 MiB/s = 2.6 MB/s)
-USER->MEM qword copy swap
-    401.104 msec (2.5 MiB/s = 2.6 MB/s)
-    403.433 msec (2.5 MiB/s = 2.6 MB/s)
-USER->MEM DMA
-    4.782 msec (209.1 MiB/s = 219.3 MB/s)
-    4.817 msec (207.6 MiB/s = 217.7 MB/s)
-USER->MEM DMA WS
-    4.762 msec (210.0 MiB/s = 220.2 MB/s)
-    4.803 msec (208.2 MiB/s = 218.3 MB/s)
-USER->MEM DMA DS
-    4.766 msec (209.8 MiB/s = 220.0 MB/s)
-    4.795 msec (208.6 MiB/s = 218.7 MB/s)
-USER->MEM DMA QS
-    4.776 msec (209.4 MiB/s = 219.6 MB/s)
-    4.811 msec (207.9 MiB/s = 218.0 MB/s)
-
-USER->SHM memcpy
+A32->MEM
+    525.617 msec (1.9 MiB/s = 2.0 MB/s)
+    533.170 msec (1.9 MiB/s = 2.0 MB/s)
+USER->SHM
     402.285 msec (2.5 MiB/s = 2.6 MB/s)
     404.541 msec (2.5 MiB/s = 2.6 MB/s)
-USER->SHM byte copy
-    1612.686 msec (0.6 MiB/s = 0.7 MB/s)
-    1613.845 msec (0.6 MiB/s = 0.6 MB/s)
-USER->SHM word copy
-    801.049 msec (1.2 MiB/s = 1.3 MB/s)
-    807.182 msec (1.2 MiB/s = 1.3 MB/s)
-USER->SHM word copy swap
-    804.260 msec (1.2 MiB/s = 1.3 MB/s)
-    807.599 msec (1.2 MiB/s = 1.3 MB/s)
-USER->SHM dword copy
-    402.782 msec (2.5 MiB/s = 2.6 MB/s)
-    403.695 msec (2.5 MiB/s = 2.6 MB/s)
-USER->SHM dword copy swap
-    413.378 msec (2.4 MiB/s = 2.5 MB/s)
-    416.912 msec (2.4 MiB/s = 2.5 MB/s)
-USER->SHM qword copy
-    408.660 msec (2.4 MiB/s = 2.6 MB/s)
-    410.612 msec (2.4 MiB/s = 2.6 MB/s)
-USER->SHM qword copy swap
-    410.141 msec (2.4 MiB/s = 2.6 MB/s)
-    410.911 msec (2.4 MiB/s = 2.6 MB/s)
-USER->SHM DMA
-    4.601 msec (217.4 MiB/s = 227.9 MB/s)
-    4.643 msec (215.4 MiB/s = 225.9 MB/s)
-USER->SHM DMA WS
-    4.511 msec (221.7 MiB/s = 232.5 MB/s)
-    4.605 msec (217.2 MiB/s = 227.7 MB/s)
-USER->SHM DMA DS
-    4.514 msec (221.6 MiB/s = 232.3 MB/s)
-    4.645 msec (215.3 MiB/s = 225.8 MB/s)
-USER->SHM DMA QS
-    4.511 msec (221.7 MiB/s = 232.4 MB/s)
-    4.642 msec (215.4 MiB/s = 225.9 MB/s)
-
-SHM->USER memcpy
+SHM->USER
     412.719 msec (2.4 MiB/s = 2.5 MB/s)
     416.383 msec (2.4 MiB/s = 2.5 MB/s)
-SHM->USER byte copy
+    
+byte copy
+---------
+MEM->MEM
+    2.798 msec (357.4 MiB/s = 374.7 MB/s)
+    2.846 msec (351.4 MiB/s = 368.5 MB/s)
+MEM->SHM
+    101.496 msec (9.9 MiB/s = 10.3 MB/s)
+    102.775 msec (9.7 MiB/s = 10.2 MB/s)
+MEM->USER
+    94.510 msec (10.6 MiB/s = 11.1 MB/s)
+    95.527 msec (10.5 MiB/s = 11.0 MB/s)
+MEM->A32
+    283.071 msec (3.5 MiB/s = 3.7 MB/s)
+    284.162 msec (3.5 MiB/s = 3.7 MB/s)
+SHM->MEM
+    1660.606 msec (0.6 MiB/s = 0.6 MB/s)
+    1666.229 msec (0.6 MiB/s = 0.6 MB/s)
+USER->MEM
+    1612.290 msec (0.6 MiB/s = 0.7 MB/s)
+    1614.851 msec (0.6 MiB/s = 0.6 MB/s)
+A32->MEM
+    2122.770 msec (0.5 MiB/s = 0.5 MB/s)
+    2131.868 msec (0.5 MiB/s = 0.5 MB/s)
+USER->SHM
+    1612.686 msec (0.6 MiB/s = 0.7 MB/s)
+    1613.845 msec (0.6 MiB/s = 0.6 MB/s)
+SHM->USER
     1663.156 msec (0.6 MiB/s = 0.6 MB/s)
     1665.193 msec (0.6 MiB/s = 0.6 MB/s)
-SHM->USER word copy
+
+word copy
+---------
+MEM->MEM
+    1.945 msec (514.2 MiB/s = 539.2 MB/s)
+    2.017 msec (495.9 MiB/s = 519.9 MB/s)
+MEM->MEM WS
+    2.340 msec (427.3 MiB/s = 448.0 MB/s)
+    2.393 msec (417.9 MiB/s = 438.2 MB/s)
+MEM->SHM
+    50.732 msec (19.7 MiB/s = 20.7 MB/s)
+    51.094 msec (19.6 MiB/s = 20.5 MB/s)
+MEM->SHM WS
+    50.737 msec (19.7 MiB/s = 20.7 MB/s)
+    51.081 msec (19.6 MiB/s = 20.5 MB/s)
+MEM->USER
+    47.247 msec (21.2 MiB/s = 22.2 MB/s)
+    47.482 msec (21.1 MiB/s = 22.1 MB/s)
+MEM->USER WS
+    47.285 msec (21.1 MiB/s = 22.2 MB/s)
+    47.769 msec (20.9 MiB/s = 22.0 MB/s)
+MEM->A32
+    141.514 msec (7.1 MiB/s = 7.4 MB/s)
+    144.876 msec (6.9 MiB/s = 7.2 MB/s)
+MEM->A32 WS
+    141.515 msec (7.1 MiB/s = 7.4 MB/s)
+    141.857 msec (7.0 MiB/s = 7.4 MB/s)
+SHM->MEM
+    831.855 msec (1.2 MiB/s = 1.3 MB/s)
+    833.475 msec (1.2 MiB/s = 1.3 MB/s)
+SHM->MEM WS
+    827.115 msec (1.2 MiB/s = 1.3 MB/s)
+    832.365 msec (1.2 MiB/s = 1.3 MB/s)
+USER->MEM
+    805.967 msec (1.2 MiB/s = 1.3 MB/s)
+    806.986 msec (1.2 MiB/s = 1.3 MB/s)
+USER->MEM WS
+    806.169 msec (1.2 MiB/s = 1.3 MB/s)
+    806.781 msec (1.2 MiB/s = 1.3 MB/s)
+A32->MEM
+    1065.191 msec (0.9 MiB/s = 1.0 MB/s)
+    1065.945 msec (0.9 MiB/s = 1.0 MB/s)
+A32->MEM WS
+    1065.436 msec (0.9 MiB/s = 1.0 MB/s)
+    1066.810 msec (0.9 MiB/s = 1.0 MB/s)
+USER->SHM
+    801.049 msec (1.2 MiB/s = 1.3 MB/s)
+    807.182 msec (1.2 MiB/s = 1.3 MB/s)
+USER->SHM WS
+    804.260 msec (1.2 MiB/s = 1.3 MB/s)
+    807.599 msec (1.2 MiB/s = 1.3 MB/s)
+SHM->USER
     831.500 msec (1.2 MiB/s = 1.3 MB/s)
     832.301 msec (1.2 MiB/s = 1.3 MB/s)
-SHM->USER word copy swap
+SHM->USER WS
     831.731 msec (1.2 MiB/s = 1.3 MB/s)
     832.375 msec (1.2 MiB/s = 1.3 MB/s)
-SHM->USER dword copy
+
+dword copy
+----------
+MEM->MEM
+    1.430 msec (699.2 MiB/s = 733.2 MB/s)
+    1.662 msec (601.6 MiB/s = 630.9 MB/s)
+MEM->MEM DS
+    1.330 msec (751.9 MiB/s = 788.5 MB/s)
+    1.512 msec (661.3 MiB/s = 693.4 MB/s)
+MEM->SHM
+    25.359 msec (39.4 MiB/s = 41.3 MB/s)
+    25.723 msec (38.9 MiB/s = 40.8 MB/s)
+MEM->SHM DS
+    25.353 msec (39.4 MiB/s = 41.4 MB/s)
+    25.381 msec (39.4 MiB/s = 41.3 MB/s)
+MEM->USER
+    23.605 msec (42.4 MiB/s = 44.4 MB/s)
+    24.000 msec (41.7 MiB/s = 43.7 MB/s)
+MEM->USER DS
+    23.613 msec (42.3 MiB/s = 44.4 MB/s)
+    23.792 msec (42.0 MiB/s = 44.1 MB/s)
+MEM->A32
+    70.736 msec (14.1 MiB/s = 14.8 MB/s)
+    70.874 msec (14.1 MiB/s = 14.8 MB/s)
+MEM->A32 DS
+    70.736 msec (14.1 MiB/s = 14.8 MB/s)
+    71.138 msec (14.1 MiB/s = 14.7 MB/s)
+SHM->MEM
+    413.813 msec (2.4 MiB/s = 2.5 MB/s)
+    418.549 msec (2.4 MiB/s = 2.5 MB/s)
+SHM->MEM DS
+    415.539 msec (2.4 MiB/s = 2.5 MB/s)
+    417.048 msec (2.4 MiB/s = 2.5 MB/s)
+USER->MEM
+    402.791 msec (2.5 MiB/s = 2.6 MB/s)
+    403.888 msec (2.5 MiB/s = 2.6 MB/s)
+USER->MEM DS
+    403.042 msec (2.5 MiB/s = 2.6 MB/s)
+    403.520 msec (2.5 MiB/s = 2.6 MB/s)
+A32->MEM
+    527.564 msec (1.9 MiB/s = 2.0 MB/s)
+    532.986 msec (1.9 MiB/s = 2.0 MB/s)
+A32->MEM DS
+    530.434 msec (1.9 MiB/s = 2.0 MB/s)
+    533.630 msec (1.9 MiB/s = 2.0 MB/s)
+USER->SHM
+    402.782 msec (2.5 MiB/s = 2.6 MB/s)
+    403.695 msec (2.5 MiB/s = 2.6 MB/s)
+USER->SHM DS
+    413.378 msec (2.4 MiB/s = 2.5 MB/s)
+    416.912 msec (2.4 MiB/s = 2.5 MB/s)
+SHM->USER
     412.177 msec (2.4 MiB/s = 2.5 MB/s)
     416.405 msec (2.4 MiB/s = 2.5 MB/s)
-SHM->USER dword copy swap
+SHM->USER DS
     425.507 msec (2.4 MiB/s = 2.5 MB/s)
     428.783 msec (2.3 MiB/s = 2.4 MB/s)
-SHM->USER qword copy
+
+qword copy
+----------
+MEM->MEM
+    1.330 msec (751.6 MiB/s = 788.1 MB/s)
+    1.493 msec (670.0 MiB/s = 702.5 MB/s)
+MEM->MEM QS
+    1.326 msec (754.2 MiB/s = 790.9 MB/s)
+    1.520 msec (657.8 MiB/s = 689.7 MB/s)
+MEM->SHM
+    25.372 msec (39.4 MiB/s = 41.3 MB/s)
+    25.515 msec (39.2 MiB/s = 41.1 MB/s)
+MEM->SHM QS
+    25.353 msec (39.4 MiB/s = 41.4 MB/s)
+    25.378 msec (39.4 MiB/s = 41.3 MB/s)
+MEM->USER
+    23.606 msec (42.4 MiB/s = 44.4 MB/s)
+    24.100 msec (41.5 MiB/s = 43.5 MB/s)
+MEM->USER QS
+    23.614 msec (42.3 MiB/s = 44.4 MB/s)
+    23.738 msec (42.1 MiB/s = 44.2 MB/s)
+MEM->A32
+    70.735 msec (14.1 MiB/s = 14.8 MB/s)
+    71.734 msec (13.9 MiB/s = 14.6 MB/s)
+MEM->A32 QS
+    70.735 msec (14.1 MiB/s = 14.8 MB/s)
+    70.845 msec (14.1 MiB/s = 14.8 MB/s)
+SHM->MEM
+    415.937 msec (2.4 MiB/s = 2.5 MB/s)
+    417.125 msec (2.4 MiB/s = 2.5 MB/s)
+SHM->MEM QS
+    415.712 msec (2.4 MiB/s = 2.5 MB/s)
+    416.896 msec (2.4 MiB/s = 2.5 MB/s)
+USER->MEM
+    402.503 msec (2.5 MiB/s = 2.6 MB/s)
+    403.505 msec (2.5 MiB/s = 2.6 MB/s)
+USER->MEM QS
+    401.104 msec (2.5 MiB/s = 2.6 MB/s)
+    403.433 msec (2.5 MiB/s = 2.6 MB/s)
+A32->MEM
+    529.676 msec (1.9 MiB/s = 2.0 MB/s)
+    533.576 msec (1.9 MiB/s = 2.0 MB/s)
+A32->MEM QS
+    532.934 msec (1.9 MiB/s = 2.0 MB/s)
+    534.289 msec (1.9 MiB/s = 2.0 MB/s)
+USER->SHM
+    408.660 msec (2.4 MiB/s = 2.6 MB/s)
+    410.612 msec (2.4 MiB/s = 2.6 MB/s)
+USER->SHM QS
+    410.141 msec (2.4 MiB/s = 2.6 MB/s)
+    410.911 msec (2.4 MiB/s = 2.6 MB/s)
+SHM->USER
     417.884 msec (2.4 MiB/s = 2.5 MB/s)
     420.187 msec (2.4 MiB/s = 2.5 MB/s)
-SHM->USER qword copy swap
+SHM->USER QS
     416.701 msec (2.4 MiB/s = 2.5 MB/s)
     419.280 msec (2.4 MiB/s = 2.5 MB/s)
-SHM->USER DMA
+
+DMA
+---
+MEM->SHM
+    5.669 msec (176.4 MiB/s = 185.0 MB/s)
+    5.830 msec (171.5 MiB/s = 179.9 MB/s)
+MEM->SHM WS
+    5.666 msec (176.5 MiB/s = 185.1 MB/s)
+    5.782 msec (173.0 MiB/s = 181.4 MB/s)
+MEM->SHM DS
+    5.661 msec (176.6 MiB/s = 185.2 MB/s)
+    5.855 msec (170.8 MiB/s = 179.1 MB/s)
+MEM->SHM QS
+    5.685 msec (175.9 MiB/s = 184.4 MB/s)
+    5.867 msec (170.4 MiB/s = 178.7 MB/s)
+MEM->USER
+    5.638 msec (177.4 MiB/s = 186.0 MB/s)
+    5.728 msec (174.6 MiB/s = 183.0 MB/s)
+MEM->USER WS
+    5.596 msec (178.7 MiB/s = 187.4 MB/s)
+    5.734 msec (174.4 MiB/s = 182.9 MB/s)
+MEM->USER DS
+    5.652 msec (176.9 MiB/s = 185.5 MB/s)
+    5.686 msec (175.9 MiB/s = 184.4 MB/s)
+MEM->USER QS
+    5.656 msec (176.8 MiB/s = 185.4 MB/s)
+    5.695 msec (175.6 MiB/s = 184.1 MB/s)
+SHM->MEM
+    2.642 msec (378.6 MiB/s = 396.9 MB/s)
+    2.790 msec (358.4 MiB/s = 375.8 MB/s)
+SHM->MEM WS
+    2.646 msec (377.9 MiB/s = 396.2 MB/s)
+    2.816 msec (355.1 MiB/s = 372.3 MB/s)
+SHM->MEM DS
+    2.636 msec (379.3 MiB/s = 397.8 MB/s)
+    2.783 msec (359.4 MiB/s = 376.8 MB/s)
+SHM->MEM QS
+    2.657 msec (376.3 MiB/s = 394.6 MB/s)
+    2.762 msec (362.1 MiB/s = 379.7 MB/s)
+USER->MEM
+    4.782 msec (209.1 MiB/s = 219.3 MB/s)
+    4.817 msec (207.6 MiB/s = 217.7 MB/s)
+USER->MEM WS
+    4.762 msec (210.0 MiB/s = 220.2 MB/s)
+    4.803 msec (208.2 MiB/s = 218.3 MB/s)
+USER->MEM DS
+    4.766 msec (209.8 MiB/s = 220.0 MB/s)
+    4.795 msec (208.6 MiB/s = 218.7 MB/s)
+USER->MEM QS
+    4.776 msec (209.4 MiB/s = 219.6 MB/s)
+    4.811 msec (207.9 MiB/s = 218.0 MB/s)
+USER->SHM
+    4.601 msec (217.4 MiB/s = 227.9 MB/s)
+    4.643 msec (215.4 MiB/s = 225.9 MB/s)
+USER->SHM WS
+    4.511 msec (221.7 MiB/s = 232.5 MB/s)
+    4.605 msec (217.2 MiB/s = 227.7 MB/s)
+USER->SHM DS
+    4.514 msec (221.6 MiB/s = 232.3 MB/s)
+    4.645 msec (215.3 MiB/s = 225.8 MB/s)
+USER->SHM QS
+    4.511 msec (221.7 MiB/s = 232.4 MB/s)
+    4.642 msec (215.4 MiB/s = 225.9 MB/s)
+SHM->USER
     2.364 msec (422.9 MiB/s = 443.5 MB/s)
     2.480 msec (403.3 MiB/s = 422.9 MB/s)
-SHM->USER DMA WS
+SHM->USER WS
     2.365 msec (422.8 MiB/s = 443.3 MB/s)
     2.508 msec (398.8 MiB/s = 418.2 MB/s)
-SHM->USER DMA DS
+SHM->USER DS
     2.374 msec (421.2 MiB/s = 441.6 MB/s)
     2.460 msec (406.5 MiB/s = 426.3 MB/s)
-SHM->USER DMA QS
+SHM->USER QS
     2.370 msec (422.0 MiB/s = 442.5 MB/s)
     2.456 msec (407.2 MiB/s = 427.0 MB/s)
 
-MEM->A32 memcopy
-    70.736 msec (14.1 MiB/s = 14.8 MB/s)
-    71.056 msec (14.1 MiB/s = 14.8 MB/s)
-MEM->A32 byte copy
-    283.071 msec (3.5 MiB/s = 3.7 MB/s)
-    284.162 msec (3.5 MiB/s = 3.7 MB/s)
-MEM->A32 word copy
-    141.514 msec (7.1 MiB/s = 7.4 MB/s)
-    144.876 msec (6.9 MiB/s = 7.2 MB/s)
-MEM->A32 word copy swap
-    141.515 msec (7.1 MiB/s = 7.4 MB/s)
-    141.857 msec (7.0 MiB/s = 7.4 MB/s)
-MEM->A32 dword copy
-    70.736 msec (14.1 MiB/s = 14.8 MB/s)
-    70.874 msec (14.1 MiB/s = 14.8 MB/s)
-MEM->A32 dword copy swap
-    70.736 msec (14.1 MiB/s = 14.8 MB/s)
-    71.138 msec (14.1 MiB/s = 14.7 MB/s)
-MEM->A32 qword copy
-    70.735 msec (14.1 MiB/s = 14.8 MB/s)
-    71.734 msec (13.9 MiB/s = 14.6 MB/s)
-MEM->A32 qword copy swap
-    70.735 msec (14.1 MiB/s = 14.8 MB/s)
-    70.845 msec (14.1 MiB/s = 14.8 MB/s)
-MEM->A32 DMA SCT
+DMA VME single cycle transfer
+-----------------------------
+MEM->A32
     52.943 msec (18.9 MiB/s = 19.8 MB/s)
     53.015 msec (18.9 MiB/s = 19.8 MB/s)
-MEM->A32 DMA SCT WS
+MEM->A32 WS
     52.891 msec (18.9 MiB/s = 19.8 MB/s)
     52.987 msec (18.9 MiB/s = 19.8 MB/s)
-MEM->A32 DMA SCT DS
+MEM->A32 QS
     52.941 msec (18.9 MiB/s = 19.8 MB/s)
     53.098 msec (18.8 MiB/s = 19.7 MB/s)
-MEM->A32 DMA SCT QS
+MEM->A32 QS
     52.879 msec (18.9 MiB/s = 19.8 MB/s)
     53.048 msec (18.9 MiB/s = 19.8 MB/s)
-MEM->A32 DMA BLT
-    29.048 msec (34.4 MiB/s = 36.1 MB/s)
-    29.133 msec (34.3 MiB/s = 36.0 MB/s)
-MEM->A32 DMA BLT WS
-    29.102 msec (34.4 MiB/s = 36.0 MB/s)
-    29.142 msec (34.3 MiB/s = 36.0 MB/s)
-MEM->A32 DMA BLT DS
-    29.116 msec (34.3 MiB/s = 36.0 MB/s)
-    29.214 msec (34.2 MiB/s = 35.9 MB/s)
-MEM->A32 DMA BLT QS
-    29.103 msec (34.4 MiB/s = 36.0 MB/s)
-    29.163 msec (34.3 MiB/s = 36.0 MB/s)
-MEM->A32 DMA MBLT
-    16.695 msec (59.9 MiB/s = 62.8 MB/s)
-    16.750 msec (59.7 MiB/s = 62.6 MB/s)
-MEM->A32 DMA MBLT WS
-    16.693 msec (59.9 MiB/s = 62.8 MB/s)
-    16.746 msec (59.7 MiB/s = 62.6 MB/s)
-MEM->A32 DMA MBLT DS
-    16.674 msec (60.0 MiB/s = 62.9 MB/s)
-    16.726 msec (59.8 MiB/s = 62.7 MB/s)
-MEM->A32 DMA MBLT QS
-    16.696 msec (59.9 MiB/s = 62.8 MB/s)
-    16.739 msec (59.7 MiB/s = 62.6 MB/s)
-MEM->A32 DMA 2eVME
-    11.010 msec (90.8 MiB/s = 95.2 MB/s)
-    11.048 msec (90.5 MiB/s = 94.9 MB/s)
-MEM->A32 DMA 2eVME WS
-    11.011 msec (90.8 MiB/s = 95.2 MB/s)
-    11.052 msec (90.5 MiB/s = 94.9 MB/s)
-MEM->A32 DMA 2eVME DS
-    10.996 msec (90.9 MiB/s = 95.4 MB/s)
-    11.079 msec (90.3 MiB/s = 94.6 MB/s)
-MEM->A32 DMA 2eVME QS
-    11.013 msec (90.8 MiB/s = 95.2 MB/s)
-    11.055 msec (90.5 MiB/s = 94.9 MB/s)
-MEM->A32 DMA 2eVMEFast
-    10.653 msec (93.9 MiB/s = 98.4 MB/s)
-    10.750 msec (93.0 MiB/s = 97.5 MB/s)
-MEM->A32 DMA 2eVMEFast WS
-    10.667 msec (93.7 MiB/s = 98.3 MB/s)
-    10.762 msec (92.9 MiB/s = 97.4 MB/s)
-MEM->A32 DMA 2eVMEFast DS
-    10.668 msec (93.7 MiB/s = 98.3 MB/s)
-    10.756 msec (93.0 MiB/s = 97.5 MB/s)
-MEM->A32 DMA 2eVMEFast QS
-    10.697 msec (93.5 MiB/s = 98.0 MB/s)
-    10.741 msec (93.1 MiB/s = 97.6 MB/s)
-MEM->A32 DMA 2eSST160
-    10.631 msec (94.1 MiB/s = 98.6 MB/s)
-    10.757 msec (93.0 MiB/s = 97.5 MB/s)
-MEM->A32 DMA 2eSST160 WS
-    10.689 msec (93.6 MiB/s = 98.1 MB/s)
-    10.798 msec (92.6 MiB/s = 97.1 MB/s)
-MEM->A32 DMA 2eSST160 DS
-    10.681 msec (93.6 MiB/s = 98.2 MB/s)
-    10.761 msec (92.9 MiB/s = 97.4 MB/s)
-MEM->A32 DMA 2eSST160 QS
-    10.684 msec (93.6 MiB/s = 98.1 MB/s)
-    10.724 msec (93.3 MiB/s = 97.8 MB/s)
-MEM->A32 DMA 2eSST267
-    8.624 msec (116.0 MiB/s = 121.6 MB/s)
-    8.719 msec (114.7 MiB/s = 120.3 MB/s)
-MEM->A32 DMA 2eSST267 WS
-    8.064 msec (124.0 MiB/s = 130.0 MB/s)
-    8.184 msec (122.2 MiB/s = 128.1 MB/s)
-MEM->A32 DMA 2eSST267 DS
-    8.100 msec (123.5 MiB/s = 129.4 MB/s)
-    8.228 msec (121.5 MiB/s = 127.4 MB/s)
-MEM->A32 DMA 2eSST267 QS
-    8.087 msec (123.7 MiB/s = 129.7 MB/s)
-    8.143 msec (122.8 MiB/s = 128.8 MB/s)
-MEM->A32 DMA 2eSST320
-    7.498 msec (133.4 MiB/s = 139.8 MB/s)
-    7.534 msec (132.7 MiB/s = 139.2 MB/s)
-MEM->A32 DMA 2eSST320 WS
-    7.495 msec (133.4 MiB/s = 139.9 MB/s)
-    7.547 msec (132.5 MiB/s = 138.9 MB/s)
-MEM->A32 DMA 2eSST320 DS
-    7.530 msec (132.8 MiB/s = 139.2 MB/s)
-    7.590 msec (131.7 MiB/s = 138.1 MB/s)
-MEM->A32 DMA 2eSST320 QS
-    7.502 msec (133.3 MiB/s = 139.8 MB/s)
-    7.582 msec (131.9 MiB/s = 138.3 MB/s)
-
-A32->MEM memcopy
-    525.617 msec (1.9 MiB/s = 2.0 MB/s)
-    533.170 msec (1.9 MiB/s = 2.0 MB/s)
-A32->MEM byte copy
-    2122.770 msec (0.5 MiB/s = 0.5 MB/s)
-    2131.868 msec (0.5 MiB/s = 0.5 MB/s)
-A32->MEM word copy
-    1065.191 msec (0.9 MiB/s = 1.0 MB/s)
-    1065.945 msec (0.9 MiB/s = 1.0 MB/s)
-A32->MEM word copy swap
-    1065.436 msec (0.9 MiB/s = 1.0 MB/s)
-    1066.810 msec (0.9 MiB/s = 1.0 MB/s)
-A32->MEM dword copy
-    527.564 msec (1.9 MiB/s = 2.0 MB/s)
-    532.986 msec (1.9 MiB/s = 2.0 MB/s)
-A32->MEM dword copy swap
-    530.434 msec (1.9 MiB/s = 2.0 MB/s)
-    533.630 msec (1.9 MiB/s = 2.0 MB/s)
-A32->MEM qword copy
-    529.676 msec (1.9 MiB/s = 2.0 MB/s)
-    533.576 msec (1.9 MiB/s = 2.0 MB/s)
-A32->MEM qword copy swap
-    532.934 msec (1.9 MiB/s = 2.0 MB/s)
-    534.289 msec (1.9 MiB/s = 2.0 MB/s)
-A32->MEM DMA SCT
+A32->MEM
     144.124 msec (6.9 MiB/s = 7.3 MB/s)
     144.196 msec (6.9 MiB/s = 7.3 MB/s)
-A32->MEM DMA SCT WS
+A32->MEM WS
     144.082 msec (6.9 MiB/s = 7.3 MB/s)
     144.193 msec (6.9 MiB/s = 7.3 MB/s)
-A32->MEM DMA SCT DS
+A32->MEM QS
     144.073 msec (6.9 MiB/s = 7.3 MB/s)
     144.214 msec (6.9 MiB/s = 7.3 MB/s)
-A32->MEM DMA SCT QS
+A32->MEM QS
     144.177 msec (6.9 MiB/s = 7.3 MB/s)
     144.213 msec (6.9 MiB/s = 7.3 MB/s)
-A32->MEM DMA BLT
+
+DMA VME BLT block transfer
+--------------------------
+MEM->A32
+    29.048 msec (34.4 MiB/s = 36.1 MB/s)
+    29.133 msec (34.3 MiB/s = 36.0 MB/s)
+MEM->A32 WS
+    29.102 msec (34.4 MiB/s = 36.0 MB/s)
+    29.142 msec (34.3 MiB/s = 36.0 MB/s)
+MEM->A32 DS
+    29.116 msec (34.3 MiB/s = 36.0 MB/s)
+    29.214 msec (34.2 MiB/s = 35.9 MB/s)
+MEM->A32 QS
+    29.103 msec (34.4 MiB/s = 36.0 MB/s)
+    29.163 msec (34.3 MiB/s = 36.0 MB/s)
+A32->MEM
     41.598 msec (24.0 MiB/s = 25.2 MB/s)
     41.702 msec (24.0 MiB/s = 25.1 MB/s)
-A32->MEM DMA BLT WS
+A32->MEM WS
     41.640 msec (24.0 MiB/s = 25.2 MB/s)
     41.671 msec (24.0 MiB/s = 25.2 MB/s)
-A32->MEM DMA BLT DS
+A32->MEM DS
     41.620 msec (24.0 MiB/s = 25.2 MB/s)
     41.685 msec (24.0 MiB/s = 25.2 MB/s)
-A32->MEM DMA BLT QS
+A32->MEM QS
     41.616 msec (24.0 MiB/s = 25.2 MB/s)
     41.682 msec (24.0 MiB/s = 25.2 MB/s)
-A32->MEM DMA MBLT
+
+DMA VME MBLT block transfer
+---------------------------
+MEM->A32
+    16.695 msec (59.9 MiB/s = 62.8 MB/s)
+    16.750 msec (59.7 MiB/s = 62.6 MB/s)
+MEM->A32 WS
+    16.693 msec (59.9 MiB/s = 62.8 MB/s)
+    16.746 msec (59.7 MiB/s = 62.6 MB/s)
+MEM->A32 DS
+    16.674 msec (60.0 MiB/s = 62.9 MB/s)
+    16.726 msec (59.8 MiB/s = 62.7 MB/s)
+MEM->A32 QS
+    16.696 msec (59.9 MiB/s = 62.8 MB/s)
+    16.739 msec (59.7 MiB/s = 62.6 MB/s)
+A32->MEM
     21.204 msec (47.2 MiB/s = 49.5 MB/s)
     21.270 msec (47.0 MiB/s = 49.3 MB/s)
-A32->MEM DMA MBLT WS
+A32->MEM WS
     21.207 msec (47.2 MiB/s = 49.4 MB/s)
     21.276 msec (47.0 MiB/s = 49.3 MB/s)
-A32->MEM DMA MBLT DS
+A32->MEM DS
     21.107 msec (47.4 MiB/s = 49.7 MB/s)
     21.256 msec (47.0 MiB/s = 49.3 MB/s)
-A32->MEM DMA MBLT QS
+A32->MEM QS
     21.218 msec (47.1 MiB/s = 49.4 MB/s)
     21.307 msec (46.9 MiB/s = 49.2 MB/s)
-A32->MEM DMA 2eVME
+
+DMA VME 2eVME block transfer
+----------------------------
+MEM->A32
+    11.010 msec (90.8 MiB/s = 95.2 MB/s)
+    11.048 msec (90.5 MiB/s = 94.9 MB/s)
+MEM->A32 WS
+    11.011 msec (90.8 MiB/s = 95.2 MB/s)
+    11.052 msec (90.5 MiB/s = 94.9 MB/s)
+MEM->A32 DS
+    10.996 msec (90.9 MiB/s = 95.4 MB/s)
+    11.079 msec (90.3 MiB/s = 94.6 MB/s)
+MEM->A32 QS
+    11.013 msec (90.8 MiB/s = 95.2 MB/s)
+    11.055 msec (90.5 MiB/s = 94.9 MB/s)
+A32->MEM
     10.130 msec (98.7 MiB/s = 103.5 MB/s)
     10.258 msec (97.5 MiB/s = 102.2 MB/s)
-A32->MEM DMA 2eVME WS
+A32->MEM WS
     10.146 msec (98.6 MiB/s = 103.4 MB/s)
     10.279 msec (97.3 MiB/s = 102.0 MB/s)
-A32->MEM DMA 2eVME DS
+A32->MEM DS
     10.202 msec (98.0 MiB/s = 102.8 MB/s)
     10.288 msec (97.2 MiB/s = 101.9 MB/s)
-A32->MEM DMA 2eVME QS
+A32->MEM QS
     10.209 msec (98.0 MiB/s = 102.7 MB/s)
     10.245 msec (97.6 MiB/s = 102.3 MB/s)
-A32->MEM DMA 2eVMEFast
+
+DMA VME 2eVMEFast block transfer
+----------------------------
+MEM->A32
+    10.653 msec (93.9 MiB/s = 98.4 MB/s)
+    10.750 msec (93.0 MiB/s = 97.5 MB/s)
+MEM->A32 WS
+    10.667 msec (93.7 MiB/s = 98.3 MB/s)
+    10.762 msec (92.9 MiB/s = 97.4 MB/s)
+MEM->A32 DS
+    10.668 msec (93.7 MiB/s = 98.3 MB/s)
+    10.756 msec (93.0 MiB/s = 97.5 MB/s)
+MEM->A32 QS
+    10.697 msec (93.5 MiB/s = 98.0 MB/s)
+    10.741 msec (93.1 MiB/s = 97.6 MB/s)
+A32->MEM
     9.817 msec (101.9 MiB/s = 106.8 MB/s)
     9.870 msec (101.3 MiB/s = 106.2 MB/s)
-A32->MEM DMA 2eVMEFast WS
+A32->MEM WS
     9.824 msec (101.8 MiB/s = 106.7 MB/s)
     9.887 msec (101.1 MiB/s = 106.1 MB/s)
-A32->MEM DMA 2eVMEFast DS
+A32->MEM DS
     9.813 msec (101.9 MiB/s = 106.9 MB/s)
     9.856 msec (101.5 MiB/s = 106.4 MB/s)
-A32->MEM DMA 2eVMEFast QS
+A32->MEM QS
     9.817 msec (101.9 MiB/s = 106.8 MB/s
     9.899 msec (101.0 MiB/s = 105.9 MB/s)
-A32->MEM DMA 2eSST160
+
+DMA VME 2eSST160 block transfer
+----------------------------
+MEM->A32
+    10.631 msec (94.1 MiB/s = 98.6 MB/s)
+    10.757 msec (93.0 MiB/s = 97.5 MB/s)
+MEM->A32 WS
+    10.689 msec (93.6 MiB/s = 98.1 MB/s)
+    10.798 msec (92.6 MiB/s = 97.1 MB/s)
+MEM->A32 DS
+    10.681 msec (93.6 MiB/s = 98.2 MB/s)
+    10.761 msec (92.9 MiB/s = 97.4 MB/s)
+MEM->A32 QS
+    10.684 msec (93.6 MiB/s = 98.1 MB/s)
+    10.724 msec (93.3 MiB/s = 97.8 MB/s)
+A32->MEM
     9.139 msec (109.4 MiB/s = 114.7 MB/s)
     9.276 msec (107.8 MiB/s = 113.0 MB/s)
-A32->MEM DMA 2eSST160 WS
+A32->MEM WS
     9.198 msec (108.7 MiB/s = 114.0 MB/s)
     9.250 msec (108.1 MiB/s = 113.4 MB/s)
-A32->MEM DMA 2eSST160 DS
+A32->MEM DS
     9.196 msec (108.7 MiB/s = 114.0 MB/s)
     9.286 msec (107.7 MiB/s = 112.9 MB/s)
-A32->MEM DMA 2eSST160 QS
+A32->MEM QS
     9.198 msec (108.7 MiB/s = 114.0 MB/s)
     9.320 msec (107.3 MiB/s = 112.5 MB/s)
-A32->MEM DMA 2eSST267
+
+DMA VME 2eSST267 block transfer
+----------------------------
+MEM->A32
+    8.624 msec (116.0 MiB/s = 121.6 MB/s)
+    8.719 msec (114.7 MiB/s = 120.3 MB/s)
+MEM->A32 WS
+    8.064 msec (124.0 MiB/s = 130.0 MB/s)
+    8.184 msec (122.2 MiB/s = 128.1 MB/s)
+MEM->A32 DS
+    8.100 msec (123.5 MiB/s = 129.4 MB/s)
+    8.228 msec (121.5 MiB/s = 127.4 MB/s)
+MEM->A32 QS
+    8.087 msec (123.7 MiB/s = 129.7 MB/s)
+    8.143 msec (122.8 MiB/s = 128.8 MB/s)
+A32->MEM
     6.900 msec (144.9 MiB/s = 152.0 MB/s)
     7.062 msec (141.6 MiB/s = 148.5 MB/s)
-A32->MEM DMA 2eSST267 WS
+A32->MEM WS
     6.899 msec (145.0 MiB/s = 152.0 MB/s)
     6.987 msec (143.1 MiB/s = 150.1 MB/s)
-A32->MEM DMA 2eSST267 DS
+A32->MEM DS
     6.898 msec (145.0 MiB/s = 152.0 MB/s)
     7.004 msec (142.8 MiB/s = 149.7 MB/s)
-A32->MEM DMA 2eSST267 QS
+A32->MEM QS
     6.896 msec (145.0 MiB/s = 152.1 MB/s)
     6.982 msec (143.2 MiB/s = 150.2 MB/s)
-A32->MEM DMA 2eSST320
+
+DMA VME 2eSST320 block transfer
+----------------------------
+MEM->A32
+    7.498 msec (133.4 MiB/s = 139.8 MB/s)
+    7.534 msec (132.7 MiB/s = 139.2 MB/s)
+MEM->A32 WS
+    7.495 msec (133.4 MiB/s = 139.9 MB/s)
+    7.547 msec (132.5 MiB/s = 138.9 MB/s)
+MEM->A32 DS
+    7.530 msec (132.8 MiB/s = 139.2 MB/s)
+    7.590 msec (131.7 MiB/s = 138.1 MB/s)
+MEM->A32 QS
+    7.502 msec (133.3 MiB/s = 139.8 MB/s)
+    7.582 msec (131.9 MiB/s = 138.3 MB/s)
+A32->MEM
     6.082 msec (164.4 MiB/s = 172.4 MB/s)
     6.163 msec (162.3 MiB/s = 170.1 MB/s)
-A32->MEM DMA 2eSST320 WS
+A32->MEM WS
     6.085 msec (164.3 MiB/s = 172.3 MB/s)
     6.195 msec (161.4 MiB/s = 169.3 MB/s)
-A32->MEM DMA 2eSST320 DS
+A32->MEM DS
     6.084 msec (164.4 MiB/s = 172.3 MB/s)
     6.166 msec (162.2 MiB/s = 170.1 MB/s)
-A32->MEM DMA 2eSST320 QS
+A32->MEM QS
     6.081 msec (164.4 MiB/s = 172.4 MB/s)
     6.195 msec (161.4 MiB/s = 169.3 MB/s)
-    
+
+
+Some results:
+* Swapping does not cost any relevant speed, neither with nor without DMA.
+* Quad word copy and double word copy have the same speed, as expeted on 32 bit hardware.
+* Word/quad word access is 2/4 times as fast as byte access, as expected.
+* Double word copy is as efficient as memcpy.
+* Writing MEM to external is up to 16 times faster than reading external to MEM.
+* MEM to MEM copy is 20 times faster than any non-DMA write, more than 500 times faster then non-DMA read and still 4 times faster than DMA.
+* DMA is 4 to 5 times as fast as copy for writing but 160 times for reading.
+* Access to USER is slightly slower than to SHM
+* VME access it slower than USER or SHM access, only 2eSST320 is comparable.
+* 2eSST160, 2eSST267 and 2eSST320 are 1.5 to 2 times slower than the theoretical limit.
