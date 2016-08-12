@@ -540,3 +540,5 @@ Some results:
 * Access to USER is slightly slower than to SHM
 * VME access it slower than USER or SHM access, only 2eSST320 is comparable.
 * 2eSST160, 2eSST267 and 2eSST320 are 1.5 to 2 times slower than the theoretical limit.
+* 2eVMEFast is only slightly faster than 2eVME and almost as fast as 2eSST160.
+* Single cycle transfer VME DMA is still faster than copy.
