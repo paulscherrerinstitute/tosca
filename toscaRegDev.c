@@ -66,7 +66,7 @@ int toscaDevRead(
 {
     if (device->dmaSpace && nelem > device->dmaLimit)
     {
-        int status = toscaDmaToBuffer(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen, device->swap);
+        int status = toscaDmaRead(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen, device->swap);
         if (status)
             fprintf(stderr, "%s: toscaDmaTransfer failed: %m\n", __FUNCTION__);
         return status;
@@ -92,7 +92,7 @@ int toscaDevWrite(
 {
     if (!pmask && device->dmaSpace && nelem > device->dmaLimit)
     {
-        int status = toscaDmaFromBuffer(pdata, device->baseaddr + offset, nelem*dlen, 4, 0);
+        int status = toscaDmaWrite(pdata, device->baseaddr + offset, nelem*dlen, 4, 0);
         if (status)
             fprintf(stderr, "%s: toscaDmaTransfer failed: %m\n", __FUNCTION__);
         return status;

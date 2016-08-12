@@ -22,11 +22,11 @@ int toscaDmaStrToType(const char* str);
 typedef void (*toscaDmaCallback)(void* usr, int status);
 
 int toscaDmaTransfer(int source, size_t source_addr, int dest, size_t dest_addr, size_t size, int swap);
-static inline int toscaDmaFromBuffer(void* source_addr, int dest, size_t dest_addr, size_t size, int swap)
+static inline int toscaDmaWrite(void* source_addr, int dest, size_t dest_addr, size_t size, int swap)
 {
     return toscaDmaTransfer(0, (size_t)source_addr, dest, dest_addr, size, swap);
 }
-static inline int toscaDmaToBuffer(int source, size_t source_addr, void* dest_addr, size_t size, int swap)
+static inline int toscaDmaRead(int source, size_t source_addr, void* dest_addr, size_t size, int swap)
 {
     return toscaDmaTransfer(source, source_addr, 0, (size_t)dest_addr, size, swap);
 }
