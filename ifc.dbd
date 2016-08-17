@@ -1,0 +1,9 @@
+# For backward compatibility to pev driver only.
+# Better use regDev on "TCSR" address space.
+
+device(ai,         VME_IO, devIfc1210Ai,         "ifc1210")
+device(ao,         VME_IO, devIfc1210Ao,         "ifc1210")
+device(longin,     VME_IO, devIfc1210Longin,     "ifc1210")
+device(longout,    VME_IO, devIfc1210Longout,    "ifc1210")
+device(stringin,   VME_IO, devIfc1210Stringin,   "ifc1210")
+driver(drvIfc1210)
