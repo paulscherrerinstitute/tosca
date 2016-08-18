@@ -29,7 +29,7 @@ extern FILE* toscaMapDebugFile;
 typedef uint64_t vmeaddr_t;
 
 /* Map a Tosca resource to user space. Reuse maps if possible. */
-volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size);
+volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size);
 
 /* For aspace use
      (At the moment Tosca does not support A64.)
@@ -41,12 +41,12 @@ volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size);
 */
 
 /* Convert aspace code to/from string. */
-const char* toscaAddrSpaceToStr(int aspace);
-int toscaStrToAddrSpace(const char* str);
+const char* toscaAddrSpaceToStr(unsigned int aspace);
+unsigned int toscaStrToAddrSpace(const char* str);
 
 /* Several map lookup functions. aspace will be 0 if map is not found. */
 typedef struct {
-    int aspace;
+    unsigned int aspace;
     vmeaddr_t address;
     size_t size;
     volatile void* ptr;
@@ -61,7 +61,7 @@ toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info));
 
 /* Find a VME address from a user space pointer. */
 typedef struct {
-    int aspace;
+    unsigned int aspace;
     vmeaddr_t address;
 } toscaMapAddr_t;
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);

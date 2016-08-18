@@ -117,7 +117,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
     struct timespec start, finished;
     volatile void* sourceptr;
     volatile void* destptr;
-    int aspace;
+    unsigned int aspace;
     size_t size;
     char* p;
     int i;

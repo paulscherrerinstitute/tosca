@@ -41,7 +41,7 @@ static struct map {
 static volatile uint32_t* tCsr = NULL;
 static size_t tCsrSize = 0;
 
-volatile void* toscaMap(int aspace, vmeaddr_t address, size_t size)
+volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
 {
     struct map **pmap, *map;
     volatile void *ptr;
@@ -216,7 +216,7 @@ toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr)
     return (toscaMapAddr_t) { info.aspace, info.address + (ptr - info.ptr) };
 }
 
-const char* toscaAddrSpaceToStr(int aspace)
+const char* toscaAddrSpaceToStr(unsigned int aspace)
 {
     switch (aspace & ~(VME_USER | VME_DATA))
     {
@@ -250,9 +250,9 @@ const char* toscaAddrSpaceToStr(int aspace)
     }
 }
 
-int toscaStrToAddrSpace(const char* str)
+unsigned int toscaStrToAddrSpace(const char* str)
 {
-    int aspace;
+    unsigned int aspace;
     if (!str) return 0;
     switch (str[0])
     {

@@ -40,8 +40,8 @@ size_t strToSize(const char* str)
 
 static void toscaMapFunc(const iocshArgBuf *args)
 {
-    int aspace;
-    int size;
+    unsigned int aspace;
+    size_t size;
     size_t address;
     volatile void* addr;
     char* p;
