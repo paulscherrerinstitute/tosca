@@ -16,7 +16,7 @@ FILE* pevDebugFile = NULL;
 #define error(fmt, ...) fprintf(stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
 
 /* pev compatibility mode */
-extern int toscaDevConfigure(const char* name, const char* resource, size_t address, size_t size, const char* flags);
+extern int toscaDevConfigure(const char* name, const char* resource, size_t addr, size_t size, const char* flags);
 
 static const iocshArg * const pevConfigureArgs[] = {
     &(iocshArg) { "card", iocshArgInt },
@@ -82,3 +82,85 @@ static void pevRegistrar(void)
 }
 
 epicsExportRegistrar(pevRegistrar);
+
+void* pev_init(int x)
+{
+    printf("pev compatibility mode\n");
+    return (void*) -1;
+}
+
+void* pevx_init(int x)
+{
+    printf("pevx compatibility mode\n");
+    return (void*) -1;
+}
+
+int pev_csr_rd(int addr)
+{
+    return toscaCsrRead(addr & 0x7FFFFFFF);
+}
+
+void pev_csr_wr(int addr, int val)
+{
+    debug ("pev_csr_wr(0x%x,0x%x)  -> toscaCsrWrite(0x%x,0x%x)", addr, val, addr & 0x7FFFFFFF, val);
+    toscaCsrWrite(addr & 0x7FFFFFFF, val);  
+}
+
+void pev_csr_set(int addr, int val)
+{
+    toscaCsrSet(addr & 0x7FFFFFFF, val);  
+}
+
+int pev_elb_rd(int addr)
+{
+    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    return -1;
+}
+
+int pev_smon_rd(int addr)
+{
+    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    return -1;
+}
+
+int pev_bmr_read(unsigned int card, unsigned int addr, unsigned int *val, unsigned int count)
+{
+    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    return -1;
+}
+
+float pev_bmr_conv_11bit_u(unsigned short val)
+{
+    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    return 0.0/0.0;
+}
+
+float pev_bmr_conv_11bit_s(unsigned short val)
+{
+    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    return 0.0/0.0;
+}
+
+float pev_bmr_conv_16bit_u(unsigned short val)
+{
+    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    return 0.0/0.0;
+}
+
+int pev_elb_wr(int addr, int val)
+{
+    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    return -1;
+}
+
+void pev_smon_wr(int addr, int val)
+{
+    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+}
+
+int pev_bmr_write(unsigned int card, unsigned int addr, unsigned int val, unsigned int count)
+{
+    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    return -1;
+}
+

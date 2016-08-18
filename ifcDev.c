@@ -22,11 +22,11 @@
 #include <dbAccess.h>
 #include <epicsExport.h>
 
-#include "pev.h"
-
 #define I2CEXEC_OK      0x0200000
 #define I2CEXEC_MASK    0x0300000
 #define BIT_31_SET      0x80000000
+
+#include "pevCompat.h"
 
 long  ifc1210Init(){ pev_init(0); return 0; }
 struct {
