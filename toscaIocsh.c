@@ -221,11 +221,11 @@ int toscaIntrHandlerPrintInfo(toscaIntrHandlerInfo_t handlerInfo)
 
 static void toscaIntrShowFunc(const iocshArgBuf *args)
 {
-    unsigned int vectorNumber;
+    unsigned int vec;
     
-    for (vectorNumber = 0; vectorNumber < 256; vectorNumber++)
-        toscaIntrForeachHandler(INTR_VME_LVL_ANY, vectorNumber, toscaIntrHandlerPrintInfo);
-    toscaIntrForeachHandler(-1ULL-INTR_VME_LVL_ANY, 0, toscaIntrHandlerPrintInfo);
+    for (vec = 0; vec < 256; vec++)
+        toscaIntrForeachHandler(INTR_VME_LVL_ANY, vec, toscaIntrHandlerPrintInfo);
+    toscaIntrForeachHandler(~INTR_VME_LVL_ANY, 0, toscaIntrHandlerPrintInfo);
 }
 
 
