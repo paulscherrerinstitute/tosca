@@ -78,6 +78,10 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
 #define toscaIntrConnectHandlerVME(vec, function, parameter) toscaIntrConnectHandler(INTR_VME_LVL_ANY, vec, function, parameter)
 /* returns 0 on success */
 
+int toscaIntrDisconnectHandler(intrmask_t intrmask, unsigned int vec, void (*function)(), void* parameter);
+/* check parameter only if it is not NULL */
+/* returns number of disconnected handlers */
+
 typedef struct {
     intrmask_t intrmaskbit;
     unsigned int vec;

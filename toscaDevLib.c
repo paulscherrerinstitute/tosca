@@ -1,5 +1,7 @@
+#define _GNU_SOURCE /* for vasprintf */
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #include <devLib.h>
 #include <epicsMutex.h>
@@ -269,12 +271,14 @@ long toscaDevLibEnableInterruptLevelVME(unsigned int level)
 int toscaIntrPrio = 80;
 epicsExportAddress(int, toscaIntrPrio);
 epicsMutexId intrListMutex;
-epicsThreadId toscaDevLibInterruptThreads[256];
+epicsThreadId toscaDevLibInterruptThreads[256+32];
 
 
-epicsThreadId toscaStartIntrThread(const char* threadname, intrmask_t intrmask, unsigned int vec)
+epicsThreadId toscaStartIntrThread(intrmask_t intrmask, unsigned int vec, const char* threadname, ...)
 {
     epicsThreadId tid;
+    va_list ap;
+    char *name = NULL;
     toscaIntrLoopArg_t* theadArgs = calloc(1, sizeof(toscaIntrLoopArg_t));
     if (!theadArgs)
     {
@@ -283,47 +287,61 @@ epicsThreadId toscaStartIntrThread(const char* threadname, intrmask_t intrmask, 
     }
     theadArgs->intrmask = intrmask;
     theadArgs->vec = vec;
-    debug("starting handler thread %s", threadname);
-    tid = epicsThreadCreate(threadname, toscaIntrPrio,
+    va_start(ap, threadname);
+    vasprintf(&name, threadname, ap);
+    va_end(ap);    
+    debug("starting handler thread %s", name);
+    tid = epicsThreadCreate(name, toscaIntrPrio,
         epicsThreadGetStackSize(epicsThreadStackSmall),
         toscaIntrLoop, theadArgs);
     if (!tid)
     {
-        debugErrno("starting handler thread %s", threadname);
-        return NULL;
+        debugErrno("starting handler thread %s", name);
     }
+    free(name);
+    debug("tid = %p", tid);
     return tid;
 }
 
-long toscaDevLibConnectInterruptVME(
+
+long toscaDevLibConnectInterrupt(
     unsigned int vectorNumber,
     void (*function)(),
-    void  *parameter)
+    void *parameter)
 {
     char* fname=NULL;
 
-    debug("vectorNumber=%d function=%s, parameter=%p",
+    debug("vectorNumber=0x%x function=%s, parameter=%p",
         vectorNumber, fname=symbolName(function,0), parameter), free(fname);
 
-    if (vectorNumber > 255) return S_dev_badArgument;
+    if (vectorNumber >= 256+32)
+    {
+        debug("vectorNumber=0x%x out of range", vectorNumber);
+        return S_dev_badArgument;
+    }
     
     epicsMutexMustLock(intrListMutex);
     if (!toscaDevLibInterruptThreads[vectorNumber])
     {
-        char threadname[16];
-        
-        sprintf(threadname, "iVME%d", vectorNumber);
-        toscaDevLibInterruptThreads[vectorNumber] = toscaStartIntrThread(threadname, INTR_VME_LVL_ANY, vectorNumber);
+        toscaDevLibInterruptThreads[vectorNumber] =
+            vectorNumber < 256 ?
+                toscaStartIntrThread(INTR_VME_LVL_ANY, vectorNumber,
+                    "irq-VME%u", vectorNumber) :
+                toscaStartIntrThread(INTR_USER1_INTR(vectorNumber&31), 0,
+                    "irq-USER%u.%u", vectorNumber&16 ? 2 : 1, vectorNumber&15);
         if (!toscaDevLibInterruptThreads[vectorNumber])
         {
+            debugErrno("toscaStartIntrThread");
             epicsMutexUnlock(intrListMutex);
             return S_dev_noMemory;
         }
     }
-    debug("Connect VME vector %u interrupt handler to TOSCA", vectorNumber);
-    if (toscaIntrConnectHandler(INTR_VME_LVL_ANY, vectorNumber, function, parameter) != 0)
+    debug("Connect vector 0x%x interrupt handler to TOSCA", vectorNumber);
+    if (toscaIntrConnectHandler(
+        vectorNumber < 256 ? INTR_VME_LVL_ANY : INTR_USER1_INTR(vectorNumber&31),
+        vectorNumber, function, parameter) != 0)
     {
-        debug("could not connect VME vector %u interrupt handler", vectorNumber);
+        debugErrno("Could not connect vector 0x%x interrupt handler", vectorNumber);
         epicsMutexUnlock(intrListMutex);
         return S_dev_vecInstlFail;
     }
@@ -331,13 +349,13 @@ long toscaDevLibConnectInterruptVME(
     return S_dev_success;
 }
 
-long toscaDevLibDisconnectInterruptVME(
+long toscaDevLibDisconnectInterrupt(
     unsigned int vectorNumber,
     void (*function)())
 {
-    /* We cannot disconnect interrupts.
-    */
-    return -1;
+    return toscaIntrDisconnectHandler(
+        vectorNumber < 256 ? INTR_VME_LVL_ANY : INTR_USER1_INTR(vectorNumber&31),
+        vectorNumber, function, NULL) ? S_dev_success : S_dev_vectorNotInUse;
 }
 
 int toscaDevLibInterruptInUseVME(unsigned int vectorNumber)
@@ -354,7 +372,7 @@ void *toscaDevLibA24Malloc(size_t size)
 {
     /* This function should allocate some DMA capable memory
      * and map it into a A24 slave window.
-     * But TOSCA supports only A32 slave windows (only A32).
+     * But TOSCA supports only A32 slave windows.
      */
     return NULL;
 }
@@ -363,15 +381,12 @@ void toscaDevLibA24Free(void *pBlock) {};
 
 
 /** Initialization *****************/
-
 long toscaDevLibInit(void)
 {
-    probeMutex = epicsMutexMustCreate();
-    intrListMutex = epicsMutexMustCreate();
     return S_dev_success;
 }
 
-/* compatibility with different versions of EPICS 3.14 */
+/* compatibility with older versions of EPICS */
 #if defined(pdevLibVirtualOS) && !defined(devLibVirtualOS)
 #define devLibVirtualOS devLibVME
 #endif
@@ -380,8 +395,8 @@ devLibVirtualOS toscaVirtualOS = {
     toscaDevLibMapAddr,
     toscaDevLibReadProbe,
     toscaDevLibWriteProbe,
-    toscaDevLibConnectInterruptVME,
-    toscaDevLibDisconnectInterruptVME,
+    toscaDevLibConnectInterrupt,
+    toscaDevLibDisconnectInterrupt,
     toscaDevLibEnableInterruptLevelVME,
     toscaDevLibDisableInterruptLevelVME,
     toscaDevLibA24Malloc,
@@ -392,6 +407,8 @@ devLibVirtualOS toscaVirtualOS = {
 
 static void toscaDevLibRegistrar ()
 {
+    probeMutex = epicsMutexMustCreate();
+    intrListMutex = epicsMutexMustCreate();
     pdevLibVirtualOS = &toscaVirtualOS;
 }
 

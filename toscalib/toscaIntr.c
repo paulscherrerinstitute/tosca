@@ -183,27 +183,30 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
 {
     char* fname;
 
-    debug(" vec=%u function=%s, parameter=%p",
-        vec, fname=symbolName(function,0), parameter), free(fname);
+    debug("intrmask=0x%016llx vec=0x%x function=%s, parameter=%p",
+        intrmask, vec, fname=symbolName(function,0), parameter), free(fname);
 
-    if (vec > 255)
+    if (intrmask & INTR_VME_LVL_ANY)
     {
-        debug("vec %u out of range", vec);
-        errno = EINVAL;
-        return -1;
+        if (vec > 255)
+        {
+            debug("vec %u out of range", vec);
+            errno = EINVAL;
+            return -1;
+        }
     }
     
     #define INSTALL_HANDLER(index, bit)                                                  \
     {                                                                                    \
         struct intr_handler** phandler, *handler;                                        \
-        if (!(handler = malloc(sizeof(struct intr_handler)))) { UNLOCK; return -1;}      \
+        if (!(handler = calloc(1,sizeof(struct intr_handler)))) { UNLOCK; return -1;}    \
         handler->function = function;                                                    \
         handler->parameter = parameter;                                                  \
         handler->next = NULL;                                                            \
         for (phandler = &HANDLERS(index); *phandler; phandler = &(*phandler)->next);     \
         *phandler = handler;                                                             \
             char* fname;                                                                 \
-            debug("%s vec=%u: %s(%p)",                                                   \
+            debug("%s vec=0x%x: %s(%p)",                                                 \
                 toscaIntrBitStr(bit), vec,                                               \
                 fname=symbolName(handler->function,0), handler->parameter), free(fname); \
     }
@@ -212,6 +215,30 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
     FOREACH_MASKBIT(intrmask, vec, INSTALL_HANDLER);
     UNLOCK;
     return 0;
+}
+
+int toscaIntrDisconnectHandler(intrmask_t intrmask, unsigned int vec, void (*function)(), void* parameter)
+{
+    int n = 0;
+    #define REMOVE_HANDLER(index, bit)                             \
+    {                                                              \
+        struct intr_handler** phandler, *handler;                  \
+        phandler = &HANDLERS(index);                               \
+        while (*phandler) {                                        \
+            handler = *phandler;                                   \
+            if (handler->function == function &&                   \
+                (!parameter || parameter == handler->parameter)) { \
+                *phandler = handler->next;                         \
+                n++;                                               \
+                continue;                                          \
+            }                                                      \
+            phandler = &handler->next;                             \
+        }                                                          \
+    }
+    LOCK; /* do not free handler or we need to lock calling of handlers too */
+    FOREACH_MASKBIT(intrmask, vec, REMOVE_HANDLER);
+    UNLOCK;
+    return n;
 }
 
 typedef struct {
@@ -234,8 +261,9 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
             if (status != 0) return status;                \
         }                                                  \
     }
-
+    LOCK;
     FOREACH_MASKBIT(intrmask, vec, REPORT_HANDLER);
+    UNLOCK;
     return 0;
 }
 
@@ -285,7 +313,7 @@ void toscaIntrLoop(void* arg)
         *params.sigmask = *((toscaIntrLoopArg_t*)arg)->sigmask;
     }
     
-    debug("thread start: intrmask=%02llx vec=%u, timeout=%ld.%09ld sec, sigmask=%p",
+    debug("thread start: intrmask=%016llx vec=0x%x, timeout=%ld.%09ld sec, sigmask=%p",
         params.intrmask, params.vec,
         params.timeout ? params.timeout->tv_sec : -1,
         params.timeout ? params.timeout->tv_nsec : 0,
@@ -296,7 +324,7 @@ void toscaIntrLoop(void* arg)
         toscaIntrCallHandlers(intrmask, params.vec);
         toscaIntrReenable(intrmask, params.vec);
     }
-    debug("thread end: intrmask=%02llx vec=%u, timeout=%ld.%09ld sec, sigmask=%p",
+    debug("thread end: intrmask=%016llx vec=0x%x, timeout=%ld.%09ld sec, sigmask=%p",
         params.intrmask, params.vec,
         params.timeout ? params.timeout->tv_sec : -1,
         params.timeout ? params.timeout->tv_nsec : 0,
