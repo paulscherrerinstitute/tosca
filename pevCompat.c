@@ -57,8 +57,14 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     
     if (args[5].ival) /* intrVec */
         l += sprintf(flags+l, "intr=%d ", args[5].ival - (aspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? 0 : 1));
-    if (args[7].ival && l < sizeof(flags) - 6) /* blockMode */
+    if (args[7].ival & 1 && l < sizeof(flags) - 6) /* blockMode */
+    {
         l += sprintf(flags+l, "block ");
+    }
+    if (args[7].ival & 2 && l < sizeof(flags) - 5) /* DMA-only mode */
+    {
+        l += sprintf(flags+l, "DMA=1 ");
+    }
     if (args[4].sval && l < sizeof(flags)) /* protocol */
     {
         if (strstr(args[4].sval, "BLT") || strstr(args[4].sval, "2e"))
