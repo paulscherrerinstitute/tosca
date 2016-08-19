@@ -22,6 +22,8 @@ typedef uint8_t __u8;
 #include "vme.h"
 #include "vme_user.h"
 
+#define VME_BLOCKTRANSFER (VME_SCT|VME_MBLT|VME_BLT|VME_2eVMEFast|VME_2eVME|VME_2eSST320|VME_2eSST267|VME_2eSST160)
+
 #include <epicsExport.h>
 
 int toscaRegDevDebug;
@@ -73,7 +75,9 @@ int toscaRegDevRead(
     regDevTransferComplete callback,
     char* user)
 {
-    if (device->dmaSpace && nelem > device->dmaLimit)
+    if (!nelem || !dlen) return SUCCESS;
+    assert(device->baseaddr != NULL);
+    if (nelem > device->dmaLimit)
     {
         /* TODO: asynchronous DMA transfer? */
         int status = toscaDmaRead(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen, device->swap);
@@ -81,6 +85,7 @@ int toscaRegDevRead(
         return status;
     }
 
+    debug("%s %s:0x%x read %zu x %zu bytes from %p", user, device->name, offset, nelem, dlen, device->baseptr + offset);
     regDevCopy(dlen, nelem, device->baseptr + offset, pdata, NULL, device->swap ? REGDEV_DO_SWAP : REGDEV_NO_SWAP);
     return SUCCESS;
 };
@@ -96,7 +101,7 @@ int toscaRegDevWrite(
     regDevTransferComplete callback,
     char* user)
 {
-    debug("%s %s:0x%x %zu x %zu bytes to %p", user, device->name, offset, nelem, dlen, device->baseptr + offset);
+    if (!nelem || !dlen) return SUCCESS;
     if (pmask == NULL && device->dmaSpace && nelem > device->dmaLimit)
     {
         /* TODO: asynchronous DMA transfer? */
@@ -115,6 +120,8 @@ int toscaRegDevWrite(
         for (i = 0; i < 8/dlen; i++) memcpy((char*)&mask + dlen * i, pmask, dlen);
         pmask = &mask;
     }
+
+    debug("%s %s:0x%x write %zu x %zu bytes to %p", user, device->name, offset, nelem, dlen, device->baseptr + offset);
     regDevCopy(device->swap, nelem*dlen/device->swap, pdata, device->baseptr + offset, pmask, device->swap ? REGDEV_DO_SWAP : REGDEV_NO_SWAP);
     return SUCCESS;
 };
@@ -200,8 +207,6 @@ struct regDevSupport toscaRegDev = {
 
 int toscaRegDevConfigure(const char* name, const char* resource, size_t address, size_t size, const char* flags)
 {
-    unsigned int aspace;
-    volatile void* baseptr;
     regDevice* device;
     const char *p;
     
@@ -238,39 +243,29 @@ int toscaRegDevConfigure(const char* name, const char* resource, size_t address,
         return -1;
     }
 
-    if ((aspace = toscaStrToAddrSpace(resource)) == 0)
-    {
-        error("unknown Tosca resource \"%s\"", resource);
-        return -1;
-    }
-
-    if ((baseptr = toscaMap(aspace, address, size)) == NULL)
-    {
-        error("error mapping Tosca resource \"%s\" address 0x%zx size 0x%zx: %m", resource, address, size);
-        return -1;
-    }
-    
     if ((device = calloc(1, sizeof(regDevice))) == NULL)
     {
         error("cannot allocate device structure: %m");
         return -1;
     }
+
+    if ((device->aspace = toscaStrToAddrSpace(resource)) == 0)
+    {
+        error("unknown Tosca resource \"%s\"", resource);
+        return -1;
+    }
+
     device->name = strdup(name);
-    device->aspace = aspace;
     device->baseaddr = address;
-    device->baseptr = baseptr;
-    if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM|TOSCA_CSR)) device->swap = 4;
+    if (device->aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM|TOSCA_CSR)) device->swap = 4;
     device->blocksize = 512;
     device->dmaLimit = 100;
     device->ivec = -1;
-    if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM))
-    {
-        device->dmaSpace = aspace;
-    }
-    if (aspace & VME_A32)
-    {
+
+    if (device->aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM))
+        device->dmaSpace = device->aspace;
+    if (device->aspace & VME_A32)
         device->dmaSpace  = VME_SCT;
-    }
 
     if (flags)
     {
@@ -288,18 +283,17 @@ int toscaRegDevConfigure(const char* name, const char* resource, size_t address,
         if (strstr(flags, "QL")) device->swap = 8;
 #endif
         debug("swap = %d", device->swap);
-        if (strstr(flags, "block")) device->blockmode = 1;
-        debug("blockmode = %d", device->blockmode);
-        if ((p = strstr(flags, "DMA=")))
+
+        if (strstr(flags, "block"))
         {
-            device->dmaLimit = strtol(p+4, NULL, 0);
-            debug("set DME limit to %d", device->dmaLimit);
+            device->blockmode = 1;
+            device->dmaLimit = 1; /* always */
         }
-        if ((p = strstr(flags, "intr=")))          /* backward compatibility. Better specify V=ivec in the record */
-            device->ivec = strtol(p+5, NULL, 0);
-        if ((p = strstr(flags, "bs=")))
-            device->blocksize = strtol(flags+3, NULL, 0);
-        if ((p = strstr(flags, "SCT")))
+        debug("blockmode = %d", device->blockmode);
+
+        if ((p = strstr(flags, "NODMA")))
+            device->dmaSpace = 0;
+        else if ((p = strstr(flags, "SCT")))
             device->dmaSpace = VME_SCT;
         else if ((p = strstr(flags, "MBLT")))
             device->dmaSpace = VME_MBLT;
@@ -317,20 +311,61 @@ int toscaRegDevConfigure(const char* name, const char* resource, size_t address,
             device->dmaSpace = VME_2eSST267;
         else if ((p = strstr(flags, "2eSST160")))
             device->dmaSpace = VME_2eSST160;
+
+        if ((p = strstr(flags, "DMA=")))
+        {
+            if (!device->dmaSpace)
+                error("flag DMA= given but device has no DMA space");            
+            device->dmaLimit = strtol(p+4, NULL, 0);
+            debug("set DME limit to %d", device->dmaLimit);
+        }
+        debug("dmaLimit = %d", device->dmaLimit);
+
+        if ((p = strstr(flags, "intr=")))          /* backward compatibility. Better specify V=ivec in the record */
+            device->ivec = strtol(p+5, NULL, 0);
+        debug("default interrupt = %d", device->dmaLimit);
+
+        if ((p = strstr(flags, "bs=")))
+        {
+            if (device->dmaSpace & VME_BLOCKTRANSFER)
+                error("flag bs= makes only sense with VME block transfer");
+            device->blocksize = strtol(flags+3, NULL, 0);
+            debug("VME block transfer size = %d", device->blocksize);
+        }
     }
-    if (device->dmaSpace & (VME_SCT|VME_MBLT|VME_BLT|VME_2eVMEFast|VME_2eVME|VME_2eSST320|VME_2eSST267|VME_2eSST160)
-        && !(aspace & VME_A32))
+    if (device->dmaSpace & VME_BLOCKTRANSFER && !(device->aspace & VME_A32))
     {
         error("%s only possible on VME A32 address space",
             toscaDmaTypeToStr(device->dmaSpace));
+        device->dmaSpace = 0;
         return -1;
     }
 
+    if (device->dmaLimit != 1) /* not always DMA */
+    {
+        if ((device->baseptr = toscaMap(device->aspace, address, size)) == NULL)
+        {
+            error("error mapping Tosca resource \"%s\" address 0x%zx size 0x%zx: %m", resource, address, size);
+            return -1;
+        }
+        debug("baseptr = address");
+    }
+    else
+        debug("DMA only");
+
+    if (!device->dmaSpace) device->dmaLimit = 0;
+    if (!device->dmaSpace && !device->baseptr)
+    {
+        error("device has neither DMA nor memory map");
+        return -1;
+    }
+    
     if (regDevRegisterDevice(name, &toscaRegDev, device, size) != SUCCESS)
     {
         error("regDevRegisterDevice() failed");
         return -1;
     }
+    
     regDevRegisterDmaAlloc(device, toscaRegDevDmaAlloc);
 
     return 0;
