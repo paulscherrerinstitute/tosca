@@ -16,7 +16,7 @@ FILE* pevDebugFile = NULL;
 #define error(fmt, ...) fprintf(stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
 
 /* pev compatibility mode */
-extern int toscaDevConfigure(const char* name, const char* resource, size_t addr, size_t size, const char* flags);
+extern int toscaRegDevConfigure(const char* name, const char* resource, size_t addr, size_t size, const char* flags);
 
 static const iocshArg * const pevConfigureArgs[] = {
     &(iocshArg) { "card", iocshArgInt },
@@ -70,9 +70,9 @@ static void pevConfigureFunc(const iocshArgBuf *args)
         l += sprintf(flags+l, "bs=%d ", args[9].ival);
     if (l) flags[l-1] = 0;
     
-    printf("Compatibility mode! pevConfigure call replaced by:\ntoscaDevConfigure %s %s 0x%x 0x%x %s\n",
+    printf("Compatibility mode! pevConfigure call replaced by:\ntoscaRegDevConfigure %s %s 0x%x 0x%x %s\n",
                       args[1].sval, resource, args[3].ival, args[6].ival, flags);
-    toscaDevConfigure(args[1].sval, resource, args[3].ival, args[6].ival, flags);
+    toscaRegDevConfigure(args[1].sval, resource, args[3].ival, args[6].ival, flags);
 }
 
 static void pevRegistrar(void)
