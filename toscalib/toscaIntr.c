@@ -127,8 +127,8 @@ intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct tim
     {                                                                \
         if (FD(index) == 0) {                                        \
             sprintf(filename, name , ## __VA_ARGS__ );               \
-            debug ("open %s", filename);                             \
             FD(index) = open(filename, O_RDWR);                      \
+            debug ("open %s fd= %d", filename, FD(index));           \
             if (FD(index)< 0) debug("open %s failed: %m", filename); \
         }                                                            \
         if (FD(index) >= 0) {                                        \
@@ -164,7 +164,9 @@ intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct tim
     if (intrmask & INTR_VME_ERROR)
         ADD_FD(IX(ERROR), "/dev/toscavmeerror");
 
+    debug("waiting for pselect fdmax=%d", fdmax);
     status = pselect(fdmax + 1, &readfs, NULL, NULL, timeout, sigmask);
+    debug("pselect returned %d", status);
     if (status < 1) return 0; /* Error, timeout, or signal */
 
     #define CHECK_FD(index, bit)                         \
