@@ -6,6 +6,7 @@
 #include <devLib.h>
 #include <epicsMutex.h>
 #include <epicsTypes.h>
+#include <initHooks.h>
 #include "toscaDevLib.h"
 #include <epicsExport.h>
 
@@ -303,45 +304,62 @@ epicsThreadId toscaStartIntrThread(intrmask_t intrmask, unsigned int vec, const 
     return tid;
 }
 
+void toscaDevLibInitHook(initHookState state)
+{
+    intrmask_t intrmask = 0;
+
+    int setIntrMask(toscaIntrHandlerInfo_t info)
+    {
+        intrmask |= info.intrmaskbit;
+        return 0;
+    }
+    
+    debug("int state %d", state);
+    if (state != initHookAfterInterruptAccept) return;
+    toscaIntrForeachHandler(~INTR_VME_LVL_ANY, 0, setIntrMask);
+    debug("intrmask = %llx", intrmask);
+    if (intrmask)
+    {
+        if (!toscaStartIntrThread(intrmask, 0, "irq-TOSCA"))
+            debugErrno("toscaStartIntrThread");
+    }
+}
 
 long toscaDevLibConnectInterrupt(
-    unsigned int vectorNumber,
+    unsigned int vec,
     void (*function)(),
     void *parameter)
 {
     char* fname=NULL;
 
-    debug("vectorNumber=0x%x function=%s, parameter=%p",
-        vectorNumber, fname=symbolName(function,0), parameter), free(fname);
+    debug("vec=0x%x function=%s, parameter=%p",
+        vec, fname=symbolName(function,0), parameter), free(fname);
 
-    if (vectorNumber >= 256+32)
+    if (vec >= 256+32)
     {
-        debug("vectorNumber=0x%x out of range", vectorNumber);
+        debug("vec=0x%x out of range", vec);
         return S_dev_badArgument;
     }
     
     epicsMutexMustLock(intrListMutex);
-    if (!toscaDevLibInterruptThreads[vectorNumber])
+    if (vec < 256 && !toscaDevLibInterruptThreads[vec])
     {
-        toscaDevLibInterruptThreads[vectorNumber] =
-            vectorNumber < 256 ?
-                toscaStartIntrThread(INTR_VME_LVL_ANY, vectorNumber,
-                    "irq-VME%u", vectorNumber) :
-                toscaStartIntrThread(INTR_USER1_INTR(vectorNumber&31), 0,
-                    "irq-USER%u.%u", vectorNumber&16 ? 2 : 1, vectorNumber&15);
-        if (!toscaDevLibInterruptThreads[vectorNumber])
+        toscaDevLibInterruptThreads[vec] =
+                toscaStartIntrThread(INTR_VME_LVL_ANY, vec,
+                    "irq-VME%u", vec);
+        if (!toscaDevLibInterruptThreads[vec])
         {
             debugErrno("toscaStartIntrThread");
             epicsMutexUnlock(intrListMutex);
             return S_dev_noMemory;
         }
     }
-    debug("Connect vector 0x%x interrupt handler to TOSCA", vectorNumber);
+    debug("Connect vector 0x%x interrupt handler to TOSCA", vec);
     if (toscaIntrConnectHandler(
-        vectorNumber < 256 ? INTR_VME_LVL_ANY : INTR_USER1_INTR(vectorNumber&31),
-        vectorNumber, function, parameter) != 0)
+        vec < 256 ? INTR_VME_LVL_ANY : INTR_USER1_INTR(vec&31),
+        vec, function, parameter) != 0)
     {
-        debugErrno("Could not connect vector 0x%x interrupt handler", vectorNumber);
+        debugErrno("Could not connect vector 0x%x interrupt handler", vec);
         epicsMutexUnlock(intrListMutex);
         return S_dev_vecInstlFail;
     }
@@ -350,17 +368,17 @@ long toscaDevLibConnectInterrupt(
 }
 
 long toscaDevLibDisconnectInterrupt(
-    unsigned int vectorNumber,
+    unsigned int vec,
     void (*function)())
 {
     return toscaIntrDisconnectHandler(
-        vectorNumber < 256 ? INTR_VME_LVL_ANY : INTR_USER1_INTR(vectorNumber&31),
-        vectorNumber, function, NULL) ? S_dev_success : S_dev_vectorNotInUse;
+        vec < 256 ? INTR_VME_LVL_ANY : INTR_USER1_INTR(vec&31),
+        vec, function, NULL) ? S_dev_success : S_dev_vectorNotInUse;
 }
 
-int toscaDevLibInterruptInUseVME(unsigned int vectorNumber)
+int toscaDevLibInterruptInUseVME(unsigned int vec)
 {
-    /* Actually this asks if a new handler cannot be connected to vectorNumber.
+    /* Actually this asks if a new handler cannot be connected to vec.
        Since we keep a linked list, a new handler can always be connected.
     */
     return FALSE;
@@ -386,6 +404,7 @@ long toscaDevLibInit(void)
     return S_dev_success;
 }
 
+
 /* compatibility with older versions of EPICS */
 #if defined(pdevLibVirtualOS) && !defined(devLibVirtualOS)
 #define devLibVirtualOS devLibVME
@@ -410,6 +429,7 @@ static void toscaDevLibRegistrar ()
     probeMutex = epicsMutexMustCreate();
     intrListMutex = epicsMutexMustCreate();
     pdevLibVirtualOS = &toscaVirtualOS;
+    initHookRegister(toscaDevLibInitHook);
 }
 
 epicsExportRegistrar(toscaDevLibRegistrar);
