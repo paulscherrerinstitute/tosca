@@ -76,16 +76,18 @@ int toscaRegDevRead(
     char* user)
 {
     if (!nelem || !dlen) return SUCCESS;
-    assert(device->baseaddr != NULL);
+
     if (nelem > device->dmaLimit)
     {
         /* TODO: asynchronous DMA transfer? */
         int status = toscaDmaRead(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen, device->swap);
-        if (status) debugErrno("toscaDmaRead");
+        if (status) debugErrno("toscaDmaRead %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d",
+            user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen, device->swap);
         return status;
     }
 
-    debug("%s %s:0x%x read %zu x %zu bytes from %p", user, device->name, offset, nelem, dlen, device->baseptr + offset);
+    assert(device->baseptr != NULL);
+    assert(pdata != NULL);
     regDevCopy(dlen, nelem, device->baseptr + offset, pdata, NULL, device->swap ? REGDEV_DO_SWAP : REGDEV_NO_SWAP);
     return SUCCESS;
 };
@@ -102,12 +104,13 @@ int toscaRegDevWrite(
     char* user)
 {
     if (!nelem || !dlen) return SUCCESS;
+
     if (pmask == NULL && device->dmaSpace && nelem > device->dmaLimit)
     {
         /* TODO: asynchronous DMA transfer? */
-        debug("toscaDmaWrite");
-        int status = toscaDmaWrite(pdata, device->baseaddr + offset, nelem*dlen, 4, 0);
-        if (status) debugErrno("toscaDmaWrite");
+        int status = toscaDmaWrite(pdata, device->dmaSpace, device->baseaddr + offset, nelem*dlen, device->swap);
+        if (status) debugErrno("toscaDmaWrite %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d",
+            user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen, device->swap);
         return status;
     }
 
@@ -121,7 +124,8 @@ int toscaRegDevWrite(
         pmask = &mask;
     }
 
-    debug("%s %s:0x%x write %zu x %zu bytes to %p", user, device->name, offset, nelem, dlen, device->baseptr + offset);
+    assert(device->baseptr != NULL);
+    assert(pdata != NULL);
     regDevCopy(device->swap, nelem*dlen/device->swap, pdata, device->baseptr + offset, pmask, device->swap ? REGDEV_DO_SWAP : REGDEV_NO_SWAP);
     return SUCCESS;
 };
@@ -287,7 +291,8 @@ int toscaRegDevConfigure(const char* name, const char* resource, size_t address,
         if (strstr(flags, "block"))
         {
             device->blockmode = 1;
-            device->dmaLimit = 1; /* always */
+//          blockmode not yet implemented
+//            device->dmaLimit = 1; /* always */
         }
         debug("blockmode = %d", device->blockmode);
 
@@ -348,7 +353,7 @@ int toscaRegDevConfigure(const char* name, const char* resource, size_t address,
             error("error mapping Tosca resource \"%s\" address 0x%zx size 0x%zx: %m", resource, address, size);
             return -1;
         }
-        debug("baseptr = address");
+        debug("baseptr = %p", device->baseptr);
     }
     else
         debug("DMA only");
