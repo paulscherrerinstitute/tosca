@@ -83,20 +83,15 @@ int toscaIntrDisconnectHandler(intrmask_t intrmask, unsigned int vec, void (*fun
 /* returns number of disconnected handlers */
 
 typedef struct {
-    intrmask_t intrmaskbit;
-    unsigned int vec;
+    intrmask_t intrmaskbit; /* one of the INTR_* bits above */
+    unsigned int index;        /* 0..1826 (16+16+7*256+3), unique for each intr bit (and VME vector) */
+    unsigned int vec;          /* 0...255 for intr  bits in INTR_VME_LVL_ANY, else 0 */
     void (*function)();
     void *parameter;
-    unsigned long long count;
+    unsigned long long count;  /* number of times the interrupt has been received */
 } toscaIntrHandlerInfo_t;
 
 int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t));
-
-int toscaIntrCallHandlers(intrmask_t intrmask, unsigned int vec);
-/* Connected handlers are called from the toscaIntrLoop with three arguments: parameter, intrmaskbit, vec */
-
-int toscaIntrReenable(intrmask_t intrmask, unsigned int vec);
-/* This must be called after the interrupt handlers are done */
 
 /* toscaIntrLoop puts toscaIntrWait, toscaIntrCallHandlers and toscaIntrReenable together in one loop */
 /* Start it in a separate worker thread (one for each VME vec). */
@@ -110,5 +105,6 @@ typedef struct {
 
 void toscaIntrLoop(void* arg);
 /* The arg must be a pointer to a persistent toscaIntrLoopArg_t. */
+
 
 #endif
