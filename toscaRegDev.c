@@ -130,6 +130,35 @@ int toscaRegDevWrite(
     return SUCCESS;
 };
 
+/* Instead of relaying the record processing to a
+   callback thread do it directly in the interrupt
+   handler thread to save one thread context switch.
+*/
+#include <callback.h>
+typedef struct scan_list{
+    epicsMutexId        lock;
+    ELLLIST             list;
+    short               modified;
+} scan_list;
+typedef struct io_scan_list {
+    CALLBACK            callback;
+    scan_list           scan_list;
+    struct io_scan_list *next;
+} io_scan_list;
+
+void toscaScanIoRequest(IOSCANPVT pioscanpvt)
+{
+    int prio;
+    
+    for (prio = 0; prio < 3; prio++) {
+        io_scan_list *piosl = &pioscanpvt[prio];
+        if (ellCount(&piosl->scan_list.list) > 0)
+        {
+            piosl->callback.callback(&piosl->callback);
+        }
+    }
+}
+
 static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t ivec)
 {
     debug("ivec=0x%x", ivec);
@@ -183,7 +212,7 @@ static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t ivec)
     {
         debug("init %s interrupt %d handling", toscaAddrSpaceToStr(device->aspace), ivec&0xff);
         scanIoInit(&device->ioscanpvt[ivec&0xff]);
-        if (toscaDevLibConnectInterrupt(ivec, scanIoRequest, device->ioscanpvt[ivec&0xff]) != 0)
+        if (toscaDevLibConnectInterrupt(ivec, toscaScanIoRequest, device->ioscanpvt[ivec&0xff]) != 0)
         {
             error("toscaDevLibConnectInterrupt(0x%x,...) failed", ivec);
             return NULL;
