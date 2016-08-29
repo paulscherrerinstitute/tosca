@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <epicsTypes.h>
+#include <epicsTime.h>
 #include <iocsh.h>
 #include <epicsExport.h>
 
@@ -11,6 +12,7 @@
 #include "toscaMap.h"
 #include "toscaIntr.h"
 #include "toscaDma.h"
+#include "keypress.h"
 
 static const iocshFuncDef toscaMapDef =
     { "toscaMap", 2, (const iocshArg *[]) {
@@ -194,38 +196,65 @@ static void toscaCsrClearFunc(const iocshArgBuf *args)
 }
 
 static const iocshFuncDef toscaIntrShowDef =
-    { "toscaIntrShow", 0, (const iocshArg *[]) {
+    { "toscaIntrShow", 1, (const iocshArg *[]) {
+    &(iocshArg) { "level(<0:periodic)", iocshArgInt },
 }};
-
-int toscaIntrHandlerPrintInfo(toscaIntrHandlerInfo_t handlerInfo)
-{
-    char* fname;
-    
-    if (handlerInfo.intrmaskbit & INTR_VME_LVL_ANY)
-    {
-        printf("%s %3u %s(%p) %llu\n",
-            toscaIntrBitStr(handlerInfo.intrmaskbit), handlerInfo.vec,
-            fname=symbolName(handlerInfo.function,0), handlerInfo.parameter, handlerInfo.count);
-        free(fname);
-    }
-    else
-    {
-        printf("%s %s(%p) %llu\n",
-            toscaIntrBitStr(handlerInfo.intrmaskbit),
-            fname=symbolName(handlerInfo.function,0), handlerInfo.parameter, handlerInfo.count);
-        free(fname);
-    }
-    
-    return 0;
-}
 
 static void toscaIntrShowFunc(const iocshArgBuf *args)
 {
+    unsigned int level = 0;
+    unsigned int period = 0;
+    int symbolDetail = 0;
+    int installed ;
+    int used;
     unsigned int vec;
+    epicsTimeStamp next, now={0};
+    double waitTime;
     
-    for (vec = 0; vec < 256; vec++)
-        toscaIntrForeachHandler(INTR_VME_LVL_ANY, vec, toscaIntrHandlerPrintInfo);
-    toscaIntrForeachHandler(~INTR_VME_LVL_ANY, 0, toscaIntrHandlerPrintInfo);
+    
+    int toscaIntrHandlerPrintInfo(toscaIntrHandlerInfo_t handlerInfo)
+    {
+        char* fname;
+        unsigned long long delta;
+        static unsigned long long lastcount[32+7*256+3];
+        
+        installed++;
+        if (level == 0 && handlerInfo.count == 0) return 0;
+        used++;
+        
+        delta = handlerInfo.count - lastcount[handlerInfo.index];
+        lastcount[handlerInfo.index] = handlerInfo.count;
+        printf("%s", toscaIntrBitStr(handlerInfo.intrmaskbit));
+        if (handlerInfo.intrmaskbit & INTR_VME_LVL_ANY)
+            printf(".%3u", handlerInfo.vec);
+        printf(" %s",
+            fname=symbolName(handlerInfo.function, symbolDetail));
+        free(fname);
+        if (level >0)
+            printf(" (%p)", handlerInfo.parameter);
+        printf(" count=%llu (+%llu)",
+            handlerInfo.count, delta);
+        if (now.secPastEpoch)
+            printf(" %.2f Hz", (double)delta/period);
+        printf("\n");     
+        return 0;
+    }
+
+    if (args[0].ival >= 0) level = args[0].ival;
+    else period = -args[0].ival;
+    if (level > 1) symbolDetail = level-1;    
+    epicsTimeGetCurrent(&next);
+    do {
+        installed = 0;
+        used = 0;
+        next.secPastEpoch += period;
+        toscaIntrForeachHandler(~INTR_VME_LVL_ANY, 0, toscaIntrHandlerPrintInfo);
+        for (vec = 0; vec < 256; vec++)
+            toscaIntrForeachHandler(INTR_VME_LVL_ANY, vec, toscaIntrHandlerPrintInfo);
+        printf("%d handlers installed, %d in use\n", installed, used);
+        epicsTimeGetCurrent(&now);
+        waitTime = epicsTimeDiffInSeconds(&next,&now);
+    } while (period && waitForKeypress(waitTime) != 1);
 }
 
 
