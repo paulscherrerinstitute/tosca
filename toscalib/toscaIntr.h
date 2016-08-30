@@ -93,7 +93,7 @@ typedef struct {
 
 int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t));
 
-/* toscaIntrLoop puts toscaIntrWait, toscaIntrCallHandlers and toscaIntrReenable together in one loop */
+/* toscaIntrLoop calls toscaIntrWait in a loop */
 /* Start it in a separate worker thread (one for each VME vec). */
 
 typedef struct {
