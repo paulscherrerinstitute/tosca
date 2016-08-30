@@ -11,9 +11,8 @@
 #include <iocsh.h>
 #include <epicsExport.h>
 
-#define debug_internal(m, fmt, ...) if(m##Debug) fprintf(m##DebugFile?m##DebugFile:stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
-#define debugErrno(fmt, ...) debug(fmt " failed: %s", ##__VA_ARGS__, strerror(errno))
-#define debug(fmt, ...) debug_internal(toscaDma, fmt, ##__VA_ARGS__)
+#define TOSCA_DEBUG_NAME toscaUtils
+#include "toscaDebug.h"
 
 extern size_t strToSize(const char* str);
 

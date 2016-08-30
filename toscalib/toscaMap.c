@@ -17,16 +17,12 @@ typedef uint8_t __u8;
 #include "vme_user.h"
 #include "toscaMap.h"
 
+#define TOSCA_DEBUG_NAME toscaMap
+#include "toscaDebug.h"
+
 pthread_mutex_t maplist_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define LOCK pthread_mutex_lock(&maplist_mutex)
 #define UNLOCK pthread_mutex_unlock(&maplist_mutex)
-
-int toscaMapDebug;
-FILE* toscaMapDebugFile = NULL;
-
-#define debug_internal(m, fmt, ...) if(m##Debug) fprintf(m##DebugFile?m##DebugFile:stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
-#define debugErrno(fmt, ...) debug(fmt " failed: %s", ##__VA_ARGS__, strerror(errno))
-#define debug(fmt, ...) debug_internal(toscaMap, fmt, ##__VA_ARGS__)
 
 /* Tosca tries to re-use mapping windows if possible.
  * Unfortunately mmap does not re-use mappings.

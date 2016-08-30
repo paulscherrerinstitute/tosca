@@ -16,13 +16,9 @@
 /* EPICS has no way to request VME supervisory or user mode. Use Supervisory for all maps. */
 #define VME_DEFAULT_MODE VME_SUPER
 
-int toscaDevLibDebug;
+#define TOSCA_DEBUG_NAME toscaDevLib
+#include "toscaDebug.h"
 epicsExportAddress(int, toscaDevLibDebug);
-FILE* toscaDevLibDebugFile = NULL;
-
-#define debug_internal(m, fmt, ...) if(m##Debug) fprintf(m##DebugFile?m##DebugFile:stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
-#define debugErrno(fmt, ...) debug(fmt " failed: %m", ##__VA_ARGS__)
-#define debug(fmt, ...) debug_internal(toscaDevLib, fmt, ##__VA_ARGS__)
 
 /** VME mapping *****************/
 const char* addrTypeName[] = {"atVMEA16","atVMEA24","atVMEA32","atISA","atVMECSR"};

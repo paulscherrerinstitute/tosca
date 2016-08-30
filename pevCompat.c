@@ -6,14 +6,9 @@
 #include <iocsh.h>
 #include <epicsExport.h>
 
-int pevDebug;
+#define TOSCA_DEBUG_NAME pev
+#include "toscaDebug.h"
 epicsExportAddress(int, pevDebug);
-FILE* pevDebugFile = NULL;
-
-#define debug_internal(m, fmt, ...) if(m##Debug) fprintf(m##DebugFile?m##DebugFile:stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
-#define debugErrno(fmt, ...) debug(fmt " failed: %m", ##__VA_ARGS__)
-#define debug(fmt, ...) debug_internal(pev, fmt, ##__VA_ARGS__)
-#define error(fmt, ...) fprintf(stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
 
 /* pev compatibility mode */
 extern int toscaRegDevConfigure(const char* name, const char* resource, size_t addr, size_t size, const char* flags);

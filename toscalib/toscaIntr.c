@@ -14,11 +14,8 @@ pthread_mutex_t handlerlist_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define LOCK pthread_mutex_lock(&handlerlist_mutex)
 #define UNLOCK pthread_mutex_unlock(&handlerlist_mutex)
 
-int toscaIntrDebug;
-FILE* toscaIntrDebugFile = NULL;
-
-#define debug_internal(m, fmt, ...) if(m##Debug) fprintf(m##DebugFile?m##DebugFile:stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
-#define debug(fmt, ...) debug_internal(toscaIntr, fmt, ##__VA_ARGS__)
+#define TOSCA_DEBUG_NAME toscaIntr
+#include "toscaDebug.h"
 
 #define TOSCA_NUM_INTR (32+7*256+3)
 #define TOSCA_INTR_INDX_USER(i)        (i)                            

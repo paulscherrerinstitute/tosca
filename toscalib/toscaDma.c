@@ -18,12 +18,8 @@ typedef uint8_t __u8;
 
 #include "toscaDma.h"
 
-int toscaDmaDebug;
-FILE* toscaDmaDebugFile = NULL;
-
-#define debug_internal(m, fmt, ...) if(m##Debug) fprintf(m##DebugFile?m##DebugFile:stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
-#define debugErrno(fmt, ...) debug(fmt " failed: %s", ##__VA_ARGS__, strerror(errno))
-#define debug(fmt, ...) debug_internal(toscaDma, fmt, ##__VA_ARGS__)
+#define TOSCA_DEBUG_NAME toscaDma
+#include "toscaDebug.h"
 
 const char* toscaDmaRouteToStr(int route)
 {

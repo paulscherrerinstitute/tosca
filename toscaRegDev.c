@@ -26,14 +26,9 @@ typedef uint8_t __u8;
 
 #include <epicsExport.h>
 
-int toscaRegDevDebug;
+#define TOSCA_DEBUG_NAME toscaRegDev
+#include "toscaDebug.h"
 epicsExportAddress(int, toscaRegDevDebug);
-FILE* toscaRegDevDebugFile = NULL;
-
-#define debug_internal(m, fmt, ...) if(m##Debug) fprintf(m##DebugFile?m##DebugFile:stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
-#define debugErrno(fmt, ...) debug(fmt " failed: %m", ##__VA_ARGS__)
-#define debug(fmt, ...) debug_internal(toscaRegDev, fmt, ##__VA_ARGS__)
-#define error(fmt, ...) fprintf(stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
 
 struct regDevice
 {
