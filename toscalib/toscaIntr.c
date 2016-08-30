@@ -17,16 +17,6 @@ pthread_mutex_t handlerlist_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define TOSCA_DEBUG_NAME toscaIntr
 #include "toscaDebug.h"
 
-#define TOSCA_NUM_INTR (32+7*256+3)
-#define TOSCA_INTR_INDX_USER(i)        (i)                            
-#define TOSCA_INTR_INDX_USER1(i)       TOSCA_INTR_INDX_USER(i)
-#define TOSCA_INTR_INDX_USER2(i)       TOSCA_INTR_INDX_USER((i)+16)
-#define TOSCA_INTR_INDX_VME(level,vec) (32+(((level)-1)*256)+(vec))
-#define TOSCA_INTR_INDX_ERR(i)         (32+7*256+(i))
-#define TOSCA_INTR_INDX_SYSFAIL()      TOSCA_INTR_INDX_ERR(0)
-#define TOSCA_INTR_INDX_ACFAIL()       TOSCA_INTR_INDX_ERR(1)
-#define TOSCA_INTR_INDX_ERROR()        TOSCA_INTR_INDX_ERR(2)
-
 struct intr_handler {
     void (*function)();
     void *parameter;
@@ -59,7 +49,7 @@ static struct intr_handler* handlers[TOSCA_NUM_INTR];
         FOR_BITS_IN_MASK(0, 31, IX(USER, i), INTR_USER1_INTR(i), (mask), action) \
 }
 
-const char* toscaIntrBitStr(intrmask_t intrmaskbit)
+const char* toscaIntrBitToStr(intrmask_t intrmaskbit)
 {
     switch(intrmaskbit)
     {
@@ -137,7 +127,7 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
         *phandler = handler;                                                             \
             char* fname;                                                                 \
             debug("%s vec=0x%x: %s(%p)",                                                 \
-                toscaIntrBitStr(bit), vec,                                               \
+                toscaIntrBitToStr(bit), vec,                                             \
                 fname=symbolName(handler->function,0), handler->parameter), free(fname); \
     }
     
@@ -254,7 +244,7 @@ intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct tim
         FOREACH_HANDLER(handler, index) {                     \
             char* fname;                                      \
             debug("%s #%llu %s(%p, %d, %u)",                  \
-                toscaIntrBitStr(bit), COUNT(index),           \
+                toscaIntrBitToStr(bit), COUNT(index),         \
                 fname=symbolName(handler->function,0),        \
                 handler->parameter, i, vec),                  \
                 free(fname);                                  \

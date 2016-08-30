@@ -224,7 +224,7 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
         
         delta = handlerInfo.count - lastcount[handlerInfo.index];
         lastcount[handlerInfo.index] = handlerInfo.count;
-        printf("%s", toscaIntrBitStr(handlerInfo.intrmaskbit));
+        printf("%s", toscaIntrBitToStr(handlerInfo.intrmaskbit));
         if (handlerInfo.intrmaskbit & INTR_VME_LVL_ANY)
             printf(".%3u", handlerInfo.vec);
         printf(" %s",

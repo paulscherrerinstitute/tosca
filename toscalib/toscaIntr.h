@@ -6,6 +6,19 @@
 
 extern int toscaIntrDebug;
 
+/* index for arrays of interrupts */
+#define TOSCA_NUM_INTR (16+16+7*256+3)
+#define TOSCA_INTR_INDX_USER(i)        (i)                            
+#define TOSCA_INTR_INDX_USER1(i)       TOSCA_INTR_INDX_USER(i)
+#define TOSCA_INTR_INDX_USER2(i)       TOSCA_INTR_INDX_USER((i)+16)
+#define TOSCA_INTR_INDX_VME(level,vec) (32+(((level)-1)*256)+(vec))
+#define TOSCA_INTR_INDX_ERR(i)         (32+7*256+(i))
+#define TOSCA_INTR_INDX_SYSFAIL()      TOSCA_INTR_INDX_ERR(0)
+#define TOSCA_INTR_INDX_ACFAIL()       TOSCA_INTR_INDX_ERR(1)
+#define TOSCA_INTR_INDX_ERROR()        TOSCA_INTR_INDX_ERR(2)
+
+
+/* interrupt masks */
 typedef uint64_t intrmask_t;
 
 #define INTR_VME_LVL_1       0x01ULL
@@ -61,18 +74,18 @@ typedef uint64_t intrmask_t;
 #define INTR_USER2_INTR(n) (INTR_USER2_INTR0<<(n))
 #define INTR_USER2_ANY      0xffff000000000000ULL
 
-const char* toscaIntrBitStr(intrmask_t intrmaskbit);
+const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
 
 intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct timespec *timeout, const sigset_t *sigmask);
 #define toscaIntrWaitVME(vec) toscaIntrWait(INTR_VME_LVL_ANY, vec, NULL, NULL)
 #define toscaIntrWaitUSR1() toscaIntrWait(INTR_USER1_ANY, 0, NULL, NULL)
 #define toscaIntrWaitUSR2() toscaIntrWait(INTR_USER2_ANY, 0, NULL, NULL)
-
+/* waits for interrupts, calls connected handlers and re-enables interrupts */
 /* intrmask is any combination of the INTR_* bits */
 /* vec is for VME_LVL_* only and is ignored for other INTR_* bits */
 /* timeout may be NULL to wait forever */
 /* sigmask may be NULL not to wait for signals */
-/* returns a handle to be used in other functions or 0 on timeout, signal or error */
+/* returns mask of received interrupts or 0 on timeout, signal or error */
 
 int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*function)(), void* parameter);
 #define toscaIntrConnectHandlerVME(vec, function, parameter) toscaIntrConnectHandler(INTR_VME_LVL_ANY, vec, function, parameter)
@@ -83,9 +96,9 @@ int toscaIntrDisconnectHandler(intrmask_t intrmask, unsigned int vec, void (*fun
 /* returns number of disconnected handlers */
 
 typedef struct {
-    intrmask_t intrmaskbit; /* one of the INTR_* bits above */
-    unsigned int index;        /* 0..1826 (16+16+7*256+3), unique for each intr bit (and VME vector) */
-    unsigned int vec;          /* 0...255 for intr  bits in INTR_VME_LVL_ANY, else 0 */
+    intrmask_t intrmaskbit;    /* one of the INTR_* bits above */
+    unsigned int index;        /* 0...TOSCA_NUM_INTR-1, unique for each intr bit (and VME vector) */
+    unsigned int vec;          /* 0...255 for intr bits in INTR_VME_LVL_ANY, else 0 */
     void (*function)();
     void *parameter;
     unsigned long long count;  /* number of times the interrupt has been received */
