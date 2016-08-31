@@ -72,7 +72,7 @@ int toscaRegDevRead(
 {
     if (!nelem || !dlen) return SUCCESS;
 
-    if (nelem > device->dmaLimit)
+    if (device->dmaSpace && nelem > device->dmaLimit)
     {
         /* TODO: asynchronous DMA transfer? */
         int status = toscaDmaRead(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen, device->swap);
