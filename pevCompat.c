@@ -80,6 +80,7 @@ static void pevRegistrar(void)
 {
     iocshRegister(&pevConfigureDef, pevConfigureFunc);
     iocshRegister(&pevAsynConfigureDef, pevConfigureFunc);
+    toscaRegDevConfigure("pev_csr","TCSR",0,0x2000,NULL);
 }
 
 epicsExportRegistrar(pevRegistrar);
