@@ -246,7 +246,7 @@ int toscaRegDevConfigure(const char* name, const char* resource, size_t address,
                "flags:\n"
                "   - swap: NS (none), WS (word), DS (double word) QS (quad word)\n"
                "           WL, WB, DL, DB, QB, QB (convert to/from little/big endian)\n"
-               "       (Default for VME modes is NS, for others DL)\n"
+               "       (Default for TCSR and USER* is DL, for others NS)\n"
                "   - DMA mode element minimum: DMA[=xxx]\n"
                "       (0:never, 1:always, default:100)\n"
                "   - block mode: block\n"
@@ -285,7 +285,7 @@ int toscaRegDevConfigure(const char* name, const char* resource, size_t address,
 
     device->name = strdup(name);
     device->baseaddr = address;
-    if (device->aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM|TOSCA_CSR)) device->swap = 4;
+    if (device->aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_CSR)) device->swap = 4;
     device->blocksize = 512;
     device->dmaLimit = 100;
     device->ivec = -1;
