@@ -231,9 +231,9 @@ intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct tim
     if (intrmask & INTR_VME_ERROR)
         ADD_FD(IX(ERROR), "/dev/toscavmeerror");
 
-    debug("waiting for pselect fdmax=%d", fdmax);
+    debugLvl(2,"waiting for pselect fdmax=%d", fdmax);
     status = pselect(fdmax + 1, &readfs, NULL, NULL, timeout, sigmask);
-    debug("pselect returned %d", status);
+    debugLvl(2,"pselect returned %d", status);
     if (status < 1) return 0; /* Error, timeout, or signal */
 
     #define HANDLE_INTERRUPTS(index, bit)                     \
@@ -243,7 +243,7 @@ intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct tim
         COUNT(index)++;                                       \
         FOREACH_HANDLER(handler, index) {                     \
             char* fname;                                      \
-            debug("%s #%llu %s(%p, %d, %u)",                  \
+            debugLvl(2,"%s #%llu %s(%p, %d, %u)",             \
                 toscaIntrBitToStr(bit), COUNT(index),         \
                 fname=symbolName(handler->function,0),        \
                 handler->parameter, i, vec),                  \
