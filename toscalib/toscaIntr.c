@@ -1,6 +1,5 @@
 #undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L /* needed for pselect */
-#include <sys/select.h>
 #include <sys/epoll.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -110,17 +109,22 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
     debug("intrmask=0x%016llx vec=0x%x function=%s, parameter=%p epollfd=%d",
         intrmask, vec, fname=symbolName(function,0), parameter, epollfd), free(fname);
 
-    #define ADD_FD(index, name, ...)                                      \
-    {                                                                     \
-        if (intr_fd[index] == 0) {                                        \
-            sprintf(filename, name , ## __VA_ARGS__ );                    \
-            intr_fd[index] = open(filename, O_RDWR);                      \
-            debug ("open %s fd= %d", filename, intr_fd[index]);           \
-            if (intr_fd[index]< 0) debug("open %s failed: %m", filename); \
-            ev.data.u32 = index;                                          \
-            if (epoll_ctl(epollfd,EPOLL_CTL_ADD,intr_fd[index],&ev))      \
-                debugErrno("epoll");                                      \
-        }                                                                 \
+    #define ADD_FD(index, name, ...)                                   \
+    {                                                                  \
+        if (intr_fd[index] == 0) {                                     \
+            sprintf(filename, name , ## __VA_ARGS__ );                 \
+            intr_fd[index] = open(filename, O_RDWR);                   \
+            debug ("open %s fd= %d", filename, intr_fd[index]);        \
+            if (intr_fd[index] < 0) {                                  \
+                debugErrno("open %s", filename);                       \
+                return -1                ;                             \
+            }                                                          \
+            ev.data.u32 = index;                                       \
+            if (epoll_ctl(epollfd,EPOLL_CTL_ADD,intr_fd[index],&ev)) { \
+                debugErrno("epoll");                                   \
+                return -1;                                             \
+            }                                                          \
+        }                                                              \
     }
 
     if (intrmask & (INTR_USER1_ANY | INTR_USER2_ANY))
@@ -216,8 +220,7 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
 
 void toscaIntrLoop()
 {
-    int i;
-    int nevents;
+    int i, n;
     struct epoll_event events[EPOLL_EVENTS];
     int index;
     int inum, vec;
@@ -226,11 +229,11 @@ void toscaIntrLoop()
     while (1)
     {
         debugLvl(2,"waiting for interrupts");
-        nevents = epoll_wait(epollfd, events, EPOLL_EVENTS, -1);
-        debugLvl(2,"epoll_wait returned %d", nevents);
-        if (nevents < 1)
+        n = epoll_wait(epollfd, events, EPOLL_EVENTS, -1);
+        debugLvl(2,"epoll_wait returned %d", n);
+        if (n < 1)
             debugErrno("epoll_wait");
-        for(i = 0; i < nevents; i++)
+        for(i = 0; i < n; i++)
         {
             struct intr_handler* handler;
             index=events[i].data.u32;
