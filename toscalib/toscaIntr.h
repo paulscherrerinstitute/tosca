@@ -76,6 +76,8 @@ typedef uint64_t intrmask_t;
 
 const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
 
+#define INTR_INDEX_TO_BIT(i) ((i)<32?INTR_USER1_INTR(i):(i)>=TOSCA_INTR_INDX_ERR(0)?INTR_VME_FAIL((i)-TOSCA_INTR_INDX_ERR(0)):(((i)-32)>>8)+1)
+
 intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct timespec *timeout, const sigset_t *sigmask);
 #define toscaIntrWaitVME(vec) toscaIntrWait(INTR_VME_LVL_ANY, vec, NULL, NULL)
 #define toscaIntrWaitUSR1() toscaIntrWait(INTR_USER1_ANY, 0, NULL, NULL)
@@ -106,18 +108,10 @@ typedef struct {
 
 int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t));
 
-/* toscaIntrLoop calls toscaIntrWait in a loop */
-/* Start it in a separate worker thread (one for each VME vec). */
+/* toscaIntrLoop handles the interrupts and calls installed handlers */
+/* Start it in a worker thread. */
 
-typedef struct {
-    intrmask_t intrmask;
-    unsigned int vec;
-    struct timespec *timeout;
-    sigset_t* sigmask;
-} toscaIntrLoopArg_t;
-
-void toscaIntrLoop(void* arg);
-/* The arg must be a pointer to a persistent toscaIntrLoopArg_t. */
+void toscaIntrLoop();
 
 
 #endif
