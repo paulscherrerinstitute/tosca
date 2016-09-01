@@ -1,6 +1,7 @@
+#define _GNU_SOURCE
 #undef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200112L /* needed for pselect */
 #include <sys/select.h>
+#include <sys/socket.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -11,8 +12,11 @@
 #include "toscaIntr.h"
 
 pthread_mutex_t handlerlist_mutex = PTHREAD_MUTEX_INITIALIZER;
-#define LOCK pthread_mutex_lock(&handlerlist_mutex)
-#define UNLOCK pthread_mutex_unlock(&handlerlist_mutex)
+#define sLOCK pthread_mutex_lock(&handlerlist_mutex)
+#define sUNLOCK pthread_mutex_unlock(&handlerlist_mutex)
+
+#define LOCK
+#define UNLOCK
 
 #define TOSCA_DEBUG_NAME toscaIntr
 #include "toscaDebug.h"
@@ -23,15 +27,15 @@ struct intr_handler {
     struct intr_handler* next;
 };
 
-static int intr_fd[TOSCA_NUM_INTR];
+static int newIntrFd[2];
+static fd_set intrFdSet;
+static int intrFdMax = -1;
+static int intrFd[TOSCA_NUM_INTR];
 static unsigned long long intrCount[TOSCA_NUM_INTR];
 static struct intr_handler* handlers[TOSCA_NUM_INTR];
 
 #define IX(src,...) TOSCA_INTR_INDX_##src(__VA_ARGS__)
-#define FD(index) intr_fd[index]
-#define COUNT(index) intrCount[index]
-#define HANDLERS(index) handlers[index]
-#define FOREACH_HANDLER(h, index) for(h = HANDLERS(index); h; h = h->next)
+#define FOREACH_HANDLER(h, index) for(h = handlers[index]; h; h = h->next)
 
 #define FOR_BITS_IN_MASK(first, last, index, maskbit, mask, action) \
     { int i; for (i=first; i <= last; i++) if (mask & maskbit) action(index, maskbit) }
@@ -99,42 +103,93 @@ const char* toscaIntrBitToStr(intrmask_t intrmaskbit)
     }  
 }
 
+int toscaIntrMonitorFile(int index, const char* filename)
+{
+    intrFd[index] = open(filename, O_RDWR);
+    debug ("open %s fd=%d", filename, intrFd[index]);
+    if (intrFd[index] < 0)
+    {
+        debugErrno("open %s", filename);
+        return -1;
+    } 
+    if (intrFd[index] >= FD_SETSIZE)
+    {
+        debug("%s fd %d loo large for select", filename, intrFd[index]);
+        return -1;
+    }
+    FD_SET(intrFd[index], &intrFdSet);
+    if (intrFd[index] > intrFdMax) intrFdMax = intrFd[index];
+    if (write(newIntrFd[1], &filename, 1) != 1)
+        debugErrno("write newIntrFd[1]=%d", newIntrFd[1]);
+    return 0;
+}
+
 int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*function)(), void* parameter)
 {
     char* fname;
+    int i;
+    char filename[30];
+    int status = 0;
+    static int count = 0;
 
-    debug("intrmask=0x%016llx vec=0x%x function=%s, parameter=%p",
-        intrmask, vec, fname=symbolName(function,0), parameter), free(fname);
+    debug("intrmask=0x%016llx vec=0x%x function=%s, parameter=%p intrFdMax=%d count=%d",
+        intrmask, vec, fname=symbolName(function,0), parameter, intrFdMax, count++), free(fname);
+    LOCK; /* only need to lock installation, not calling of handlers */
 
+    #define ADD_FD(index, name, ...)                                      \
+    {                                                                     \
+        if (intrFd[index] == 0) {                                         \
+            sprintf(filename, name , ## __VA_ARGS__ );                    \
+            status |= toscaIntrMonitorFile(index, filename);              \
+        }                                                                 \
+    }
+
+    if (intrmask & (INTR_USER1_ANY | INTR_USER2_ANY))
+        for (i = 0; i < 32; i++)
+        {
+            if (intrmask & INTR_USER1_INTR(i))
+                ADD_FD(IX(USER, i), "/dev/toscauserevent%u.%u", i & INTR_USER2_ANY ? 2 : 1, i & 15);
+        }
     if (intrmask & INTR_VME_LVL_ANY)
     {
         if (vec > 255)
         {
             debug("vec %u out of range", vec);
             errno = EINVAL;
-            return -1;
+            status = -1;
+        }
+        else
+        for (i = 1; i <= 7; i++)
+        {
+            if (intrmask & INTR_VME_LVL(i))
+                ADD_FD(IX(VME, i, vec), "/dev/toscavmeevent%u.%u", i, vec);
         }
     }
-    
+    if (intrmask & INTR_VME_SYSFAIL)
+        ADD_FD(IX(SYSFAIL), "/dev/toscavmesysfail");
+    if (intrmask & INTR_VME_ACFAIL)
+        ADD_FD(IX(ACFAIL), "/dev/toscavmeacfail");
+    if (intrmask & INTR_VME_ERROR)
+        ADD_FD(IX(ERROR), "/dev/toscavmeerror");
+
     #define INSTALL_HANDLER(index, bit)                                                  \
     {                                                                                    \
         struct intr_handler** phandler, *handler;                                        \
-        if (!(handler = calloc(1,sizeof(struct intr_handler)))) { UNLOCK; return -1;}    \
+        if (!(handler = calloc(1,sizeof(struct intr_handler)))) {                        \
+            debugErrno("calloc"); status = -1; break; }                                  \
         handler->function = function;                                                    \
         handler->parameter = parameter;                                                  \
         handler->next = NULL;                                                            \
-        for (phandler = &HANDLERS(index); *phandler; phandler = &(*phandler)->next);     \
+        for (phandler = &handlers[index]; *phandler; phandler = &(*phandler)->next);     \
         *phandler = handler;                                                             \
-            char* fname;                                                                 \
             debug("%s vec=0x%x: %s(%p)",                                                 \
                 toscaIntrBitToStr(bit), vec,                                             \
                 fname=symbolName(handler->function,0), handler->parameter), free(fname); \
     }
     
-    LOCK; /* only need to lock installation, not calling of handlers */
     FOREACH_MASKBIT(intrmask, vec, INSTALL_HANDLER);
     UNLOCK;
-    return 0;
+    return status;
 }
 
 int toscaIntrDisconnectHandler(intrmask_t intrmask, unsigned int vec, void (*function)(), void* parameter)
@@ -143,7 +198,7 @@ int toscaIntrDisconnectHandler(intrmask_t intrmask, unsigned int vec, void (*fun
     #define REMOVE_HANDLER(index, bit)                             \
     {                                                              \
         struct intr_handler** phandler, *handler;                  \
-        phandler = &HANDLERS(index);                               \
+        phandler = &handlers[index];                               \
         while (*phandler) {                                        \
             handler = *phandler;                                   \
             if (handler->function == function &&                   \
@@ -169,7 +224,7 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
         FOREACH_HANDLER(handler, index) {                  \
             int status = callback((toscaIntrHandlerInfo_t) \
                 {bit, index, vec, handler->function,       \
-                 handler->parameter, COUNT(index)});       \
+                 handler->parameter, intrCount[index]});   \
             if (status != 0) return status;                \
         }                                                  \
     }
@@ -179,110 +234,61 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
     return 0;
 }
 
-intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct timespec *timeout, const sigset_t *sigmask)
+void toscaIntrLoop()
 {
-    fd_set readfs;
-    int fdmax = -1;
-    int i;
-    char filename[30];
-    int status;
-    intrmask_t received = 0;
+    int n, index, inum, vec;
+    fd_set read_fs;
 
-    FD_ZERO(&readfs);
-
-    #define ADD_FD(index, name, ...)                                 \
-    {                                                                \
-        if (FD(index) == 0) {                                        \
-            sprintf(filename, name , ## __VA_ARGS__ );               \
-            FD(index) = open(filename, O_RDWR);                      \
-            debug ("open %s fd= %d", filename, FD(index));           \
-            if (FD(index)< 0) debug("open %s failed: %m", filename); \
-        }                                                            \
-        if (FD(index) >= 0) {                                        \
-            FD_SET(FD(index), &readfs);                              \
-            if (FD(index) > fdmax) fdmax = FD(index);                \
-        }                                                            \
-    }
-
-    if (intrmask & (INTR_USER1_ANY | INTR_USER2_ANY))
-        for (i = 0; i < 32; i++)
-        {
-            if (!(intrmask & INTR_USER1_INTR(i))) continue;
-            ADD_FD(IX(USER, i), "/dev/toscauserevent%u.%u", i & INTR_USER2_ANY ? 2 : 1, i & 15);
-        }
-    if (intrmask & INTR_VME_LVL_ANY)
+    debug("starting interrupt handling");
+    while (1)
     {
-        if (vec > 255)
+        read_fs = intrFdSet;
+        debugLvl(2,"waiting for interrupts intrFdMax=%d", intrFdMax);
+        n = select(intrFdMax + 1, &read_fs, NULL, NULL, NULL);
+        debugLvl(2,"select returned %d", n);
+        if (n < 1)
+            debugErrno("select");
+        if (FD_ISSET(newIntrFd[0], &read_fs))
         {
-            debug("illegal VME vector number %u", vec);
-            return 0;
+            int dummy;
+            debugLvl(1, "new fd notification on newIntrFd[0]=%d", newIntrFd[0]);
+            /* we have a new fd in the intrFdSet and need to restart select */
+            if (read(newIntrFd[0], &dummy, sizeof(dummy)) < 0)
+                debugErrno("read newIntrFd[0]=%d", newIntrFd[0]);
+            n--;
         }
-
-        for (i = 1; i <= 7; i++)
+        for (index=0; index < TOSCA_NUM_INTR && n > 0; index++)
         {
-            if (!(intrmask & INTR_VME_LVL(i))) continue;
-            ADD_FD(IX(VME, i, vec), "/dev/toscavmeevent%u.%u", i, vec);
+            debugLvl(2, "checking index %d, n=%d", index, n);
+            if (intrFd[index] > 0 && FD_ISSET(intrFd[index], &read_fs))
+            {
+                struct intr_handler* handler;
+                inum = INTR_INDEX_TO_INUM(index);
+                vec = INTR_INDEX_TO_IVEC(index);
+                intrCount[index]++;
+                FOREACH_HANDLER(handler, index) {
+                    char* fname;
+                    debugLvl(2, "index 0x%x fd=%d %s, #%llu %s(%p, %d, %u)",
+                        index,
+                        intrFd[index],
+                        toscaIntrBitToStr(INTR_INDEX_TO_BIT(index)),
+                        intrCount[index],
+                        fname=symbolName(handler->function,0),
+                        handler->parameter, inum, vec),
+                        free(fname);
+                    handler->function(handler->parameter, inum, vec);
+                }
+                write(intrFd[index], NULL, 0);  /* re-enable interrupt */
+                n--;
+            }
         }
     }
-    if (intrmask & INTR_VME_SYSFAIL)
-        ADD_FD(IX(SYSFAIL), "/dev/toscavmesysfail");
-    if (intrmask & INTR_VME_ACFAIL)
-        ADD_FD(IX(ACFAIL), "/dev/toscavmeacfail");
-    if (intrmask & INTR_VME_ERROR)
-        ADD_FD(IX(ERROR), "/dev/toscavmeerror");
-
-    debugLvl(2,"waiting for pselect fdmax=%d", fdmax);
-    status = pselect(fdmax + 1, &readfs, NULL, NULL, timeout, sigmask);
-    debugLvl(2,"pselect returned %d", status);
-    if (status < 1) return 0; /* Error, timeout, or signal */
-
-    #define HANDLE_INTERRUPTS(index, bit)                     \
-    if (FD(index) > 0 && FD_ISSET(FD(index), &readfs)) {      \
-        struct intr_handler* handler;                         \
-        received |= bit;                                      \
-        COUNT(index)++;                                       \
-        FOREACH_HANDLER(handler, index) {                     \
-            char* fname;                                      \
-            debugLvl(2,"%s #%llu %s(%p, %d, %u)",             \
-                toscaIntrBitToStr(bit), COUNT(index),         \
-                fname=symbolName(handler->function,0),        \
-                handler->parameter, i, vec),                  \
-                free(fname);                                  \
-            handler->function(handler->parameter, i, vec);    \
-        }                                                     \
-        write(FD(index), NULL, 0);  /* re-enable interrupt */ \
-    }
-
-    FOREACH_MASKBIT(intrmask, vec, HANDLE_INTERRUPTS);
-    return received;
 }
 
-void toscaIntrLoop(void* arg)
+void toscaIntrInit () __attribute__((constructor));
+void toscaIntrInit ()
 {
-    intrmask_t intrmask;
-    toscaIntrLoopArg_t params = *(toscaIntrLoopArg_t*)arg;
-    if (params.timeout)
-    {
-        params.timeout = malloc(sizeof(*params.timeout));
-        *params.timeout = *((toscaIntrLoopArg_t*)arg)->timeout;
-    }
-    if (params.sigmask)
-    {
-        params.sigmask = malloc(sizeof(*params.sigmask));
-        *params.sigmask = *((toscaIntrLoopArg_t*)arg)->sigmask;
-    }
-    
-    debug("thread start: intrmask=%016llx vec=0x%x, timeout=%ld.%09ld sec, sigmask=%p",
-        params.intrmask, params.vec,
-        params.timeout ? params.timeout->tv_sec : -1,
-        params.timeout ? params.timeout->tv_nsec : 0,
-        params.sigmask);
-
-    while ((intrmask = toscaIntrWait(params.intrmask, params.vec, params.timeout, params.sigmask)) != 0);
-    debug("thread end: intrmask=%016llx vec=0x%x, timeout=%ld.%09ld sec, sigmask=%p",
-        params.intrmask, params.vec,
-        params.timeout ? params.timeout->tv_sec : -1,
-        params.timeout ? params.timeout->tv_nsec : 0,
-        params.sigmask);
+    pipe2(newIntrFd,O_NONBLOCK);
+    intrFdMax = newIntrFd[0];
+    FD_SET(newIntrFd[0], &intrFdSet);
 }
-

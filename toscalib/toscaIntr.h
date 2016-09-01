@@ -28,12 +28,12 @@ typedef uint64_t intrmask_t;
 #define INTR_VME_LVL_5       0x10ULL
 #define INTR_VME_LVL_6       0x20ULL
 #define INTR_VME_LVL_7       0x40ULL
-#define INTR_VME_LVL(n)    (INTR_VME_LVL_1<<((n)-1))
+#define INTR_VME_LVL(n)    (INTR_VME_LVL_1<<((n)-1)) /* n = 1...7 */
 #define INTR_VME_LVL_ANY     0x7fULL
 #define INTR_VME_SYSFAIL    0x100ULL
 #define INTR_VME_ACFAIL     0x200ULL
 #define INTR_VME_ERROR      0x400ULL
-#define INTR_VME_FAIL(n)   (INTR_VME_SYSFAIL<<(n))
+#define INTR_VME_FAIL(n)   (INTR_VME_SYSFAIL<<(n)) /* n = 0...2 */
 #define INTR_VME_FAIL_ANY   0x700ULL
 
 #define INTR_USER1_INTR0    0x000100000000ULL
@@ -52,7 +52,7 @@ typedef uint64_t intrmask_t;
 #define INTR_USER1_INTR13   0x200000000000ULL
 #define INTR_USER1_INTR14   0x400000000000ULL
 #define INTR_USER1_INTR15   0x800000000000ULL
-#define INTR_USER1_INTR(n) (INTR_USER1_INTR0<<(n))
+#define INTR_USER1_INTR(n) (INTR_USER1_INTR0<<(n)) /* n = 0...31 */
 #define INTR_USER1_ANY      0xffff00000000ULL
 
 #define INTR_USER2_INTR0    0x0001000000000000ULL
@@ -71,21 +71,15 @@ typedef uint64_t intrmask_t;
 #define INTR_USER2_INTR13   0x2000000000000000ULL
 #define INTR_USER2_INTR14   0x4000000000000000ULL
 #define INTR_USER2_INTR15   0x8000000000000000ULL
-#define INTR_USER2_INTR(n) (INTR_USER2_INTR0<<(n))
+#define INTR_USER2_INTR(n) (INTR_USER2_INTR0<<(n)) /* n = 0...15 */
 #define INTR_USER2_ANY      0xffff000000000000ULL
 
-const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
+#define INTR_INDEX_TO_BIT(i) ((i)<32?INTR_USER1_INTR(i):(i)>=TOSCA_INTR_INDX_ERR(0)?INTR_VME_FAIL((i)-TOSCA_INTR_INDX_ERR(0)):INTR_VME_LVL(((i)-32)>>8)+1)
+#define INTR_INDEX_TO_INUM(i) (i)<32?(i)&31:(i)>=TOSCA_INTR_INDX_ERR(0)?(i)-TOSCA_INTR_INDX_ERR(0):(((i)-32)>>8)+1;
+#define INTR_INDEX_TO_IVEC(i) (i)<32||(i)>=TOSCA_INTR_INDX_ERR(0)?0:((i)-32)&255;
 
-intrmask_t toscaIntrWait(intrmask_t intrmask, unsigned int vec, const struct timespec *timeout, const sigset_t *sigmask);
-#define toscaIntrWaitVME(vec) toscaIntrWait(INTR_VME_LVL_ANY, vec, NULL, NULL)
-#define toscaIntrWaitUSR1() toscaIntrWait(INTR_USER1_ANY, 0, NULL, NULL)
-#define toscaIntrWaitUSR2() toscaIntrWait(INTR_USER2_ANY, 0, NULL, NULL)
-/* waits for interrupts, calls connected handlers and re-enables interrupts */
-/* intrmask is any combination of the INTR_* bits */
-/* vec is for VME_LVL_* only and is ignored for other INTR_* bits */
-/* timeout may be NULL to wait forever */
-/* sigmask may be NULL not to wait for signals */
-/* returns mask of received interrupts or 0 on timeout, signal or error */
+const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
+#define toscaIntrIndexToStr(i) toscaIntrBitToStr(INTR_INDEX_TO_BIT(i))
 
 int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*function)(), void* parameter);
 #define toscaIntrConnectHandlerVME(vec, function, parameter) toscaIntrConnectHandler(INTR_VME_LVL_ANY, vec, function, parameter)
@@ -94,6 +88,10 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
 int toscaIntrDisconnectHandler(intrmask_t intrmask, unsigned int vec, void (*function)(), void* parameter);
 /* check parameter only if it is not NULL */
 /* returns number of disconnected handlers */
+
+void toscaIntrLoop();
+/* handles the interrupts and calls installed handlers */
+/* Start it in a worker thread. */
 
 typedef struct {
     intrmask_t intrmaskbit;    /* one of the INTR_* bits above */
@@ -105,19 +103,7 @@ typedef struct {
 } toscaIntrHandlerInfo_t;
 
 int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t));
-
-/* toscaIntrLoop calls toscaIntrWait in a loop */
-/* Start it in a separate worker thread (one for each VME vec). */
-
-typedef struct {
-    intrmask_t intrmask;
-    unsigned int vec;
-    struct timespec *timeout;
-    sigset_t* sigmask;
-} toscaIntrLoopArg_t;
-
-void toscaIntrLoop(void* arg);
-/* The arg must be a pointer to a persistent toscaIntrLoopArg_t. */
-
+/* calls callback for each installed handler that matches intrmask (and vec for VME) until a callback returns not 0 */
+/* returns what the last callback had returned */
 
 #endif
