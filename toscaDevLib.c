@@ -6,7 +6,6 @@
 #include <devLib.h>
 #include <epicsMutex.h>
 #include <epicsTypes.h>
-#include <initHooks.h>
 #include "toscaDevLib.h"
 #include <epicsExport.h>
 
@@ -267,100 +266,15 @@ long toscaDevLibEnableInterruptLevelVME(unsigned int level)
 
 int toscaIntrPrio = 80;
 epicsExportAddress(int, toscaIntrPrio);
-epicsMutexId intrListMutex;
-epicsThreadId toscaDevLibInterruptThreads[256+32];
-
-
-epicsThreadId toscaStartIntrThread(intrmask_t intrmask, unsigned int vec, const char* threadname, ...)
-{
-    epicsThreadId tid;
-    va_list ap;
-    char *name = NULL;
-    toscaIntrLoopArg_t* theadArgs = calloc(1, sizeof(toscaIntrLoopArg_t));
-    if (!theadArgs)
-    {
-        debugErrno("calloc theadArgs");
-        return NULL;
-    }
-    theadArgs->intrmask = intrmask;
-    theadArgs->vec = vec;
-    va_start(ap, threadname);
-    vasprintf(&name, threadname, ap);
-    va_end(ap);    
-    debug("starting handler thread %s", name);
-    tid = epicsThreadCreate(name, toscaIntrPrio,
-        epicsThreadGetStackSize(epicsThreadStackSmall),
-        toscaIntrLoop, theadArgs);
-    if (!tid)
-    {
-        debugErrno("starting handler thread %s", name);
-    }
-    free(name);
-    debug("tid = %p", tid);
-    return tid;
-}
-
-void toscaDevLibInitHook(initHookState state)
-{
-    intrmask_t intrmask = 0;
-
-    int setIntrMask(toscaIntrHandlerInfo_t info)
-    {
-        intrmask |= info.intrmaskbit;
-        return 0;
-    }
-    
-    debug("int state %d", state);
-    if (state != initHookAfterInterruptAccept) return;
-    toscaIntrForeachHandler(~INTR_VME_LVL_ANY, 0, setIntrMask);
-    debug("intrmask = %llx", intrmask);
-    if (intrmask)
-    {
-        if (!toscaStartIntrThread(intrmask, 0, "irq-TOSCA"))
-            debugErrno("toscaStartIntrThread");
-    }
-}
 
 long toscaDevLibConnectInterrupt(
     unsigned int vec,
     void (*function)(),
     void *parameter)
 {
-    char* fname=NULL;
-
-    debug("vec=0x%x function=%s, parameter=%p",
-        vec, fname=symbolName(function,0), parameter), free(fname);
-
-    if (vec >= 256+32)
-    {
-        debug("vec=0x%x out of range", vec);
-        return S_dev_badArgument;
-    }
-    
-    epicsMutexMustLock(intrListMutex);
-    if (vec < 256 && !toscaDevLibInterruptThreads[vec])
-    {
-        toscaDevLibInterruptThreads[vec] =
-                toscaStartIntrThread(INTR_VME_LVL_ANY, vec,
-                    "irq-VME%u", vec);
-        if (!toscaDevLibInterruptThreads[vec])
-        {
-            debugErrno("toscaStartIntrThread");
-            epicsMutexUnlock(intrListMutex);
-            return S_dev_noMemory;
-        }
-    }
-    debug("Connect vector 0x%x interrupt handler to TOSCA", vec);
-    if (toscaIntrConnectHandler(
+    return toscaIntrConnectHandler(
         vec < 256 ? INTR_VME_LVL_ANY : INTR_USER1_INTR(vec&31),
-        vec, function, parameter) != 0)
-    {
-        debugErrno("Could not connect vector 0x%x interrupt handler", vec);
-        epicsMutexUnlock(intrListMutex);
-        return S_dev_vecInstlFail;
-    }
-    epicsMutexUnlock(intrListMutex);
-    return S_dev_success;
+        vec, function, parameter);
 }
 
 long toscaDevLibDisconnectInterrupt(
@@ -423,9 +337,18 @@ devLibVirtualOS toscaVirtualOS = {
 static void toscaDevLibRegistrar ()
 {
     probeMutex = epicsMutexMustCreate();
-    intrListMutex = epicsMutexMustCreate();
     pdevLibVirtualOS = &toscaVirtualOS;
-    initHookRegister(toscaDevLibInitHook);
+    epicsThreadId tid;
+    
+    debug("starting handler thread");
+    tid = epicsThreadCreate("irq-TOSCA", toscaIntrPrio,
+        epicsThreadGetStackSize(epicsThreadStackSmall),
+        toscaIntrLoop, NULL);
+    if (!tid)
+    {
+        debugErrno("starting handler thread");
+    }
+    debug("tid = %p", tid);
 }
 
 epicsExportRegistrar(toscaDevLibRegistrar);
