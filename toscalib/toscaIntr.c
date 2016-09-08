@@ -250,7 +250,7 @@ void toscaIntrLoop()
             debugErrno("select");
         if (FD_ISSET(newIntrFd[0], &read_fs))
         {
-            int dummy;
+            int dummy[16];
             debugLvl(1, "new fd notification on newIntrFd[0]=%d", newIntrFd[0]);
             /* we have a new fd in the intrFdSet and need to restart select */
             if (read(newIntrFd[0], &dummy, sizeof(dummy)) < 0)
