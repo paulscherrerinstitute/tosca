@@ -11,23 +11,42 @@
 #include <iocsh.h>
 #include <epicsExport.h>
 
-#define TOSCA_DEBUG_NAME toscaUtils
+#define TOSCA_EXTERN_DEBUG
+#define TOSCA_DEBUG_NAME toscaDma
 #include "toscaDebug.h"
 
-extern size_t strToSize(const char* str);
+size_t strToSize(const char* str)
+{
+    char* p;
+    size_t size = strtoul(str, &p, 0);
+    switch (*p)
+    {
+        case 'k':
+        case 'K':
+            size *= 0x400;
+            break;
+        case 'M':
+            size *= 0x100000;
+            break;
+        case 'G':
+            size *= 0x40000000;
+            break;
+    }
+    return size;
+}
 
 static const iocshFuncDef mallocDef =
     { "malloc", 2, (const iocshArg *[]) {
-    &(iocshArg) { "size", iocshArgInt },
-    &(iocshArg) { "alignment", iocshArgInt },
+    &(iocshArg) { "size", iocshArgString },
+    &(iocshArg) { "alignment", iocshArgString },
 }};
 
 static void mallocFunc(const iocshArgBuf *args)
 {
-    if (args[1].ival)
-        printf ("%p\n", memalign(args[0].ival, args[1].ival));
+    if (args[1].sval)
+        printf ("%p\n", memalign(strToSize(args[0].sval), strToSize(args[1].sval)));
     else
-        printf ("%p\n", valloc(args[0].ival));
+        printf ("%p\n", valloc(strToSize(args[0].sval)));
 }
 
 static const iocshFuncDef memfillDef =
@@ -63,7 +82,7 @@ static void memfillFunc(const iocshArgBuf *args)
         iocshCmd("help memfill");
         return;
     }
-    size_t address = strtoul(args[0].sval, NULL, 0);
+    size_t address = strToSize(args[0].sval);
     uint32_t pattern = args[1].ival;
     int size = strToSize(args[2].sval);
     int width = args[3].ival;
@@ -138,10 +157,16 @@ void toscaCopyFunc(const iocshArgBuf *args)
             fprintf(stderr, "invalid source address space %s\n", args[0].sval);
             return;
         }
-        sourceptr = toscaMap(aspace, strtoul(p, NULL, 0), size);
+        sourceptr = toscaMap(aspace, strToSize(p), size);
     }
     else
-        sourceptr = (volatile void*)strtoul(args[0].sval, NULL, 0);
+        sourceptr = (volatile void*)strToSize(args[0].sval);
+    
+    if (!sourceptr)
+    {
+        fprintf(stderr, "cannot map source address\n");
+        return;
+    }
 
     p = strchr(args[1].sval, ':');
     if (p)
@@ -153,11 +178,16 @@ void toscaCopyFunc(const iocshArgBuf *args)
             fprintf(stderr, "invalid dest address space %s\n", args[1].sval);
             return;
         }
-        destptr = toscaMap(aspace, strtoul(p, NULL, 0), size);
+        destptr = toscaMap(aspace, strToSize(p), size);
     }
     else
-        destptr = (volatile void*)strtoul(args[1].sval, NULL, 0);
+        destptr = (volatile void*)strToSize(args[1].sval);
 
+    if (!destptr)
+    {
+        fprintf(stderr, "cannot map dest address\n");
+        return;
+    }
     int width = args[3].ival;
 
     if (toscaDmaDebug)
