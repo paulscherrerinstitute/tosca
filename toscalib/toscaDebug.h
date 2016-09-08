@@ -2,11 +2,19 @@
 #error Please define TOSCA_DEBUG_NAME before including toscaDebug.h
 #endif
 
+#ifdef TOSCA_EXTERN_DEBUG
+#define __EX extern
+#else
+#define __EX
+#endif
 #define CAT(a, b) a ## b
 #define TOSCA_DEBUG_VARS(m) \
-int CAT(m,Debug); \
-FILE* CAT(m,DebugFile) = NULL;
+__EX int CAT(m,Debug); \
+__EX FILE* CAT(m,DebugFile);
 TOSCA_DEBUG_VARS(TOSCA_DEBUG_NAME)
+
+#undef __EX
+#undef __TOSCA_DEBUG_VARS
 
 #define debug_internal(m,l,fmt,...) if(CAT(m,Debug)>=l) fprintf(CAT(m,DebugFile)?CAT(m,DebugFile):stderr, "%s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__)
 #define debugErrno(fmt,...) debug(fmt" failed: %m",##__VA_ARGS__)
