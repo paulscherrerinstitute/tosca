@@ -12,6 +12,7 @@
 
 #include <regDev.h>
 
+#include "symbolname.h"
 #include "toscaDevLib.h"
 #include "toscaMap.h"
 #include "toscaDma.h"
@@ -85,11 +86,13 @@ int toscaRegDevRead(
 
     if (device->dmaReadLimit && nelem >= device->dmaReadLimit)
     {
+        char* fname;
         assert(device->dmaSpace != 0);
-        /* TODO: asynchronous DMA transfer? */
-        int status = toscaDmaRead(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen, device->swap);
-        if (status) debugErrno("toscaDmaRead %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d",
-            user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen, device->swap);
+        int status = toscaDmaRead(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen,
+            device->swap, 0, (toscaDmaCallback)callback, (void*)user);
+        if (status) debugErrno("toscaDmaRead %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
+            user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen,
+            device->swap, fname=symbolName(callback,0), user), free(fname);
         return status;
     }
     if (device->baseptr == NULL)
@@ -127,10 +130,13 @@ int toscaRegDevWrite(
 
     if (pmask == NULL && device->dmaWriteLimit && nelem >= device->dmaWriteLimit)
     {
-        /* TODO: asynchronous DMA transfer? */
-        int status = toscaDmaWrite(pdata, device->dmaSpace, device->baseaddr + offset, nelem*dlen, device->swap);
-        if (status) debugErrno("toscaDmaWrite %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d",
-            user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen, device->swap);
+        char* fname;
+        assert(device->dmaSpace != 0);
+        int status = toscaDmaWrite(pdata, device->dmaSpace, device->baseaddr + offset, nelem*dlen,
+            device->swap, 0, (toscaDmaCallback)callback, (void*)user);
+        if (status) debugErrno("toscaDmaWrite %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
+            user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen,
+            device->swap, fname=symbolName(callback,0), user), free(fname);
         return status;
     }
 

@@ -240,11 +240,12 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
 
 
 static const iocshFuncDef toscaDmaTransferDef =
-    { "toscaDmaTransfer", 4, (const iocshArg *[]) {
+    { "toscaDmaTransfer", 5, (const iocshArg *[]) {
     &(iocshArg) { "[addrspace:]sourceaddr", iocshArgString },
     &(iocshArg) { "[addrspace:]destaddr", iocshArgString },
     &(iocshArg) { "size", iocshArgString },
     &(iocshArg) { "swap(WS|DS|QS)", iocshArgString },
+    &(iocshArg) { "timeout(0:block|-1:nowait|ms)", iocshArgInt },
 }};
 
 static void toscaDmaTransferFunc(const iocshArgBuf *args)
@@ -309,7 +310,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
         }
     }
     
-    int status = toscaDmaTransfer(source, source_addr, dest, dest_addr, size, swap);
+    int status = toscaDmaTransfer(source, source_addr, dest, dest_addr, size, swap, args[4].ival, NULL, NULL);
     if (status)
     {
         fprintf(stderr, "toscaDmaTransfer failed: %m\n");
