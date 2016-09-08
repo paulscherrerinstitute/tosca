@@ -242,6 +242,7 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
         case TOSCA_SHM:   return "SHM";
         case TOSCA_CSR:   return "TCSR";
 
+        case 0: return "none";
         default: return "invalid";
     }
 }
