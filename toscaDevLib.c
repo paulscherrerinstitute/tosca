@@ -7,6 +7,7 @@
 #include <epicsMutex.h>
 #include <epicsTypes.h>
 #include "toscaDevLib.h"
+#include "toscaDma.h"
 #include <epicsExport.h>
 
 #include "symbolname.h"
@@ -340,13 +341,23 @@ static void toscaDevLibRegistrar ()
     pdevLibVirtualOS = &toscaVirtualOS;
     epicsThreadId tid;
     
-    debug("starting handler thread");
+    debug("starting interrupt handler thread");
     tid = epicsThreadCreate("irq-TOSCA", toscaIntrPrio,
-        epicsThreadGetStackSize(epicsThreadStackSmall),
+        epicsThreadGetStackSize(epicsThreadStackMedium),
         toscaIntrLoop, NULL);
     if (!tid)
     {
-        debugErrno("starting handler thread");
+        debugErrno("starting interrupt handler thread");
+    }
+    debug("tid = %p", tid);
+
+    debug("starting dma handler thread");
+    tid = epicsThreadCreate("dma-TOSCA", toscaIntrPrio,
+        epicsThreadGetStackSize(epicsThreadStackMedium),
+        toscaDmaThread, NULL);
+    if (!tid)
+    {
+        debugErrno("starting dma handler thread");
     }
     debug("tid = %p", tid);
 }
