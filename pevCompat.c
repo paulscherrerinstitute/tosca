@@ -11,7 +11,7 @@
 epicsExportAddress(int, pevDebug);
 
 /* pev compatibility mode */
-extern int toscaRegDevConfigure(const char* name, const char* resource, size_t addr, size_t size, const char* flags);
+int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, size_t size, const char* flags);
 
 static const iocshArg * const pevConfigureArgs[] = {
     &(iocshArg) { "card", iocshArgInt },
@@ -48,7 +48,6 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     }
     resource = args[2].sval;
     aspace = toscaStrToAddrSpace(resource);
-    if (aspace) resource = toscaAddrSpaceToStr(aspace);
     
     if (args[5].ival) /* intrVec */
         l += sprintf(flags+l, "intr=%d ", args[5].ival - (aspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? 0 : 1));
@@ -58,7 +57,7 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     }
     if (args[7].ival & 2 && l < sizeof(flags) - 5) /* DMA-only mode */
     {
-        l += sprintf(flags+l, "DMA=1 ");
+        l += sprintf(flags+l, "dmaonly ");
     }
     if (args[4].sval && l < sizeof(flags)) /* protocol */
     {
@@ -67,20 +66,19 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     }
     if (args[8].sval && l < sizeof(flags)) /* swap */
         l += sprintf(flags+l, "%.*s ", sizeof(flags)-1-l, args[8].sval);
-    if (args[9].ival && l < sizeof(flags)-10) /* vmePktSize */
-        l += sprintf(flags+l, "bs=%d ", args[9].ival);
+    /* args[9] = vmePktSize ignored */
     if (l) flags[l-1] = 0;
     
-    printf("Compatibility mode! pevConfigure call replaced by:\ntoscaRegDevConfigure %s %s 0x%x 0x%x %s\n",
-                      args[1].sval, resource, args[3].ival, args[6].ival, flags);
-    toscaRegDevConfigure(args[1].sval, resource, args[3].ival, args[6].ival, flags);
+    printf("Compatibility mode! pevConfigure call replaced by:\ntoscaRegDevConfigure %s:%s 0x%x 0x%x %s\n",
+                      args[1].sval, toscaAddrSpaceToStr(aspace), args[3].ival, args[6].ival, flags);
+    toscaRegDevConfigure(args[1].sval, aspace, args[3].ival, args[6].ival, flags);
 }
 
 static void pevRegistrar(void)
 {
     iocshRegister(&pevConfigureDef, pevConfigureFunc);
     iocshRegister(&pevAsynConfigureDef, pevConfigureFunc);
-    toscaRegDevConfigure("pev_csr","TCSR",0,0x2000,NULL);
+    toscaRegDevConfigure("pev_csr", TOSCA_CSR, 0, 0x2000, NULL);
 }
 
 epicsExportRegistrar(pevRegistrar);
