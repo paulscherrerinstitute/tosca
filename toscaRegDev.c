@@ -391,7 +391,7 @@ int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, 
     }
     
     regDevRegisterDmaAlloc(device, toscaRegDevDmaAlloc);
-    if (blockmode) regDevMakeBlockdevice(device, blockmode, REGDEV_NO_SWAP);
+    if (blockmode) regDevMakeBlockdevice(device, blockmode, REGDEV_NO_SWAP, NULL);
 
     return 0;
 }
