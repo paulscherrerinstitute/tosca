@@ -6,6 +6,7 @@
 #include <devLib.h>
 #include <epicsMutex.h>
 #include <epicsTypes.h>
+#include <epicsExit.h>
 #include "toscaDevLib.h"
 #include "toscaDma.h"
 #include <epicsExport.h>
@@ -350,16 +351,18 @@ static void toscaDevLibRegistrar ()
         debugErrno("starting interrupt handler thread");
     }
     debug("tid = %p", tid);
+    epicsAtExit(toscaIntrLoopStop,NULL);
 
     debug("starting dma handler thread");
     tid = epicsThreadCreate("dma-TOSCA", toscaIntrPrio,
         epicsThreadGetStackSize(epicsThreadStackMedium),
-        toscaDmaThread, NULL);
+        toscaDmaLoop, NULL);
     if (!tid)
     {
         debugErrno("starting dma handler thread");
     }
     debug("tid = %p", tid);
+    epicsAtExit(toscaDmaLoopStop,NULL);
 }
 
 epicsExportRegistrar(toscaDevLibRegistrar);
