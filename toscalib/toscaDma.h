@@ -13,6 +13,10 @@
 #define VME_2eSST267	0x200
 #define VME_2eSST320	0x400
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int toscaDmaDebug;
 extern FILE* toscaDmaDebugFile;
 
@@ -76,5 +80,8 @@ void toscaDmaLoopStop();
 /* Terminate the DMA loop. */
 /* Only returns after loop has stopped. */
 
+#ifdef __cplusplus
+}
 #endif
 
+#endif

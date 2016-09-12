@@ -21,6 +21,10 @@
 #define	VME_SUPER	0x1000
 #define	VME_PROG	0x4000
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* set to 1 to see debug output */
 extern int toscaMapDebug;
 extern FILE* toscaMapDebugFile;
@@ -101,4 +105,9 @@ int toscaCsrClear(unsigned int address, uint32_t value);  /* Clear bits in value
    Be aware that all registers are little endian.
    Use htole32() for writing and le32toh() for reading.
 */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <signal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int toscaIntrDebug;
 
 /* index for arrays of interrupts */
@@ -113,5 +117,9 @@ typedef struct {
 int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t));
 /* calls callback for each installed handler that matches intrmask (and vec for VME) until a callback returns not 0 */
 /* returns what the last callback had returned */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
