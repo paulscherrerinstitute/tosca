@@ -90,7 +90,9 @@ int toscaRegDevRead(
         assert(device->dmaSpace != 0);
         int status = toscaDmaRead(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen,
             device->swap, 0, (toscaDmaCallback)callback, (void*)user);
-        if (status) debugErrno("toscaDmaRead %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
+        if (callback != NULL && status == 0)
+            return ASYNC_COMPLETION;
+        if (status != 0) debugErrno("toscaDmaRead %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
             user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen,
             device->swap, fname=symbolName(callback,0), user), free(fname);
         return status;
@@ -134,7 +136,9 @@ int toscaRegDevWrite(
         assert(device->dmaSpace != 0);
         int status = toscaDmaWrite(pdata, device->dmaSpace, device->baseaddr + offset, nelem*dlen,
             device->swap, 0, (toscaDmaCallback)callback, (void*)user);
-        if (status) debugErrno("toscaDmaWrite %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
+        if (callback != NULL && status == 0)
+            return ASYNC_COMPLETION;
+        if (status != 0) debugErrno("toscaDmaWrite %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
             user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen,
             device->swap, fname=symbolName(callback,0), user), free(fname);
         return status;
