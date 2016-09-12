@@ -105,6 +105,7 @@ const char* toscaIntrBitToStr(intrmask_t intrmaskbit)
 
 int toscaIntrMonitorFile(int index, const char* filename)
 {
+    char dummy = 0;
     intrFd[index] = open(filename, O_RDWR);
     debug ("open %s fd=%d", filename, intrFd[index]);
     if (intrFd[index] < 0)
@@ -119,7 +120,7 @@ int toscaIntrMonitorFile(int index, const char* filename)
     }
     FD_SET(intrFd[index], &intrFdSet);
     if (intrFd[index] > intrFdMax) intrFdMax = intrFd[index];
-    if (write(newIntrFd[1], &filename, 1) != 1)
+    if (write(newIntrFd[1], &dummy, 1) != 1)
         debugErrno("write newIntrFd[1]=%d", newIntrFd[1]);
     return 0;
 }
@@ -234,11 +235,16 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
     return 0;
 }
 
+static int loopRunning = 0;
+
 void toscaIntrLoop()
 {
     int n, index, inum, vec;
     fd_set read_fs;
-
+    
+    if (loopRunning) return;
+    loopRunning = 1;
+    
     debug("starting interrupt handling");
     while (1)
     {
@@ -250,11 +256,12 @@ void toscaIntrLoop()
             debugErrno("select");
         if (FD_ISSET(newIntrFd[0], &read_fs))
         {
-            int dummy[16];
+            long long dummy = 0;
             debugLvl(1, "new fd notification on newIntrFd[0]=%d", newIntrFd[0]);
             /* we have a new fd in the intrFdSet and need to restart select */
             if (read(newIntrFd[0], &dummy, sizeof(dummy)) < 0)
-                debugErrno("read newIntrFd[0]=%d", newIntrFd[0]);
+                debugErrno("read newIntrFd[0]=%d: %llx", newIntrFd[0], dummy);
+            if (dummy != 0) break; /* exit the loop (see toscaIntrLoopStop) */
             n--;
         }
         for (index=0; index < TOSCA_NUM_INTR && n > 0; index++)
@@ -283,6 +290,21 @@ void toscaIntrLoop()
             }
         }
     }
+    loopRunning = 0;
+}
+
+int toscaIntrLoopIsRunning(void)
+{
+    return loopRunning;
+}
+
+void toscaIntrLoopStop(void)
+{
+    char x = 0xff;
+    struct timespec wait = { 0, 10000000 };
+    if (!loopRunning) return;
+    write(newIntrFd[1], &x, 1);
+    while (loopRunning) nanosleep(&wait, NULL);
 }
 
 void toscaIntrInit () __attribute__((constructor));

@@ -93,6 +93,14 @@ void toscaIntrLoop();
 /* handles the interrupts and calls installed handlers */
 /* Start it in a worker thread. */
 
+int toscaIntrLoopIsRunning(void);
+/* Is 1 if the toscaIntrLoop is already running. */
+/* Further attemts to start the tread terminate silently. */
+
+void toscaIntrLoopStop(void);
+/* Terminate the interrupt loop. */
+/* Only returns after loop has stopped. */
+
 typedef struct {
     intrmask_t intrmaskbit;    /* one of the INTR_* bits above */
     unsigned int index;        /* 0...TOSCA_NUM_INTR-1, unique for each intr bit (and VME vector) */
