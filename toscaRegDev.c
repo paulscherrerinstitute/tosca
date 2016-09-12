@@ -196,7 +196,7 @@ void toscaScanIoRequest(IOSCANPVT pioscanpvt)
     }
 }
 
-static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, int ivec, const char* user)
+static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, size_t size, int ivec, const char* user)
 {
     debug("%s: ivec=0x%x", user, ivec);
     if (ivec == -1)
