@@ -97,7 +97,7 @@ int toscaIntrLoopIsRunning(void);
 /* Is 1 if the toscaIntrLoop is already running. */
 /* Further attemts to start the tread terminate silently. */
 
-void toscaIntrLoopStop(void);
+void toscaIntrLoopStop();
 /* Terminate the interrupt loop. */
 /* Only returns after loop has stopped. */
 

@@ -298,7 +298,7 @@ int toscaIntrLoopIsRunning(void)
     return loopRunning;
 }
 
-void toscaIntrLoopStop(void)
+void toscaIntrLoopStop()
 {
     char x = 0xff;
     struct timespec wait = { 0, 10000000 };
