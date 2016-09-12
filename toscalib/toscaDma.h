@@ -66,7 +66,15 @@ static inline int toscaDmaRead(int source, size_t source_addr, void* dest_addr,
 }
 
 /* start this in a separate thread to handle requests with callback */
-void toscaDmaThread();
+void toscaDmaLoop();
+
+int toscaDmaLoopIsRunning(void);
+/* Is 1 if the toscaDmaLoop is already running. */
+/* Further attemts to start the tread terminate silently. */
+
+void toscaDmaLoopStop();
+/* Terminate the DMA loop. */
+/* Only returns after loop has stopped. */
 
 #endif
 
