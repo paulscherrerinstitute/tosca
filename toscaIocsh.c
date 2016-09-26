@@ -197,11 +197,11 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
     {
         char* fname;
         unsigned long long delta;
-        static unsigned long long lastcount[32+7*256+3];
+        static unsigned long long lastcount[TOSCA_NUM_INTR];
         
         installed++;
         if (level == 0 && handlerInfo.count == 0) return 0;
-        used++;
+        if (handlerInfo.count != 0) used++;
         
         delta = handlerInfo.count - lastcount[handlerInfo.index];
         lastcount[handlerInfo.index] = handlerInfo.count;
@@ -215,7 +215,7 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
             printf(" (%p)", handlerInfo.parameter);
         printf(" count=%llu (+%llu)",
             handlerInfo.count, delta);
-        if (now.secPastEpoch)
+        if (period)
             printf(" %.2f Hz", (double)delta/period);
         printf("\n");     
         return 0;
@@ -236,7 +236,7 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
         epicsTimeGetCurrent(&now);
         waitTime = 1000*epicsTimeDiffInSeconds(&next,&now);
         if (waitTime < 0) waitTime=0;
-    } while (period && waitForKeypress(waitTime) != 1);
+    } while (period && !waitForKeypress(waitTime));
 }
 
 
@@ -318,6 +318,27 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     }
 }
 
+static const iocshFuncDef toscaStrToAddrSpaceDef =
+    { "toscaStrToAddrSpace", 1, (const iocshArg *[]) {
+    &(iocshArg) { "addrspace", iocshArgString },
+}};
+
+static void toscaStrToAddrSpaceFunc(const iocshArgBuf *args)
+{
+    printf("0x%x\n", toscaStrToAddrSpace(args[0].sval));
+}
+
+static const iocshFuncDef toscaAddrSpaceToStrDef =
+    { "toscaAddrSpaceToStr", 1, (const iocshArg *[]) {
+    &(iocshArg) { "addrspace", iocshArgInt },
+}};
+
+static void toscaAddrSpaceToStrFunc(const iocshArgBuf *args)
+{
+    printf("%s\n", toscaAddrSpaceToStr(args[0].ival));
+}
+
+
 /* register with 'md' command */
 static void toscaRegistrar(void)
 {
@@ -360,6 +381,8 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaCsrClearDef, toscaCsrClearFunc);
     iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
     iocshRegister(&toscaDmaTransferDef, toscaDmaTransferFunc);
+    iocshRegister(&toscaStrToAddrSpaceDef, toscaStrToAddrSpaceFunc);
+    iocshRegister(&toscaAddrSpaceToStrDef, toscaAddrSpaceToStrFunc);
 }
 
 epicsExportRegistrar(toscaRegistrar);
