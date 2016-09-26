@@ -189,8 +189,8 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
     int installed ;
     int used;
     unsigned int vec;
-    epicsTimeStamp next, now={0};
-    double waitTime;
+    epicsTimeStamp next, now;
+    int waitTime;
     
     
     int toscaIntrHandlerPrintInfo(toscaIntrHandlerInfo_t handlerInfo)
@@ -234,7 +234,8 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
             toscaIntrForeachHandler(INTR_VME_LVL_ANY, vec, toscaIntrHandlerPrintInfo);
         printf("%d handlers installed, %d in use\n", installed, used);
         epicsTimeGetCurrent(&now);
-        waitTime = epicsTimeDiffInSeconds(&next,&now);
+        waitTime = 1000*epicsTimeDiffInSeconds(&next,&now);
+        if (waitTime < 0) waitTime=0;
     } while (period && waitForKeypress(waitTime) != 1);
 }
 
