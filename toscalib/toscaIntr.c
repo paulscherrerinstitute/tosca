@@ -8,7 +8,8 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>
-#include "symbolname.h"
+#include <symbolname.h>
+#include <keypress.h>
 #include "toscaIntr.h"
 
 pthread_mutex_t handlerlist_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -31,7 +32,7 @@ static int newIntrFd[2];
 static fd_set intrFdSet;
 static int intrFdMax = -1;
 static int intrFd[TOSCA_NUM_INTR];
-static unsigned long long intrCount[TOSCA_NUM_INTR];
+static unsigned long long totalIntrCount, intrCount[TOSCA_NUM_INTR], prevTotalIntrCount, prevIntrCount[TOSCA_NUM_INTR];
 static struct intr_handler* handlers[TOSCA_NUM_INTR];
 
 #define IX(src,...) TOSCA_INTR_INDX_##src(__VA_ARGS__)
@@ -235,6 +236,55 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
     return 0;
 }
 
+void toscaIntrShow(int level)
+{
+    intrmask_t intrmask;
+    unsigned long long int count, delta;
+    struct intr_handler* handler;
+    char* fname;
+    unsigned int index;
+    unsigned int period = 0;
+    unsigned int symbolDetail = 0;
+    int rep = 0;
+
+    if (level > 1) symbolDetail = level-1;
+    if (level < 0) { period = -1000*level; level = 0; }
+    
+    do
+    {
+        LOCK;
+        count = totalIntrCount;
+        delta = count - prevTotalIntrCount;
+        prevTotalIntrCount = count;
+        if (rep) printf("\n");
+        printf("total interrupt count=%llu (+%llu)\n", count, delta);
+        for (index = 0; index < TOSCA_NUM_INTR; index++)
+        {
+            count = intrCount[index];
+            delta = count - prevIntrCount[index];
+            prevIntrCount[index] = count;
+            if (count == 0 && (handlers[index] == NULL || level == 0)) continue;
+            if (delta == 0 && period != 0) continue;
+            intrmask = INTR_INDEX_TO_BIT(index);
+            printf("  %s", toscaIntrBitToStr(intrmask));
+            if (intrmask & INTR_VME_LVL_ANY)
+                printf("-%-3d ", INTR_INDEX_TO_IVEC(index));
+            printf(" count=%llu (+%llu)\n", count, delta);
+            prevIntrCount[index] = count;
+            if (!rep) for (handler = handlers[index]; handler; handler = handler->next)
+            {
+                printf("    %s", fname=symbolName(handler->function, symbolDetail));
+                free(fname);
+                if (level > 0 || period != 0)
+                    printf(" (%p)", handler->parameter);
+                printf("\n");
+            }
+        }
+        UNLOCK;
+        rep = 1;
+    } while (period != 0 && !waitForKeypress(period));
+}
+
 static int loopRunning = 0;
 
 void toscaIntrLoop()
@@ -272,6 +322,7 @@ void toscaIntrLoop()
                 struct intr_handler* handler;
                 inum = INTR_INDEX_TO_INUM(index);
                 vec = INTR_INDEX_TO_IVEC(index);
+                totalIntrCount++;
                 intrCount[index]++;
                 FOREACH_HANDLER(handler, index) {
                     char* fname;

@@ -183,62 +183,8 @@ static const iocshFuncDef toscaIntrShowDef =
 
 static void toscaIntrShowFunc(const iocshArgBuf *args)
 {
-    unsigned int level = 0;
-    unsigned int period = 0;
-    int symbolDetail = 0;
-    int installed ;
-    int used;
-    unsigned int vec;
-    epicsTimeStamp next, now;
-    int waitTime;
-    
-    
-    int toscaIntrHandlerPrintInfo(toscaIntrHandlerInfo_t handlerInfo)
-    {
-        char* fname;
-        unsigned long long delta;
-        static unsigned long long lastcount[TOSCA_NUM_INTR];
-        
-        installed++;
-        if (level == 0 && handlerInfo.count == 0) return 0;
-        if (handlerInfo.count != 0) used++;
-        
-        delta = handlerInfo.count - lastcount[handlerInfo.index];
-        lastcount[handlerInfo.index] = handlerInfo.count;
-        printf("%s", toscaIntrBitToStr(handlerInfo.intrmaskbit));
-        if (handlerInfo.intrmaskbit & INTR_VME_LVL_ANY)
-            printf(".%3u", handlerInfo.vec);
-        printf(" %s",
-            fname=symbolName(handlerInfo.function, symbolDetail));
-        free(fname);
-        if (level >0)
-            printf(" (%p)", handlerInfo.parameter);
-        printf(" count=%llu (+%llu)",
-            handlerInfo.count, delta);
-        if (period)
-            printf(" %.2f Hz", (double)delta/period);
-        printf("\n");     
-        return 0;
-    }
-
-    if (args[0].ival >= 0) level = args[0].ival;
-    else period = -args[0].ival;
-    if (level > 1) symbolDetail = level-1;    
-    epicsTimeGetCurrent(&next);
-    do {
-        installed = 0;
-        used = 0;
-        next.secPastEpoch += period;
-        toscaIntrForeachHandler(~INTR_VME_LVL_ANY, 0, toscaIntrHandlerPrintInfo);
-        for (vec = 0; vec < 256; vec++)
-            toscaIntrForeachHandler(INTR_VME_LVL_ANY, vec, toscaIntrHandlerPrintInfo);
-        printf("%d handlers installed, %d in use\n", installed, used);
-        epicsTimeGetCurrent(&now);
-        waitTime = 1000*epicsTimeDiffInSeconds(&next,&now);
-        if (waitTime < 0) waitTime=0;
-    } while (period && !waitForKeypress(waitTime));
+    toscaIntrShow(args[0].ival);
 }
-
 
 static const iocshFuncDef toscaDmaTransferDef =
     { "toscaDmaTransfer", 5, (const iocshArg *[]) {

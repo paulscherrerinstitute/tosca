@@ -79,8 +79,8 @@ typedef uint64_t intrmask_t;
 #define INTR_USER2_ANY      0xffff000000000000ULL
 
 #define INTR_INDEX_TO_BIT(i) ((i)<32?INTR_USER1_INTR(i):(i)>=TOSCA_INTR_INDX_ERR(0)?INTR_VME_FAIL((i)-TOSCA_INTR_INDX_ERR(0)):INTR_VME_LVL(((i)-32)>>8)+1)
-#define INTR_INDEX_TO_INUM(i) (i)<32?(i)&31:(i)>=TOSCA_INTR_INDX_ERR(0)?(i)-TOSCA_INTR_INDX_ERR(0):(((i)-32)>>8)+1;
-#define INTR_INDEX_TO_IVEC(i) (i)<32||(i)>=TOSCA_INTR_INDX_ERR(0)?0:((i)-32)&255;
+#define INTR_INDEX_TO_INUM(i) ((i)<32?(i)&31:(i)>=TOSCA_INTR_INDX_ERR(0)?(i)-TOSCA_INTR_INDX_ERR(0):(((i)-32)>>8)+1)
+#define INTR_INDEX_TO_IVEC(i) ((i)<32||(i)>=TOSCA_INTR_INDX_ERR(0)?0:((i)-32)&255)
 
 const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
 #define toscaIntrIndexToStr(i) toscaIntrBitToStr(INTR_INDEX_TO_BIT(i))
@@ -117,6 +117,8 @@ typedef struct {
 int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t));
 /* calls callback for each installed handler that matches intrmask (and vec for VME) until a callback returns not 0 */
 /* returns what the last callback had returned */
+
+void toscaIntrShow(int level);
 
 #ifdef __cplusplus
 }
