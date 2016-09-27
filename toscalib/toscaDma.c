@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <symbolname.h>
 
 typedef uint64_t __u64;
 typedef uint32_t __u32;
@@ -101,6 +102,11 @@ const char* toscaDmaTypeToStr(int type)
     }
 }
 
+const char* toscaDmaWidthToSwapStr(int width)
+{
+    return (const char*[]){"","WS","DS","QS"}[width>>10];
+}
+
 int toscaDmaStrToType(const char* str)
 {
     if (!str || !*str) return 0;
@@ -145,8 +151,7 @@ struct dmaRequest
     toscaDmaCallback callback;
     void *user;
     struct dmaRequest* next;
-    struct dmaRequest** prev;
-} *pendingRequests, **lastRequest, *freelist;
+} *pending, *freelist, **insert=&pending;
 
 int toscaDmaDoTransfer(struct dmaRequest* r)
 {
@@ -154,15 +159,21 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
     struct timespec start, finished;
  
 #ifdef VME_DMA_TIMEOUT
+    debugLvl(2, "ioctl(%d, VME_DMA_TIMEOUT, %d ms)", r->fd, r->timeout);
     ioctl(r->fd, VME_DMA_TIMEOUT, r->timeout);
 #endif
     if (toscaDmaDebug)
         clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+    debugLvl(2, "ioctl(%d, VME_DMA_EXECUTE, {%s 0x%llx->0x%llx [0x%zx] dw=0x%x %s cy=0x%x=%s})",
+        r->fd, toscaDmaRouteToStr(r->req.route), r->req.src_addr, r->req.dst_addr,
+        r->req.size, r->req.dwidth, toscaDmaWidthToSwapStr(r->req.dwidth),
+        r->req.cycle, toscaDmaTypeToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_EXECUTE, &ex) != 0)
     {
-        debugErrno("ioctl VME_DMA_EXECUTE %s 0x%llx->0x%llx [0x%zx]",
-            toscaDmaRouteToStr(r->req.route), r->req.src_addr, r->req.dst_addr,
-            r->req.size);
+        debugErrno("ioctl(%d, VME_DMA_EXECUTE, {%s 0x%llx->0x%llx [0x%zx] dw=0x%x %s cy=0x%x=%s})",
+            r->fd, toscaDmaRouteToStr(r->req.route), r->req.src_addr, r->req.dst_addr,
+            r->req.size, r->req.dwidth, toscaDmaWidthToSwapStr(r->req.dwidth),
+        r->req.cycle, toscaDmaTypeToStr(r->req.cycle));
         if (r->oneShot) toscaDmaRelease(r);
         return errno;
     }
@@ -177,7 +188,8 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
             finished.tv_sec--;
         }
         sec = finished.tv_sec + finished.tv_nsec * 1e-9;
-        debug("%d %sB / %.3f msec (%.1f MiB/s = %.1f MB/s)",
+        debug("%s %d %sB / %.3f msec (%.1f MiB/s = %.1f MB/s)",
+            toscaDmaRouteToStr(r->req.route), 
             r->req.size >= 0x00100000 ? (r->req.size >> 20) : r->req.size >= 0x00000400 ? (r->req.size >> 10) : r->req.size,
             r->req.size >= 0x00100000 ? "Mi" : r->req.size >= 0x00000400 ? "Ki" : "",
             sec * 1000, r->req.size/sec/0x00100000, r->req.size/sec/1000000);
@@ -195,28 +207,40 @@ void toscaDmaLoop()
     toscaDmaCallback callback;
     void* user;
     
-    if (loopRunning) return;
+    LOCK;
+    if (loopRunning)
+    {
+        UNLOCK;
+        return;
+    }
     loopRunning = 1;
 
-    LOCK;
     while (1)
     {
-        while ((r = pendingRequests) != NULL)
+        while ((r = pending) != NULL)
         {
-            pendingRequests = r->next;
-            if (pendingRequests) *pendingRequests->prev = NULL;
+            if (insert == &r->next) insert = &pending;
+            pending = r->next;
             r->next = NULL;
-            callback = r->callback;
-            user = r->user;
             UNLOCK;
-            status = toscaDmaDoTransfer(r); /* blocks */
-            callback(user, status);
+            if (r->fd <= 0) /* may have been canceled */
+            {
+                if (r->oneShot) toscaDmaRelease(r);
+            }
+            else
+            {
+                callback = r->callback;
+                user = r->user;
+                status = toscaDmaDoTransfer(r); /* blocks */
+                callback(user, status);
+            }
             LOCK;
         }
         UNLOCK_AND_SLEEP;
         if (loopRunning < 0) break;
     }
     loopRunning = 0;
+    UNLOCK;
 }
 
 int toscaDmaLoopIsRunning(void)
@@ -234,30 +258,60 @@ void toscaDmaLoopStop()
 
 int toscaDmaExecute(struct dmaRequest* r)
 {
+    char* fname;
     if (!r || r->fd <= 0) return errno = EINVAL;
     if (r->callback)
     {
-        r->next = NULL;
+        debugLvl(2, "queuing: callback=%s(%p)", fname=symbolName(r->callback,0), r->user), free(fname);
         LOCK;
-        r->prev = lastRequest;
-        *lastRequest = r;
-        lastRequest = &r->next;
-        if (!pendingRequests) WAKEUP;
+        if (!pending) WAKEUP;
+        r->next = NULL;
+        *insert = r;
+        insert = &r->next;
         UNLOCK;
         return 0;
     }
     else return toscaDmaDoTransfer(r);
 }
 
+struct dmaRequest* toscaDmaRequestCreate(void)
+{
+    struct dmaRequest* r;
+
+    LOCK;
+    if ((r = freelist) != NULL)
+    {
+        freelist = r->next;
+        debugLvl(3, "got request %p from freelist, freelist=%p", r, freelist);
+    }
+    UNLOCK;
+    if (!r)
+    {
+        r = malloc(sizeof(struct dmaRequest));
+        if (!r) 
+        {
+            debugErrno("malloc struct dmaRequest");
+            return NULL;
+        }
+        debugLvl(3, "got request %p from malloc", r);
+    }
+    r->fd = -1;
+    r->next = NULL;
+    return r;
+}
+
 void toscaDmaRelease(struct dmaRequest* r)
 {
     if (!r) return;
-    if (r->fd > 0) close(r->fd);
     LOCK;
-    if (r->prev) *r->prev = r->next;
-    if (r->next) r->next->prev = r->prev;
-    r->next = freelist;
-    freelist = r;
+    if (r->fd > 0) close(r->fd);
+    r->fd = -1;
+    if (!r->next)
+    {
+        debugLvl(3, "put back request %p to freelist, freelist = %p", r, freelist);
+        r->next = freelist;
+        freelist = r;
+    }
     UNLOCK;
 }
 
@@ -267,24 +321,21 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
 {
     const char* filename = "/dev/dmaproxy0";
     struct dmaRequest* r;
+    char* fname;
     
-    LOCK;
-    if ((r = freelist) != NULL)
-        freelist = r->next;
-    UNLOCK;
-    if (!r)
-    {
-        r = malloc(sizeof (struct dmaRequest));
-        if (!r) return NULL;
-    }
-    memset(r, sizeof(*r), 0);
+    debugLvl(2, "0x%x=%s:0x%zx -> 0x%x=%s:0x%zx [0x%zx] swap=%d tout=%d cb=%s(%p)",
+        source, toscaDmaTypeToStr(source), source_addr, dest, toscaDmaTypeToStr(dest), dest_addr,
+        size, swap, timeout, fname=symbolName(callback,0), user), free(fname);
+    r = toscaDmaRequestCreate();
+    if (!r) return NULL;
     r->timeout = timeout;
     r->callback = callback;
     r->user = user;
     r->req.src_addr = source_addr;
     r->req.dst_addr = dest_addr;
     r->req.size = size;
-    
+    r->req.cycle = 0;
+   
     switch (swap)
     {
         case 2:
@@ -400,15 +451,11 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
     }
     if (!r->req.route)
     {
-        debug("invalid DMA route %s -> %s", toscaDmaTypeToStr(source), toscaDmaTypeToStr(dest));
         errno = EINVAL;
+        debugErrno("DMA route %s -> %s", toscaDmaTypeToStr(source), toscaDmaTypeToStr(dest));
         toscaDmaRelease(r);
         return NULL;
     }
-    debug("%s 0x%llx->0x%llx [0x%zx] dw=0x%x %s cy=0x%x %s",
-        toscaDmaRouteToStr(r->req.route), r->req.src_addr, r->req.dst_addr,
-        r->req.size, r->req.dwidth, (const char*[]){"","WS","DS","QS"}[r->req.dwidth>>10],
-        r->req.cycle, r->req.cycle ? toscaDmaTypeToStr(r->req.cycle) : "");
     r->fd = open(filename, O_RDWR);
     if (r->fd < 0)
     {
@@ -416,11 +463,18 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
         toscaDmaRelease(r);
         return NULL;
     }
+    debugLvl(2, "ioctl(%d, VME_DMA_SET, {%s 0x%llx->0x%llx [0x%zx] dw=0x%x %s cy=0x%x=%s})",
+        r->fd, toscaDmaRouteToStr(r->req.route),
+        r->req.src_addr, r->req.dst_addr, r->req.size,
+        r->req.dwidth, toscaDmaWidthToSwapStr(r->req.dwidth),
+        r->req.cycle, toscaDmaTypeToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_SET, &r->req) != 0)
     {
-        debugErrno("ioctl VME_DMA_SET %s 0x%llx->0x%llx [0x%zx]",
-            toscaDmaRouteToStr(r->req.route), r->req.src_addr, r->req.dst_addr,
-            r->req.size);
+        debugErrno("ioctl(%d, VME_DMA_SET, {%s 0x%llx->0x%llx [0x%zx] dw=0x%x %s cy=0x%x=%s})",
+            r->fd, toscaDmaRouteToStr(r->req.route),
+            r->req.src_addr, r->req.dst_addr, r->req.size,
+        r->req.dwidth, toscaDmaWidthToSwapStr(r->req.dwidth),
+        r->req.cycle, toscaDmaTypeToStr(r->req.cycle));
         toscaDmaRelease(r);
         return NULL;
     }
