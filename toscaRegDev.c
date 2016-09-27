@@ -408,7 +408,7 @@ static const iocshFuncDef toscaRegDevConfigureDef =
     &(iocshArg) { "flags", iocshArgArgv },
 }};
 
-static void toscaRegDevConfigureFunc (const iocshArgBuf *args)
+static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
 {
     unsigned int aspace;
     size_t address;

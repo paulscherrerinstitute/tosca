@@ -7,13 +7,11 @@
 #include <epicsExport.h>
 
 #include "memDisplay.h"
-#include "symbolname.h"
 
 #include "toscaMap.h"
 #include "toscaIntr.h"
 #include "toscaDma.h"
 #include "toscaUtils.h"
-#include "keypress.h"
 
 static const iocshFuncDef toscaMapDef =
     { "toscaMap", 2, (const iocshArg *[]) {
@@ -285,9 +283,9 @@ static void toscaAddrSpaceToStrFunc(const iocshArgBuf *args)
 }
 
 
-/* register with 'md' command */
 static void toscaRegistrar(void)
 {
+    /* register with 'md' command */
     volatile void* toscaAddrHandler(size_t address, size_t size, size_t aspace)
     {
         return toscaMap(aspace, address, size);
