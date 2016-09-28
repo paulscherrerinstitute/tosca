@@ -1,15 +1,21 @@
-#define _GNU_SOURCE
-#undef _POSIX_C_SOURCE
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <pthread.h>
+
 #include <symbolname.h>
 #include <keypress.h>
+
+typedef uint64_t __u64;
+typedef uint32_t __u32;
+typedef uint8_t __u8;
+#include "vme_user.h"
 #include "toscaIntr.h"
 
 pthread_mutex_t handlerlist_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -361,7 +367,47 @@ void toscaIntrLoopStop()
 void toscaIntrInit () __attribute__((constructor));
 void toscaIntrInit ()
 {
-    pipe2(newIntrFd,O_NONBLOCK);
+    pipe(newIntrFd);
     intrFdMax = newIntrFd[0];
     FD_SET(newIntrFd[0], &intrFdSet);
+}
+
+int toscaSendVMEIntr(unsigned int level, unsigned int vec)
+{
+    const char* filename = "/dev/bus/vme/ctl";
+    static int fd = 0;
+    struct vme_irq_id {
+        __u8 level;
+        __u8 vec;
+    } irq;
+    
+    if (level < 1 || level > 7)
+    {
+        errno = EINVAL;
+        debug("invalid VME interrupt level %d", level);
+        return -1;
+    }
+    if (vec > 255)
+    {
+        errno = EINVAL;
+        debug("invalid VME interrupt vector %d", vec);
+        return -1;
+    }
+    if (fd <= 0)
+    {
+        fd = open(filename, O_RDWR);
+        if (fd < 0)
+        {
+            debugErrno("open %s", filename);
+            return -1;
+        }
+    }
+    irq.level = level;
+    irq.vec = vec;
+    if (ioctl(fd, VME_IRQ_GEN, &irq) != 0)
+    {
+        debugErrno("ioctl(%d, VME_IRQ_GEN, {level=%d, vec=%d})", fd, irq.level, irq.vec);
+        return -1;
+    }
+    return 0;
 }

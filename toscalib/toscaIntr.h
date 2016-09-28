@@ -120,6 +120,8 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
 
 void toscaIntrShow(int level);
 
+int toscaSendVMEIntr(unsigned int level, unsigned int vec);
+
 #ifdef __cplusplus
 }
 #endif

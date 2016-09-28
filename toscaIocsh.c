@@ -184,6 +184,17 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
     toscaIntrShow(args[0].ival);
 }
 
+static const iocshFuncDef toscaSendVMEIntrDef =
+    { "toscaSendVMEIntr", 2, (const iocshArg *[]) {
+    &(iocshArg) { "level(1-7)", iocshArgInt },
+    &(iocshArg) { "vector(0-255)", iocshArgInt },
+}};
+
+static void toscaSendVMEIntrFunc(const iocshArgBuf *args)
+{
+    if (toscaSendVMEIntr(args[0].ival, args[1].ival) == -1) perror(NULL);
+}
+
 static const iocshFuncDef toscaDmaTransferDef =
     { "toscaDmaTransfer", 5, (const iocshArg *[]) {
     &(iocshArg) { "[addrspace:]sourceaddr", iocshArgString },
@@ -324,6 +335,7 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaCsrSetDef, toscaCsrSetFunc);
     iocshRegister(&toscaCsrClearDef, toscaCsrClearFunc);
     iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
+    iocshRegister(&toscaSendVMEIntrDef, toscaSendVMEIntrFunc);
     iocshRegister(&toscaDmaTransferDef, toscaDmaTransferFunc);
     iocshRegister(&toscaStrToAddrSpaceDef, toscaStrToAddrSpaceFunc);
     iocshRegister(&toscaAddrSpaceToStrDef, toscaAddrSpaceToStrFunc);
