@@ -56,13 +56,6 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         return NULL;
     }
 
-/* Not needed ?
-    if (aspace & (VME_A16 | VME_A24 | VME_A32 | VME_A64))
-    {
-        if (!(aspace & VME_SUPER)) aspace |= VME_USER;
-        if (!(aspace & VME_PROG)) aspace |= VME_DATA;
-    }
-*/
     LOCK;
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
@@ -195,7 +188,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         UNLOCK;
         return NULL;
     }
-    /* close(fd); */
+    close(fd);
 
     map = malloc(sizeof(struct map));
     if (!map)
