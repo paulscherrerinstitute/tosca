@@ -12,7 +12,6 @@
 #include <epicsExport.h>
 
 #include "symbolname.h"
-#include "vme.h"
 
 /* EPICS has no way to request VME supervisory or user mode. Use Supervisory for all maps. */
 #define VME_DEFAULT_MODE VME_SUPER
@@ -52,19 +51,19 @@ long toscaDevLibMapAddr(
     {
         case atVMEA16:
         {
-            if (vmeAddress + size > VME_A16_MAX)
+            if (vmeAddress + size > 0x10000)
             {
                 debug("A16 address %#zx out of range", vmeAddress + size);
                 return S_dev_badA16;
             }
             /* Map full A16 (64KiB). */
-            mapAddress = toscaMap(VME_A16 | VME_DEFAULT_MODE, 0, VME_A16_MAX);
+            mapAddress = toscaMap(VME_A16 | VME_DEFAULT_MODE, 0, 0x10000);
             if (mapAddress) mapAddress += vmeAddress;
             break;
         }
         case atVMEA24:
         {
-            if (vmeAddress + size > VME_A24_MAX)
+            if (vmeAddress + size > 0x1000000)
             {
                 debug("A24 address %#zx out of range", vmeAddress + size);
                 return S_dev_badA24;
@@ -80,7 +79,7 @@ long toscaDevLibMapAddr(
             break;
         }
         case atVMEA32:
-            if (vmeAddress + size > VME_A32_MAX)
+            if (vmeAddress + size > 0x100000000U)
             {
                 debug("A32 address %#zx out of range", vmeAddress + size);
                 return S_dev_badA32;
@@ -88,7 +87,7 @@ long toscaDevLibMapAddr(
             mapAddress = toscaMap(VME_A32 | VME_DEFAULT_MODE, vmeAddress, size);
             break;
         case atVMECSR:
-            if (vmeAddress + size > VME_CRCSR_MAX)
+            if (vmeAddress + size > 0x1000000)
             {
                 debug("CRCSR address %#zx out of range", vmeAddress + size);
                 return S_dev_badCRCSR;

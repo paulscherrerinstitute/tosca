@@ -15,7 +15,7 @@
 
 static const iocshFuncDef toscaMapDef =
     { "toscaMap", 2, (const iocshArg *[]) {
-    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SHM|TCSR):address", iocshArgString },
+    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SHM|TCSR|VME_SLAVE):address", iocshArgString },
     &(iocshArg) { "size", iocshArgString },
 }};
 

@@ -13,7 +13,6 @@
 typedef uint64_t __u64;
 typedef uint32_t __u32;
 typedef uint8_t __u8;
-#include "vme.h"
 #include "vme_user.h"
 #include "toscaMap.h"
 
@@ -43,18 +42,27 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
     volatile void *ptr;
     size_t offset;
     int fd;
+    int setcmd, getcmd;
     char filename[50];
 
     debug("aspace=%#x(%s), address=%#llx, size=%#zx",
             aspace, toscaAddrSpaceToStr(aspace),
             address,
             size);
+    
+    if (!size)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
 
+/* Not needed ?
     if (aspace & (VME_A16 | VME_A24 | VME_A32 | VME_A64))
     {
         if (!(aspace & VME_SUPER)) aspace |= VME_USER;
         if (!(aspace & VME_PROG)) aspace |= VME_DATA;
     }
+*/
     LOCK;
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
@@ -75,60 +83,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             }
         }
     }
-
-    if (!(aspace & TOSCA_CSR)) /* handle TOSCA_CSR later */
-    {
-        /* Tosca requires windows aligned to 1 MiB
-           Thus round down address to the full MiB and adjust size.
-        */
-        struct vme_master vme_window = {0};
-
-        vme_window.vme_addr = address & ~0xffffful;
-        vme_window.size = size + (address & 0xffffful);
-        vme_window.aspace = aspace & 0x0fff;
-        vme_window.cycle = aspace & 0xf000;
-        vme_window.dwidth = VME_D32;
-        vme_window.enable = 1;
-
-        sprintf(filename, "/dev/bus/vme/m0");
-        fd = open(filename, O_RDWR);
-        if (fd < 0)
-        {
-            debugErrno("open %s", filename);
-            UNLOCK;
-            return NULL;
-        }
-
-        if (ioctl(fd, VME_SET_MASTER, &vme_window) != 0)
-        {
-            debugErrno("ioctl VME_SET_MASTER");
-            close(fd);
-            UNLOCK;
-            return NULL;
-        }
-
-        /* If the request fits into an existing window we get that one instead of the requested one.
-           That window may have a different start adddress, e.g. aligned to 4 MiB.
-        */
-        if (ioctl(fd, VME_GET_MASTER, &vme_window) != 0)
-        {
-            debugErrno("ioctl VME_GET_MASTER");
-            close(fd);
-            UNLOCK;
-            return NULL;
-        }
-        debug("window address=%#llx size=%#llx",
-                vme_window.vme_addr, vme_window.size);
-
-        /* Find the MMU pages in the window we need to map */
-        offset = address - vme_window.vme_addr;   /* Location within window that maps to requested address */
-        address = vme_window.vme_addr;            /* Start address of the fd. */
-        if ((aspace & 0xfff) == VME_A16)
-            size = VME_A16_MAX;                   /* Map only the small A16 space, not the big window to user space. */
-        else
-            size = vme_window.size ;              /* Map the whole window to user space. */
-    }
-    else /* TOSCA_CSR */
+    if (aspace == TOSCA_CSR)
     {
         /* Handle TCSR in compatible way to other address spaces */
         struct stat filestat = {0};
@@ -153,6 +108,81 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         size = tCsrSize;  /* Map whole TCSR space */
         offset = address; /* Location within fd that maps to requested address */
         address = 0;      /* This is the start address of the fd. */
+    }
+    else /* USER, SHM, VME, VME_SLAVE */
+    {
+        /* Tosca requires mapping windows aligned to 1 MiB
+           Thus round down address to the full MiB.
+           Adjust and round up size to the next full MiB.
+        */
+        struct vme_master vme_window = {0};
+
+        vme_window.enable = 1;
+        vme_window.vme_addr = address & ~0xffffful;
+        vme_window.size = (size + (address & 0xffffful) + 0xffffful) & ~0xffffful;
+        
+        if (aspace & VME_SLAVE)
+        {
+            sprintf(filename, "/dev/bus/vme/s0");
+            setcmd = VME_SET_SLAVE;
+            getcmd = VME_GET_SLAVE;
+            vme_window.aspace = VME_A32;
+        }
+        else
+        {
+            sprintf(filename, "/dev/bus/vme/m0");
+            setcmd = VME_SET_MASTER;
+            getcmd = VME_GET_MASTER;
+            vme_window.aspace = aspace & 0x0fff;
+            vme_window.cycle = aspace & 0xf000;
+        }
+        
+        fd = open(filename, O_RDWR);
+        if (fd < 0)
+        {
+            debugErrno("open %s", filename);
+            UNLOCK;
+            return NULL;
+        }
+
+        debug("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, dwidth=0x%x})",
+            fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
+            vme_window.enable, vme_window.vme_addr, vme_window.size, vme_window.aspace, vme_window.cycle, vme_window.dwidth);
+        if (ioctl(fd, setcmd, &vme_window) != 0)
+        {
+            debugErrno("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, dwidth=0x%x})",
+                fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
+                vme_window.enable, vme_window.vme_addr, vme_window.size, vme_window.aspace, vme_window.cycle, vme_window.dwidth);
+            close(fd);
+            UNLOCK;
+            return NULL;
+        }
+
+        if (!(aspace & VME_SLAVE)) /* reading back slave windows is buggy */
+        {
+        /* If the request fits into an existing master window,
+           we may get that one instead of the requested one.
+           That window may have a different start adddress.
+        */
+        if (ioctl(fd, getcmd, &vme_window) != 0)
+        {
+            debugErrno("ioctl(%d, VME_GET_%s)",
+                fd, getcmd == VME_GET_MASTER ? "MASTER" : "SLAVE");
+            close(fd);
+            UNLOCK;
+            return NULL;
+        }
+        debug("got window address=%#llx size=%#llx",
+                vme_window.vme_addr, vme_window.size);
+        }
+        
+        /* Find the MMU pages in the window we need to map */
+        offset = address - vme_window.vme_addr;   /* Location within window that maps to requested address */
+        address = vme_window.vme_addr;            /* Start address of the fd. */
+        if ((aspace & 0xfff) == VME_A16)
+            size = 0x10000;                       /* Map only the small A16 space, not the big window to user space. */
+        else
+            size = vme_window.size ;              /* Map the whole window to user space. */
     }
 
     ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -214,7 +244,7 @@ toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr)
 
 const char* toscaAddrSpaceToStr(unsigned int aspace)
 {
-    switch (aspace & ~(VME_USER | VME_DATA))
+    switch (aspace & 0xFFF)
     {
         case VME_A16:   return "A16";
         case VME_A24:   return "A24";
@@ -242,6 +272,8 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
         case TOSCA_SHM:   return "SHM";
         case TOSCA_CSR:   return "TCSR";
 
+        case VME_SLAVE:   return "VME_SLAVE";
+
         case 0: return "none";
         default: return "invalid";
     }
@@ -253,15 +285,18 @@ unsigned int toscaStrToAddrSpace(const char* str)
     if (!str) return 0;
     switch (str[0])
     {
+        case 'V':
+            if (strcmp(str+1, "ME_SLAVE") == 0)
+                return VME_SLAVE;
+            if (strcmp(str+1, "ME_CSR") == 0)
+                return VME_CRCSR;
+            if (strncmp(str+1, "ME_A", 4) != 0)
+                return 0;
+            str += 4;
         case 'C':
             if (strcmp(str+1,"RCSR") == 0 || strcmp(str+1,"SR") == 0)
                 return VME_CRCSR;
             return 0;
-        case 'V':
-            if (strcmp(str+1, "ME_CSR") == 0)
-                return VME_CRCSR;
-            if (strncmp(str+1, "ME_A", 4) != 0) return 0;
-            str += 4;
         case 'A':
         {
             switch (strtol(str+1, NULL, 10))
@@ -316,6 +351,8 @@ unsigned int toscaStrToAddrSpace(const char* str)
         case 'S':
             if (strcmp(str+1,"HM") == 0 || strcmp(str+1,"H_MEM") == 0 || strcmp(str+1,"HMEM") == 0)
                 return TOSCA_SHM;
+            if (strcmp(str+1,"LAVE") == 0)
+                return VME_SLAVE;
             return 0;
         case 'T':
             if (strcmp(str+1,"CSR") == 0)

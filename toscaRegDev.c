@@ -19,10 +19,6 @@
 #include "toscaIntr.h"
 #include "toscaUtils.h"
 
-typedef uint64_t __u64;
-typedef uint32_t __u32;
-typedef uint8_t __u8;
-#include "vme.h"
 #include "vme_user.h"
 
 #define VME_BLOCKTRANSFER (VME_SCT|VME_MBLT|VME_BLT|VME_2eVMEFast|VME_2eVME|VME_2eSST320|VME_2eSST267|VME_2eSST160)

@@ -18,6 +18,7 @@
 size_t strToSize(const char* str)
 {
     char* p;
+    if (!str) return 0;
     size_t size = strtoul(str, &p, 0);
     switch (*p)
     {
