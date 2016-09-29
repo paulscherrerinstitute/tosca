@@ -36,6 +36,26 @@ size_t strToSize(const char* str)
     return size;
 }
 
+char* sizeToStr(size_t size, char* str)
+{
+    int l = 0;
+    l = sprintf(str, "0x%zx", size);
+    if (size < 0x400) return str;
+    l += sprintf(str+l, "=");
+    if (size >= 0x40000000)
+        l += sprintf(str+l, "%uG", size>>30);
+    size &= 0x3fffffff;
+    if (size >= 0x100000)
+        l += sprintf(str+l, "%uM", size>>20);
+    size &= 0xfffff;
+    if (size >= 0x400)
+        l += sprintf(str+l, "%uK", size>>10);
+    size &= 0x3ff;
+    if (size > 0)
+        l += sprintf(str+l, "%u", size);
+    return str;
+}
+
 static const iocshFuncDef mallocDef =
     { "malloc", 2, (const iocshArg *[]) {
     &(iocshArg) { "size", iocshArgString },

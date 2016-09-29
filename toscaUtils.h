@@ -5,7 +5,9 @@
 extern "C" {
 #endif
 
-extern size_t strToSize(const char* str);
+size_t strToSize(const char* str);
+char* sizeToStr(size_t size, char* str);
+#define SIZE_STRING_BUFFER_SIZE 33
 
 #ifdef __cplusplus
 }

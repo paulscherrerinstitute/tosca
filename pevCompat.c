@@ -69,15 +69,87 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     /* args[9] = vmePktSize ignored */
     if (l) flags[l-1] = 0;
     
-    printf("Compatibility mode! pevConfigure call replaced by:\ntoscaRegDevConfigure %s:%s 0x%x 0x%x %s\n",
-                      args[1].sval, toscaAddrSpaceToStr(aspace), args[3].ival, args[6].ival, flags);
-    toscaRegDevConfigure(args[1].sval, aspace, args[3].ival, args[6].ival, flags);
+    printf("Compatibility mode! pevConfigure replaced by:\n"
+        "toscaRegDevConfigure %s %s:0x%x 0x%x %s\n",
+        args[1].sval, toscaAddrSpaceToStr(aspace), args[3].ival, args[6].ival, flags);
+    if (toscaRegDevConfigure(args[1].sval, aspace, args[3].ival, args[6].ival, flags) != 0)
+    {
+        fprintf(stderr, "toscaRegDevConfigure failed: %m\n");
+    }
+}
+
+static const iocshFuncDef pevVmeSlaveMainConfigDef =
+    { "pevVmeSlaveMainConfig", 3, (const iocshArg *[]) {
+    &(iocshArg) { "addrSpace", iocshArgString },
+    &(iocshArg) { "mainBase", iocshArgInt },
+    &(iocshArg) { "mainSize", iocshArgInt },
+}};
+
+static unsigned int mainBase;
+
+static void pevVmeSlaveMainConfigFunc (const iocshArgBuf *args)
+{
+    const char* addrSpace = args[0].sval;
+
+    if (!addrSpace)
+    {
+        fprintf(stderr, "usage: pevVmeSlaveMainConfig (\"AM24\"|\"AM32\", base, size)\n");
+        return;
+    }
+    mainBase = args[1].ival;
+}
+		
+static const iocshFuncDef pevVmeSlaveTargetConfigDef =
+    { "pevVmeSlaveTargetConfig", 7, (const iocshArg *[]) {
+    &(iocshArg) { "slaveAddrSpace", iocshArgString },
+    &(iocshArg) { "winBase", iocshArgInt },
+    &(iocshArg) { "winSize", iocshArgInt },
+    &(iocshArg) { "protocol", iocshArgString },
+    &(iocshArg) { "target", iocshArgString },
+    &(iocshArg) { "targetOffset", iocshArgInt },
+    &(iocshArg) { "swapping", iocshArgString },
+}};
+    
+static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
+{
+    char* slaveAddrSpace = args[0].sval;
+    unsigned int winBase = args[1].ival;
+    unsigned int winSize = args[2].ival;
+    const char* target = args[4].sval;
+    unsigned int targetOffset = args[5].ival;
+    const char* swapping = args[6].sval;
+    unsigned int aspace;
+    int swap;
+
+    if (!slaveAddrSpace)
+    {
+        fprintf(stderr, "usage: pevVmeSlaveTargetConfig (\"AM32\", base, size, \"BLT\"|\"MBLT\"|\"2eVME\"|\"2eSST160\"|\"2eSST233\"|\"2eSST320\", \"SH_MEM\"|\"PCIE\"|\"USR1/2\", offset, \"WS\"|\"DS\"|\"QS\")\n");
+        return;
+    }
+
+    if (strcmp(slaveAddrSpace, "AM32") != 0)
+    {
+        fprintf(stderr, "pevVmeSlaveTargetConfig(): ERROR, can map to AM32 only\n");
+        return;
+    }
+    aspace = toscaStrToAddrSpace(target);
+    swap = swapping && strcmp(swapping, "AUTO") == 0;
+    printf("Compatibility mode! pevVmeSlaveMainConfig and pevVmeSlaveTargetConfig replaced by:\n"
+        "toscaMapVMESlave %s:0x%x 0x%x 0x%x%s\n",
+        toscaAddrSpaceToStr(aspace), targetOffset, winSize, mainBase+winBase, swap ? " 1" : "");
+    if (toscaMapVMESlave(aspace, targetOffset, winSize, mainBase+winBase, swap) != 0)
+    {
+        fprintf(stderr, "toscaMapVMESlave failed: %m\n");
+    }
 }
 
 static void pevRegistrar(void)
 {
     iocshRegister(&pevConfigureDef, pevConfigureFunc);
     iocshRegister(&pevAsynConfigureDef, pevConfigureFunc);
+    iocshRegister(&pevVmeSlaveMainConfigDef, pevVmeSlaveMainConfigFunc);
+    iocshRegister(&pevVmeSlaveTargetConfigDef, pevVmeSlaveTargetConfigFunc);
+
     toscaRegDevConfigure("pev_csr", TOSCA_CSR, 0, 0x2000, NULL);
 }
 

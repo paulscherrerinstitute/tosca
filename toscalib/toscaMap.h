@@ -28,21 +28,24 @@ extern "C" {
 
 /* set to 1 to see debug output */
 extern int toscaMapDebug;
+
+/* set to redirect debug output  */
 extern FILE* toscaMapDebugFile;
 
 /* One day we may have A64 in Tosca */
 typedef uint64_t vmeaddr_t;
 
-/* Map a Tosca resource to user space. Reuse maps if possible. */
+/* Map a Tosca resource to user space. Re-use maps if possible. */
 volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size);
 
 /* For aspace use
-     (At the moment Tosca does not support A64.)
-   * for VME address spaces A16, A24, A32: VME_A16, VME_A24, VME_A32 optionally | VME_SUPER or VME_PROG
+   * for VME address spaces A16, A24, A32: VME_A16, VME_A24, VME_A32 ( | VME_SUPER, VME_PROG)
    * for VME CR/CSR addres space: VME_CRCSR
    * for Tosca FPGA USR: TOSCA_USER
    * for Tosca shared memory: TOSCA_SHM
    * for Tosca configuration space registers: TOSCA_CSR
+   * for VME A32 slave windows: VME_SLAVE
+   At the moment Tosca does not support A64.
 */
 
 /* Convert aspace code to/from string. */
@@ -90,6 +93,21 @@ typedef struct {
 } toscaMapVmeErr_t;
 toscaMapVmeErr_t toscaGetVmeErr();
 
+/* VME SLAVE MAPS */
+
+/* Configure VME slave maps to USR1, SHM or back to VME A32
+   These maps stay after the program exits!
+*/
+int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vmeaddr_t vme_address, int swap);
+
+/* With size == 0 print all slave maps.
+   Else silently check for overlaps.
+   Return 1 if overlap is found, 0 if not, -1 on error.
+*/
+int toscaCheckSlaveMaps(vmeaddr_t addr, size_t size);
+
+/* TOSCA CSR ACCESS */
+
 /* Access to the configuration space registers (CSR) of the local TOSCA.
    Values are automatically converted to and from host byte order.
    Address should be a multiple of 4.
@@ -102,8 +120,9 @@ int toscaCsrWrite(unsigned int address, uint32_t value);  /* Write new value. */
 int toscaCsrSet(unsigned int address, uint32_t value);    /* Set bits in value, leave others unchanged. */
 int toscaCsrClear(unsigned int address, uint32_t value);  /* Clear bits in value, leave others unchanged. */
 
-/* If you want to access Tosca CSR directly instead of using functions above.
-   Be aware that all registers are little endian.
+/* If you prefer to access Tosca CSR directly using toscaMap
+   instead of using functions above,
+   be aware that all registers are little endian.
    Use htole32() for writing and le32toh() for reading.
 */
 

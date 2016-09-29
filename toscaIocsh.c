@@ -46,7 +46,6 @@ static void toscaMapFunc(const iocshArgBuf *args)
         return;
     }
     address = strToSize(p);
-
     size = strToSize(args[1].sval);
     addr = toscaMap(aspace, address, size);
     if (!addr)
@@ -55,6 +54,50 @@ static void toscaMapFunc(const iocshArgBuf *args)
         return;
     }
     printf("%p\n", addr);
+}
+
+static const iocshFuncDef toscaMapVMESlaveDef =
+    { "toscaMapVMESlave", 4, (const iocshArg *[]) {
+    &(iocshArg) { "(A32|USER|SHM):address", iocshArgString },
+    &(iocshArg) { "size", iocshArgString },
+    &(iocshArg) { "VME_address", iocshArgString },
+    &(iocshArg) { "swap", iocshArgInt },
+}};
+
+static void toscaMapVMESlaveFunc(const iocshArgBuf *args)
+{
+    unsigned int aspace;
+    size_t size;
+    size_t address;
+    size_t vme_address;
+    char* p;
+
+    if (!args[0].sval) 
+    {
+        iocshCmd("help toscaMapVMESlave");
+        return;
+    }
+    p = strchr(args[0].sval, ':');
+    if (!p)
+    {
+        fprintf(stderr, "missing address space\n");
+        return;
+    }
+    *p++ = 0;
+    aspace = toscaStrToAddrSpace(args[0].sval);
+    if (!(aspace & (VME_A32|TOSCA_USER1|TOSCA_SHM)))
+    {
+        fprintf(stderr, "invalid address space %s\n", args[0].sval);
+        return;
+    }
+    address = strToSize(p);
+    size = strToSize(args[1].sval);
+    vme_address = strToSize(args[2].sval);
+    if (toscaMapVMESlave(aspace, address, size, vme_address, args[3].ival) != 0)
+    {
+        fprintf(stderr, "mapping failed: %m\n");
+        return;
+    }
 }
 
 static const iocshFuncDef toscaMapLookupAddrDef =
@@ -78,16 +121,17 @@ static const iocshFuncDef toscaMapShowDef =
 
 int toscaMapPrintInfo(toscaMapInfo_t info)
 {
-    printf("%-9s 0x%08llx [0x%08zx =%4d %ciB] @ %p\n",
+    char buf[SIZE_STRING_BUFFER_SIZE];
+    printf("%s:0x%llx [%s] MEM:%p\n",
         toscaAddrSpaceToStr(info.aspace), info.address,
-        info.size, info.size >= 0x00100000 ? (info.size >> 20) : (info.size >> 10), info.size >= 0x00100000 ? 'M' : 'K',
-        info.ptr);
+        sizeToStr(info.size, buf),info.ptr);
     return 0;
 }
 
 static void toscaMapShowFunc(const iocshArgBuf *args)
 {
     toscaMapForeach(toscaMapPrintInfo);
+    toscaCheckSlaveMaps(0,0);
 }
 
 static const iocshFuncDef toscaMapFindDef =
@@ -326,6 +370,7 @@ static void toscaRegistrar(void)
     memDisplayInstallAddrHandler("TCSR",  toscaAddrHandler, TOSCA_CSR);
 
     iocshRegister(&toscaMapDef, toscaMapFunc);
+    iocshRegister(&toscaMapVMESlaveDef, toscaMapVMESlaveFunc);
     iocshRegister(&toscaMapLookupAddrDef, toscaMapLookupAddrFunc);
     iocshRegister(&toscaMapShowDef, toscaMapShowFunc);
     iocshRegister(&toscaMapFindDef, toscaMapFindFunc);
