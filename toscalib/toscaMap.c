@@ -51,12 +51,6 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             address,
             size);
     
-    if (!size)
-    {
-        errno = EINVAL;
-        return NULL;
-    }
-
     LOCK;
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
@@ -110,6 +104,13 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
            Adjust and round up size to the next full MiB.
         */
         struct vme_master vme_window = {0};
+
+        if (!size)
+        {
+            debug("size is 0");
+            errno = EINVAL;
+            return NULL;
+        }
 
         vme_window.enable = 1;
         vme_window.vme_addr = address & ~0xffffful;
