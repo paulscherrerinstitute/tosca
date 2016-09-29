@@ -253,7 +253,7 @@ void toscaIntrShow(int level)
     unsigned int symbolDetail = 0;
     int rep = 0;
 
-    if (level > 1) symbolDetail = level-1;
+    if (level > 1) symbolDetail = (level-1) | F_SYMBOL_NAME_DEMANGE_FULL;
     if (level < 0) { period = -1000*level; level = 0; }
     
     do
@@ -269,21 +269,16 @@ void toscaIntrShow(int level)
             count = intrCount[index];
             delta = count - prevIntrCount[index];
             prevIntrCount[index] = count;
-            if (count == 0 && (handlers[index] == NULL || level == 0)) continue;
-            if (delta == 0 && period != 0) continue;
+            if (count == 0 && handlers[index] == NULL) continue;
             intrmask = INTR_INDEX_TO_BIT(index);
             printf("  %s", toscaIntrBitToStr(intrmask));
             if (intrmask & INTR_VME_LVL_ANY)
                 printf("-%-3d ", INTR_INDEX_TO_IVEC(index));
             printf(" count=%llu (+%llu)\n", count, delta);
             prevIntrCount[index] = count;
-            if (!rep) for (handler = handlers[index]; handler; handler = handler->next)
+            if (level) for (handler = handlers[index]; handler; handler = handler->next)
             {
-                printf("    %s", fname=symbolName(handler->function, symbolDetail));
-                free(fname);
-                if (level > 0 || period != 0)
-                    printf(" (%p)", handler->parameter);
-                printf("\n");
+                printf("    %s (%p)\n", fname=symbolName(handler->function, symbolDetail), handler->parameter), free(fname);
             }
         }
         UNLOCK;
