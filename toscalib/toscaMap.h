@@ -126,6 +126,12 @@ int toscaCsrClear(unsigned int address, uint32_t value);  /* Clear bits in value
    Use htole32() for writing and le32toh() for reading.
 */
 
+
+/* Some utilities */
+size_t toscaStrToSize(const char* str);
+char* toscaSizeToStr(size_t size, char* str);
+#define SIZE_STRING_BUFFER_SIZE 60
+
 #ifdef __cplusplus
 }
 #endif

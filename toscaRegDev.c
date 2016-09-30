@@ -17,7 +17,6 @@
 #include "toscaMap.h"
 #include "toscaDma.h"
 #include "toscaIntr.h"
-#include "toscaUtils.h"
 
 #include "vme_user.h"
 
@@ -330,8 +329,8 @@ int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, 
 
             if (strncasecmp(p, "nodma", l) == 0)     { device->dmaSpace = 0; continue; }
             if (strncasecmp(p, "dmaonly", l) == 0)   { device->dmaReadLimit = device->dmaWriteLimit = 1; continue; }
-            if (strncasecmp(p, "dmaReadLimit=", 13) == 0)  { device->dmaReadLimit  = strToSize(p+13); continue; }
-            if (strncasecmp(p, "dmaWriteLimit=", 14) == 0) { device->dmaWriteLimit = strToSize(p+14); continue; }
+            if (strncasecmp(p, "dmaReadLimit=", 13) == 0)  { device->dmaReadLimit  = toscaStrToSize(p+13); continue; }
+            if (strncasecmp(p, "dmaWriteLimit=", 14) == 0) { device->dmaWriteLimit = toscaStrToSize(p+14); continue; }
 
             if (strncasecmp(p, "SCT", l) == 0)       { device->dmaSpace = VME_SCT; continue; }
             if (strncasecmp(p, "BLT", l) == 0)       { device->dmaSpace = VME_BLT; continue; }
@@ -445,8 +444,8 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
     }
     *p++ = 0;
     aspace = toscaStrToAddrSpace(args[1].sval);
-    address = strToSize(p);
-    size = strToSize(args[2].sval);
+    address = toscaStrToSize(p);
+    size = toscaStrToSize(args[2].sval);
 
     for (i = 1; i < args[3].aval.ac && l < sizeof(flags); i++)
         l += sprintf(flags+l, "%.*s ", sizeof(flags)-l, args[3].aval.av[i]);

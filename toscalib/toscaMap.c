@@ -15,7 +15,6 @@ typedef uint32_t __u32;
 typedef uint8_t __u8;
 #include "vme_user.h"
 #include "toscaMap.h"
-#include "toscaUtils.h"
 
 #define TOSCA_DEBUG_NAME toscaMap
 #include "toscaDebug.h"
@@ -448,7 +447,7 @@ int toscaCheckSlaveMaps(vmeaddr_t addr, size_t size)
             }
             if (size == 0)
                 printf("VME_SLAVE:0x%zx [%s] %s:0x%zx%s\n",
-                    slaveBase+vmeOffs, sizeToStr(mapSize, buf),
+                    slaveBase+vmeOffs, toscaSizeToStr(mapSize, buf),
                     res, resOffs, mode & 0x40 ? " SWAP" : "");
         }
     }
@@ -495,3 +494,61 @@ toscaMapVmeErr_t toscaGetVmeErr()
 
     return (toscaMapVmeErr_t) { addr, {stat} };
 }
+
+size_t toscaStrToSize(const char* str)
+{
+    char* p;
+    if (!str) return 0;
+    size_t size = strtoul(str, &p, 0);
+    switch (*p)
+    {
+        case 'k':
+        case 'K':
+            size *= 1UL<<10; break;
+        case 'M':
+            size *= 1UL<<20; break;
+        case 'G':
+            size *= 1UL<<30; break;
+#if __WORDSIZE > 32
+        case 'T':
+            size *= 1ULL<<40; break;
+        case 'P':
+            size *= 1ULL<<50; break;
+        case 'E':
+            size *= 1ULL<<60; break;
+#endif
+    }
+    return size;
+}
+
+char* toscaSizeToStr(size_t size, char* str)
+{
+    int l = 0;
+    l = sprintf(str, "0x%zx", size);
+    if (size < 0x400) return str;
+    l += sprintf(str+l, "=");
+#if __WORDSIZE > 32
+    if (size >= 1<<60)
+        l += sprintf(str+l, "%uE", size>>50);
+    size &= (1ULL<<60)-1;
+    if (size >= 1<<50)
+        l += sprintf(str+l, "%uP", size>>40);
+    size &= (1ULL<<50)-1;
+    if (size >= 1<<40)
+        l += sprintf(str+l, "%uT", size>>30);
+    size &= (1ULL<<40)-1;
+#endif
+    if (size >= 1<<30)
+        l += sprintf(str+l, "%uG", size>>30);
+    size &= (1UL<<30)-1;
+    if (size >= 1<<20)
+        l += sprintf(str+l, "%uM", size>>20);
+    size &= (1UL<<20)-1;
+    if (size >= 1<<10)
+        l += sprintf(str+l, "%uK", size>>10);
+    size &= (1UL<<10)-1;
+    if (size > 0)
+        l += sprintf(str+l, "%u", size);
+    return str;
+}
+

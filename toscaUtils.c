@@ -15,47 +15,6 @@
 #define TOSCA_DEBUG_NAME toscaDma
 #include "toscaDebug.h"
 
-size_t strToSize(const char* str)
-{
-    char* p;
-    if (!str) return 0;
-    size_t size = strtoul(str, &p, 0);
-    switch (*p)
-    {
-        case 'k':
-        case 'K':
-            size *= 0x400;
-            break;
-        case 'M':
-            size *= 0x100000;
-            break;
-        case 'G':
-            size *= 0x40000000;
-            break;
-    }
-    return size;
-}
-
-char* sizeToStr(size_t size, char* str)
-{
-    int l = 0;
-    l = sprintf(str, "0x%zx", size);
-    if (size < 0x400) return str;
-    l += sprintf(str+l, "=");
-    if (size >= 0x40000000)
-        l += sprintf(str+l, "%uG", size>>30);
-    size &= 0x3fffffff;
-    if (size >= 0x100000)
-        l += sprintf(str+l, "%uM", size>>20);
-    size &= 0xfffff;
-    if (size >= 0x400)
-        l += sprintf(str+l, "%uK", size>>10);
-    size &= 0x3ff;
-    if (size > 0)
-        l += sprintf(str+l, "%u", size);
-    return str;
-}
-
 static const iocshFuncDef mallocDef =
     { "malloc", 2, (const iocshArg *[]) {
     &(iocshArg) { "size", iocshArgString },
@@ -65,9 +24,9 @@ static const iocshFuncDef mallocDef =
 static void mallocFunc(const iocshArgBuf *args)
 {
     if (args[1].sval)
-        printf ("%p\n", memalign(strToSize(args[0].sval), strToSize(args[1].sval)));
+        printf ("%p\n", memalign(toscaStrToSize(args[0].sval), toscaStrToSize(args[1].sval)));
     else
-        printf ("%p\n", valloc(strToSize(args[0].sval)));
+        printf ("%p\n", valloc(toscaStrToSize(args[0].sval)));
 }
 
 static const iocshFuncDef memfillDef =
@@ -103,9 +62,9 @@ static void memfillFunc(const iocshArgBuf *args)
         iocshCmd("help memfill");
         return;
     }
-    size_t address = strToSize(args[0].sval);
+    size_t address = toscaStrToSize(args[0].sval);
     uint32_t pattern = args[1].ival;
-    int size = strToSize(args[2].sval);
+    int size = toscaStrToSize(args[2].sval);
     int width = args[3].ival;
     int increment = args[4].ival;
     int i;
@@ -166,7 +125,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
         iocshCmd("help toscaCopy");
         return;
     }
-    size = strToSize(args[2].sval);
+    size = toscaStrToSize(args[2].sval);
 
     p = strchr(args[0].sval, ':');
     if (p)
@@ -178,10 +137,10 @@ void toscaCopyFunc(const iocshArgBuf *args)
             fprintf(stderr, "invalid source address space %s\n", args[0].sval);
             return;
         }
-        sourceptr = toscaMap(aspace, strToSize(p), size);
+        sourceptr = toscaMap(aspace, toscaStrToSize(p), size);
     }
     else
-        sourceptr = (volatile void*)strToSize(args[0].sval);
+        sourceptr = (volatile void*)toscaStrToSize(args[0].sval);
     
     if (!sourceptr)
     {
@@ -199,10 +158,10 @@ void toscaCopyFunc(const iocshArgBuf *args)
             fprintf(stderr, "invalid dest address space %s\n", args[1].sval);
             return;
         }
-        destptr = toscaMap(aspace, strToSize(p), size);
+        destptr = toscaMap(aspace, toscaStrToSize(p), size);
     }
     else
-        destptr = (volatile void*)strToSize(args[1].sval);
+        destptr = (volatile void*)toscaStrToSize(args[1].sval);
 
     if (!destptr)
     {
