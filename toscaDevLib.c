@@ -3,13 +3,17 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include <devLib.h>
+#include <devLibVME.h>
 #include <epicsMutex.h>
 #include <epicsTypes.h>
 #include <epicsExit.h>
 #include "toscaDevLib.h"
 #include "toscaDma.h"
 #include <epicsExport.h>
+
+#ifndef S_dev_badCRCSR
+#define S_dev_badCRCSR S_dev_badA24
+#endif
 
 #include "symbolname.h"
 
@@ -336,7 +340,9 @@ devLibVirtualOS toscaVirtualOS = {
     toscaDevLibA24Malloc,
     toscaDevLibA24Free,
     toscaDevLibInit,
+#ifdef pdevLibVirtualOS
     toscaDevLibInterruptInUseVME
+#endif
 };
 
 static void toscaDevLibRegistrar ()

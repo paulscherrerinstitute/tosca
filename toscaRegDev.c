@@ -150,7 +150,7 @@ int toscaRegDevWrite(
     if (pmask && dlen != device->swap) /* mask with different dlen than swap */
     {
         int i;
-        epicsUInt64 mask;
+        uint64_t mask;
         debug("mask, swap, regDevCopy");
         for (i = 0; i < 8/dlen; i++) memcpy((char*)&mask + dlen * i, pmask, dlen);
         pmask = &mask;
@@ -189,8 +189,9 @@ void toscaScanIoRequest(IOSCANPVT pioscanpvt)
 {
     int prio;
     
+    if(!interruptAccept) return;
     for (prio = 0; prio < 3; prio++) {
-        io_scan_list *piosl = &pioscanpvt[prio];
+        io_scan_list *piosl = (io_scan_list *)pioscanpvt+prio;
         if (ellCount(&piosl->scan_list.list) > 0)
         {
             piosl->callback.callback(&piosl->callback);
