@@ -18,6 +18,9 @@
 #include "toscaDma.h"
 #include "toscaIntr.h"
 
+typedef uint8_t __u8;
+typedef uint32_t __u32;
+typedef uint64_t __u64;
 #include "vme_user.h"
 
 #define VME_BLOCKTRANSFER (VME_SCT|VME_MBLT|VME_BLT|VME_2eVMEFast|VME_2eVME|VME_2eSST320|VME_2eSST267|VME_2eSST160)
@@ -75,16 +78,18 @@ int toscaRegDevRead(
         debug("buggy device handle");
         return -1;
     }
-    debugLvl(3,"device=%s offset=0x%zx dlen=%d, nelem=%zd [dmaReadLimit=%zd] user=%s\n",
+    debugLvl(3,"device=%s offset=0x%zx dlen=%u, nelem=%zu [dmaReadLimit=%u] user=%s\n",
         device->name, offset, dlen, nelem, device->dmaReadLimit, user);
     if (!nelem || !dlen) return SUCCESS;
 
     if (device->dmaReadLimit && nelem >= device->dmaReadLimit)
     {
         char* fname;
+        void* usr = (void*)user;
+
         assert(device->dmaSpace != 0);
         int status = toscaDmaRead(device->dmaSpace, device->baseaddr + offset, pdata, nelem*dlen,
-            device->swap, 0, (toscaDmaCallback)callback, (void*)user);
+            device->swap, 0, (toscaDmaCallback)callback, usr);
         if (callback != NULL && status == 0)
             return ASYNC_COMPLETION;
         if (status != 0) debugErrno("toscaDmaRead %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
@@ -121,16 +126,18 @@ int toscaRegDevWrite(
         debug("buggy device handle");
         return -1;
     }
-    debugLvl(2, "device=%s offset=0x%zx dlen=%d, nelem=%zd [dmaWriteLimit=%zd] pmask=%p user=%s",
+    debugLvl(2, "device=%s offset=0x%zx dlen=%u, nelem=%zu [dmaWriteLimit=%u] pmask=%p user=%s",
         device->name, offset, dlen, nelem, device->dmaWriteLimit, pmask, user);
     if (!nelem || !dlen) return SUCCESS;
 
     if (pmask == NULL && device->dmaWriteLimit && nelem >= device->dmaWriteLimit)
     {
         char* fname;
+        void* usr = (void*)user;
+
         assert(device->dmaSpace != 0);
         int status = toscaDmaWrite(pdata, device->dmaSpace, device->baseaddr + offset, nelem*dlen,
-            device->swap, 0, (toscaDmaCallback)callback, (void*)user);
+            device->swap, 0, (toscaDmaCallback)callback, usr);
         if (callback != NULL && status == 0)
             return ASYNC_COMPLETION;
         if (status != 0) debugErrno("toscaDmaWrite %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
@@ -448,7 +455,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
     size = toscaStrToSize(args[2].sval);
 
     for (i = 1; i < args[3].aval.ac && l < sizeof(flags); i++)
-        l += sprintf(flags+l, "%.*s ", sizeof(flags)-l, args[3].aval.av[i]);
+        l += sprintf(flags+l, "%.*s ", (int)sizeof(flags)-l, args[3].aval.av[i]);
     if (l) flags[l-1] = 0;
 
     if (toscaRegDevConfigure(args[0].sval, aspace, address, size, flags) != 0)

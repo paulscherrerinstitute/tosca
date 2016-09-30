@@ -9,6 +9,18 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <endian.h>
+
+#ifndef le32toh
+#if  __BYTE_ORDER == __LITTLE_ENDIAN
+#define le32toh(x) (x)
+#define htole32(x) (x)
+#else
+#include <byteswap.h>
+#define le32toh(x) __bswap_32 (x)
+#define htole32(x) __bswap_32 (x)
+#endif
+#endif
 
 typedef uint64_t __u64;
 typedef uint32_t __u32;
@@ -42,28 +54,30 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
     volatile void *ptr;
     size_t offset;
     int fd;
-    int setcmd, getcmd;
+    unsigned int setcmd, getcmd;
     const char *filename;
 
     debug("aspace=%#x(%s), address=%#llx, size=%#zx",
-            aspace, toscaAddrSpaceToStr(aspace),
-            address,
+            aspace,
+            toscaAddrSpaceToStr(aspace),
+            (unsigned long long) address,
             size);
     
     LOCK;
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
         debug("check aspace=%#x(%s), address=%#llx, size=%#zx",
-                (*pmap)->info.aspace, toscaAddrSpaceToStr((*pmap)->info.aspace),
-                (*pmap)->info.address,
+                (*pmap)->info.aspace,
+                toscaAddrSpaceToStr((*pmap)->info.aspace),
+                (unsigned long long) (*pmap)->info.address,
                 (*pmap)->info.size);
         if (aspace == (*pmap)->info.aspace &&
             address >= (*pmap)->info.address &&
             address + size <= (*pmap)->info.address + (*pmap)->info.size)
         {
             debug("use existing window addr=%#llx size=%#zx offset=%#llx",
-                    (*pmap)->info.address, (*pmap)->info.size,
-                    (address - (*pmap)->info.address));
+                    (unsigned long long) (*pmap)->info.address, (*pmap)->info.size,
+                    (unsigned long long) (address - (*pmap)->info.address));
             {
                 UNLOCK;
                 return (*pmap)->info.ptr + (address - (*pmap)->info.address);
@@ -141,12 +155,22 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
 
         debug("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, dwidth=0x%x})",
             fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
-            vme_window.enable, vme_window.vme_addr, vme_window.size, vme_window.aspace, vme_window.cycle, vme_window.dwidth);
+            vme_window.enable,
+            (unsigned long long) vme_window.vme_addr,
+            (unsigned long long) vme_window.size,
+            vme_window.aspace,
+            vme_window.cycle,
+            vme_window.dwidth);
         if (ioctl(fd, setcmd, &vme_window) != 0)
         {
             debugErrno("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, dwidth=0x%x})",
                 fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
-                vme_window.enable, vme_window.vme_addr, vme_window.size, vme_window.aspace, vme_window.cycle, vme_window.dwidth);
+                vme_window.enable,
+                (unsigned long long) vme_window.vme_addr,
+                (unsigned long long) vme_window.size,
+                vme_window.aspace,
+                vme_window.cycle,
+                vme_window.dwidth);
             close(fd);
             UNLOCK;
             return NULL;
@@ -167,7 +191,8 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             return NULL;
         }
         debug("got window address=%#llx size=%#llx",
-                vme_window.vme_addr, vme_window.size);
+            (unsigned long long) vme_window.vme_addr,
+            (unsigned long long) vme_window.size);
         }
         
         /* Find the MMU pages in the window we need to map */
@@ -209,25 +234,26 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
     return ptr + offset;
 }
 
-toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info))
+toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void* usr), void* usr)
 {
     struct map *map;
 
     for (map = maps; map; map = map->next)
     {
-        if (func(map->info) != 0) break; /* loop until user func returns non 0 */
+        if (func(map->info, usr) != 0) break; /* loop until user func returns non 0 */
     }
     if (map) return map->info;           /* info of map where user func returned non 0 */
     else return (toscaMapInfo_t) { 0, 0, 0, NULL };
 }
 
+int toscaMapPtrCompare(toscaMapInfo_t info, void* ptr)
+{
+    return ptr >= info.ptr && ptr < info.ptr + info.size;
+}
+
 toscaMapInfo_t toscaMapFind(const volatile void* ptr)
 {
-    int toscaMapPtrCompare(toscaMapInfo_t info)
-    {
-        return ptr >= info.ptr && ptr < info.ptr + info.size;
-    }
-    return toscaMapForeach(toscaMapPtrCompare);
+    return toscaMapForeach(toscaMapPtrCompare, (void*)ptr);
 }
 
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr)
@@ -384,8 +410,19 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
         debugErrno("fopen %s", filename);
         return -1;
     }
-    debug("0x%llx:0x%zx:0x%llx:%s:%c > '%s'",  vme_address, size, res_address, res, swap ? 'y' : 'n', filename);
-    fprintf(file, "0x%llx:0x%zx:0x%llx:%s:%c", vme_address, size, res_address, res, swap ? 'y' : 'n');
+    debug("0x%llx:0x%zx:0x%llx:%s:%c > '%s'", 
+        (unsigned long long) vme_address,
+        size,
+        (unsigned long long) res_address,
+        res,
+        swap ? 'y' : 'n',
+        filename);
+    fprintf(file, "0x%llx:0x%zx:0x%llx:%s:%c",
+        (unsigned long long) vme_address,
+        size,
+        (unsigned long long) res_address,
+        res,
+        swap ? 'y' : 'n');
     if (fclose(file) == -1)
     {
         debugErrno("add slave window");
@@ -528,27 +565,27 @@ char* toscaSizeToStr(size_t size, char* str)
     if (size < 0x400) return str;
     l += sprintf(str+l, "=");
 #if __WORDSIZE > 32
-    if (size >= 1<<60)
-        l += sprintf(str+l, "%uE", size>>50);
+    if (size >= 1ULL<<60)
+        l += sprintf(str+l, "%zuE", size>>50);
     size &= (1ULL<<60)-1;
-    if (size >= 1<<50)
-        l += sprintf(str+l, "%uP", size>>40);
+    if (size >= 1ULL<<50)
+        l += sprintf(str+l, "%zuP", size>>40);
     size &= (1ULL<<50)-1;
-    if (size >= 1<<40)
-        l += sprintf(str+l, "%uT", size>>30);
+    if (size >= 1ULL<<40)
+        l += sprintf(str+l, "%zuT", size>>30);
     size &= (1ULL<<40)-1;
 #endif
-    if (size >= 1<<30)
-        l += sprintf(str+l, "%uG", size>>30);
+    if (size >= 1UL<<30)
+        l += sprintf(str+l, "%zuG", size>>30);
     size &= (1UL<<30)-1;
-    if (size >= 1<<20)
-        l += sprintf(str+l, "%uM", size>>20);
+    if (size >= 1UL<<20)
+        l += sprintf(str+l, "%zuM", size>>20);
     size &= (1UL<<20)-1;
-    if (size >= 1<<10)
-        l += sprintf(str+l, "%uK", size>>10);
+    if (size >= 1UL<<10)
+        l += sprintf(str+l, "%zuK", size>>10);
     size &= (1UL<<10)-1;
     if (size > 0)
-        l += sprintf(str+l, "%u", size);
+        l += sprintf(str+l, "%zu", size);
     return str;
 }
 

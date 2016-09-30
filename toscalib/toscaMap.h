@@ -2,6 +2,7 @@
 #define toscaMap_h
 
 #include <stdint.h>
+#include <stdio.h>
 
 /* VME access modes from vme.h */
 #define VME_A16		0x1
@@ -65,7 +66,7 @@ toscaMapInfo_t toscaMapFind(const volatile void* ptr);
 
 /* Iterate over all maps (while func returns 0). */
 /* Returns info of map for which func returned not 0 */
-toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info));
+toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void *usr), void *usr);
 
 /* Find a VME address from a user space pointer. */
 typedef struct {

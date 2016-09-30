@@ -163,24 +163,36 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
     ioctl(r->fd, VME_DMA_TIMEOUT, r->timeout);
 #endif
     if (toscaDmaDebug)
-        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-    debugLvl(2, "ioctl(%d, VME_DMA_EXECUTE, {%s 0x%llx->0x%llx [0x%zx] dw=0x%x %s cy=0x%x=%s})",
-        r->fd, toscaDmaRouteToStr(r->req.route), r->req.src_addr, r->req.dst_addr,
-        r->req.size, r->req.dwidth, toscaDmaWidthToSwapStr(r->req.dwidth),
-        r->req.cycle, toscaDmaTypeToStr(r->req.cycle));
+        clock_gettime(CLOCK, &start);
+    debugLvl(2, "ioctl(%d, VME_DMA_EXECUTE, {%s 0x%llx->0x%llx [0x%x] dw=0x%x %s cy=0x%x=%s})",
+        r->fd,
+        toscaDmaRouteToStr(r->req.route),
+        (unsigned long long) r->req.src_addr,
+        (unsigned long long) r->req.dst_addr,
+        r->req.size,
+        r->req.dwidth,
+        toscaDmaWidthToSwapStr(r->req.dwidth),
+        r->req.cycle,
+        toscaDmaTypeToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_EXECUTE, &ex) != 0)
     {
-        debugErrno("ioctl(%d, VME_DMA_EXECUTE, {%s 0x%llx->0x%llx [0x%zx] dw=0x%x %s cy=0x%x=%s})",
-            r->fd, toscaDmaRouteToStr(r->req.route), r->req.src_addr, r->req.dst_addr,
-            r->req.size, r->req.dwidth, toscaDmaWidthToSwapStr(r->req.dwidth),
-        r->req.cycle, toscaDmaTypeToStr(r->req.cycle));
+        debugErrno("ioctl(%d, VME_DMA_EXECUTE, {%s 0x%llx->0x%llx [0x%x] dw=0x%x %s cy=0x%x=%s})",
+            r->fd,
+            toscaDmaRouteToStr(r->req.route),
+            (unsigned long long) r->req.src_addr,
+            (unsigned long long) r->req.dst_addr,
+            r->req.size,
+            r->req.dwidth,
+            toscaDmaWidthToSwapStr(r->req.dwidth),
+            r->req.cycle,
+            toscaDmaTypeToStr(r->req.cycle));
         if (r->oneShot) toscaDmaRelease(r);
         return errno;
     }
     if (toscaDmaDebug)
     {
         double sec;
-        clock_gettime(CLOCK_MONOTONIC_RAW, &finished);
+        clock_gettime(CLOCK, &finished);
         finished.tv_sec  -= start.tv_sec;
         if ((finished.tv_nsec -= start.tv_nsec) < 0)
         {
@@ -333,6 +345,14 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
     r->user = user;
     r->req.src_addr = source_addr;
     r->req.dst_addr = dest_addr;
+#if __WORDSIZE > 32
+    if (size >= 0x100000000ULL)
+    {
+        errno = EINVAL;
+        debug("size too long (man 32 bit)");
+        return  NULL;
+    }
+#endif
     r->req.size = size;
     r->req.cycle = 0;
    
@@ -463,18 +483,28 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
         toscaDmaRelease(r);
         return NULL;
     }
-    debugLvl(2, "ioctl(%d, VME_DMA_SET, {%s 0x%llx->0x%llx [0x%zx] dw=0x%x %s cy=0x%x=%s})",
-        r->fd, toscaDmaRouteToStr(r->req.route),
-        r->req.src_addr, r->req.dst_addr, r->req.size,
-        r->req.dwidth, toscaDmaWidthToSwapStr(r->req.dwidth),
-        r->req.cycle, toscaDmaTypeToStr(r->req.cycle));
+    debugLvl(2, "ioctl(%d, VME_DMA_SET, {%s 0x%llx->0x%llx [0x%x] dw=0x%x %s cy=0x%x=%s})",
+        r->fd,
+        toscaDmaRouteToStr(r->req.route),
+        (unsigned long long) r->req.src_addr,
+        (unsigned long long) r->req.dst_addr,
+        r->req.size,
+        r->req.dwidth,
+        toscaDmaWidthToSwapStr(r->req.dwidth),
+        r->req.cycle,
+        toscaDmaTypeToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_SET, &r->req) != 0)
     {
-        debugErrno("ioctl(%d, VME_DMA_SET, {%s 0x%llx->0x%llx [0x%zx] dw=0x%x %s cy=0x%x=%s})",
-            r->fd, toscaDmaRouteToStr(r->req.route),
-            r->req.src_addr, r->req.dst_addr, r->req.size,
-        r->req.dwidth, toscaDmaWidthToSwapStr(r->req.dwidth),
-        r->req.cycle, toscaDmaTypeToStr(r->req.cycle));
+        debugErrno("ioctl(%d, VME_DMA_SET, {%s 0x%llx->0x%llx [0x%x] dw=0x%x %s cy=0x%x=%s})",
+            r->fd,
+            toscaDmaRouteToStr(r->req.route),
+            (unsigned long long) r->req.src_addr,
+            (unsigned long long) r->req.dst_addr,
+            r->req.size,
+            r->req.dwidth,
+            toscaDmaWidthToSwapStr(r->req.dwidth),
+            r->req.cycle,
+            toscaDmaTypeToStr(r->req.cycle));
         toscaDmaRelease(r);
         return NULL;
     }

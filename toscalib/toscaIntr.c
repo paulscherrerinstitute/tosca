@@ -141,7 +141,7 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
     static int count = 0;
 
     debug("intrmask=0x%016llx vec=0x%x function=%s, parameter=%p intrFdMax=%d count=%d",
-        intrmask, vec, fname=symbolName(function,0), parameter, intrFdMax, count++), free(fname);
+        (unsigned long long)intrmask, vec, fname=symbolName(function,0), parameter, intrFdMax, count++), free(fname);
     LOCK; /* only need to lock installation, not calling of handlers */
 
     #define ADD_FD(index, name, ...)                                      \
@@ -245,7 +245,7 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
 void toscaIntrShow(int level)
 {
     intrmask_t intrmask;
-    unsigned long long int count, delta;
+    unsigned long long count, delta;
     struct intr_handler* handler;
     char* fname;
     unsigned int index;

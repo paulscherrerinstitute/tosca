@@ -111,25 +111,28 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
     if (!vme_addr.aspace)
         printf("%p is not a TOSCA address\n", (void*)addr);
     else
-        printf("%s:%#0llx\n", toscaAddrSpaceToStr(vme_addr.aspace), vme_addr.address);
+        printf("%s:%#0llx\n",
+            toscaAddrSpaceToStr(vme_addr.aspace),
+            (unsigned long long)vme_addr.address);
 }
 
 static const iocshFuncDef toscaMapShowDef =
     { "toscaMapShow", 0, (const iocshArg *[]) {
 }};
 
-int toscaMapPrintInfo(toscaMapInfo_t info)
+int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
 {
     char buf[SIZE_STRING_BUFFER_SIZE];
     printf("%s:0x%llx [%s] MEM:%p\n",
-        toscaAddrSpaceToStr(info.aspace), info.address,
+        toscaAddrSpaceToStr(info.aspace),
+        (unsigned long long)info.address,
         toscaSizeToStr(info.size, buf),info.ptr);
     return 0;
 }
 
 static void toscaMapShowFunc(const iocshArgBuf *args)
 {
-    toscaMapForeach(toscaMapPrintInfo);
+    toscaMapForeach(toscaMapPrintInfo, NULL);
     toscaCheckSlaveMaps(0,0);
 }
 
@@ -145,7 +148,7 @@ static void toscaMapFindFunc(const iocshArgBuf *args)
     if (!info.aspace)
         printf("%p is not a TOSCA address\n", (void*)addr);
     else
-        toscaMapPrintInfo(info);
+        toscaMapPrintInfo(info, NULL);
 }
 
 static const iocshFuncDef toscaGetVmeErrDef =
@@ -336,14 +339,14 @@ static void toscaAddrSpaceToStrFunc(const iocshArgBuf *args)
     printf("%s\n", toscaAddrSpaceToStr(args[0].ival));
 }
 
+volatile void* toscaAddrHandler(size_t address, size_t size, size_t aspace)
+{
+    return toscaMap(aspace, address, size);
+}
 
 static void toscaRegistrar(void)
 {
     /* register with 'md' command */
-    volatile void* toscaAddrHandler(size_t address, size_t size, size_t aspace)
-    {
-        return toscaMap(aspace, address, size);
-    }
 
     memDisplayInstallAddrHandler("A16-",  toscaAddrHandler, VME_A16);
     memDisplayInstallAddrHandler("A24-",  toscaAddrHandler, VME_A24);

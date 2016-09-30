@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <setjmp.h>
-#include <time.h>
 #include <byteswap.h>
 #include "toscaMap.h"
 #include "toscaDma.h"
@@ -38,14 +37,15 @@ static const iocshFuncDef memfillDef =
     &(iocshArg) { "increment", iocshArgInt },
 }};
 
+static jmp_buf memfillFail;
+void memfillSigAction(int sig, siginfo_t *info, void *ctx)
+{
+    fprintf(stdout, "\nInvalid address %p.\n", info->si_addr);
+    longjmp(memfillFail, 1);
+}
+
 static void memfillFunc(const iocshArgBuf *args)
 {
-    jmp_buf memfillFail;
-    void memfillSigAction(int sig, siginfo_t *info, void *ctx)
-    {
-        fprintf(stdout, "\nInvalid address %p.\n", info->si_addr);
-        longjmp(memfillFail, 1);
-    }
     struct sigaction sa = {
         .sa_sigaction = memfillSigAction,
         .sa_flags = SA_SIGINFO | SA_NODEFER, /* Do not block signal */
@@ -171,7 +171,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
     int width = args[3].ival;
 
     if (toscaDmaDebug)
-        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+        clock_gettime(CLOCK, &start);
     switch (width)
     {
         case 0:
@@ -227,7 +227,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
     if (toscaDmaDebug)
     {
         double sec;
-        clock_gettime(CLOCK_MONOTONIC_RAW, &finished);
+        clock_gettime(CLOCK, &finished);
         finished.tv_sec  -= start.tv_sec;
         if ((finished.tv_nsec -= start.tv_nsec) < 0)
         {
@@ -235,7 +235,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
             finished.tv_sec--;
         }
         sec = finished.tv_sec + finished.tv_nsec * 1e-9;
-        debug("%d %sB / %.3f msec (%.1f MiB/s = %.1f MB/s)",
+        debug("%zu %sB / %.3f msec (%.1f MiB/s = %.1f MB/s)",
             size >= 0x00100000 ? (size >> 20) : size >= 0x00000400 ? (size >> 10) : size,
             size >= 0x00100000 ? "Mi" : size >= 0x00000400 ? "Ki" : "",
             sec * 1000, size/sec/0x00100000, size/sec/1000000);

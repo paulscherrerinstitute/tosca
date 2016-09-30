@@ -51,7 +51,7 @@ long toscaDevLibMapAddr(
     {
         case atVMEA16:
         {
-            if (vmeAddress + size > 0x10000)
+            if (vmeAddress + size > 0x10000ULL)
             {
                 debug("A16 address %#zx out of range", vmeAddress + size);
                 return S_dev_badA16;
@@ -63,7 +63,7 @@ long toscaDevLibMapAddr(
         }
         case atVMEA24:
         {
-            if (vmeAddress + size > 0x1000000)
+            if (vmeAddress + size > 0x1000000ULL)
             {
                 debug("A24 address %#zx out of range", vmeAddress + size);
                 return S_dev_badA24;
@@ -79,15 +79,17 @@ long toscaDevLibMapAddr(
             break;
         }
         case atVMEA32:
-            if (vmeAddress + size > 0x100000000U)
+#if __WORDSIZE > 32
+            if (vmeAddress + size > 0x100000000ULL)
             {
                 debug("A32 address %#zx out of range", vmeAddress + size);
                 return S_dev_badA32;
             }
+#endif
             mapAddress = toscaMap(VME_A32 | VME_DEFAULT_MODE, vmeAddress, size);
             break;
         case atVMECSR:
-            if (vmeAddress + size > 0x1000000)
+            if (vmeAddress + size > 0x1000000ULL)
             {
                 debug("CRCSR address %#zx out of range", vmeAddress + size);
                 return S_dev_badCRCSR;
@@ -173,7 +175,9 @@ long toscaDevLibProbe(
             return S_dev_success;
 
         /* Now check if the error came from our access. */
-        debug("Our access was %s %#llx", toscaAddrSpaceToStr(vme_addr.aspace), vme_addr.address);
+        debug("Our access was %s %#llx",
+            toscaAddrSpaceToStr(vme_addr.aspace),
+            (unsigned long long) vme_addr.address);
         if (vme_err.source == 0 && /* Error from PCIe, maybe our access. */
             isWrite == vme_err.write) /* Read/write access matches. */
             switch (vme_err.mode) /* Check address space of error. */

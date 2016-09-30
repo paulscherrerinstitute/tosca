@@ -62,10 +62,10 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     if (args[4].sval && l < sizeof(flags)) /* protocol */
     {
         if (strstr(args[4].sval, "BLT") || strstr(args[4].sval, "2e"))
-            l += sprintf(flags+l, "%.*s ", sizeof(flags)-1-l, args[4].sval);
+            l += sprintf(flags+l, "%.*s ", (int)sizeof(flags)-1-l, args[4].sval);
     }
     if (args[8].sval && l < sizeof(flags)) /* swap */
-        l += sprintf(flags+l, "%.*s ", sizeof(flags)-1-l, args[8].sval);
+        l += sprintf(flags+l, "%.*s ", (int)sizeof(flags)-1-l, args[8].sval);
     /* args[9] = vmePktSize ignored */
     if (l) flags[l-1] = 0;
     
