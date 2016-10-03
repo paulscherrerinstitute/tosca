@@ -115,9 +115,8 @@ void toscaCopyFunc(const iocshArgBuf *args)
     struct timespec start, finished;
     volatile void* sourceptr;
     volatile void* destptr;
-    unsigned int aspace;
+    toscaMapAddr_t addr;
     size_t size;
-    char* p;
     int i;
     
     if (!args[0].sval || !args[1].sval || !args[2].sval)
@@ -126,43 +125,23 @@ void toscaCopyFunc(const iocshArgBuf *args)
         return;
     }
     size = toscaStrToSize(args[2].sval);
-
-    p = strchr(args[0].sval, ':');
-    if (p)
-    {
-        *p++ = 0;
-        aspace = toscaStrToAddrSpace(args[0].sval);
-        if (!aspace)
-        {
-            fprintf(stderr, "invalid source address space %s\n", args[0].sval);
-            return;
-        }
-        sourceptr = toscaMap(aspace, toscaStrToSize(p), size);
-    }
-    else
-        sourceptr = (volatile void*)toscaStrToSize(args[0].sval);
     
+    addr = toscaStrToAddr(args[0].sval);
+    if (addr.aspace)
+        sourceptr = toscaMap(addr.aspace, addr.address, size);
+    else
+        sourceptr = (volatile void*)(size_t)addr.address;
     if (!sourceptr)
     {
         fprintf(stderr, "cannot map source address\n");
         return;
     }
 
-    p = strchr(args[1].sval, ':');
-    if (p)
-    {
-        *p++ = 0;
-        aspace = toscaStrToAddrSpace(args[1].sval);
-        if (!aspace)
-        {
-            fprintf(stderr, "invalid dest address space %s\n", args[1].sval);
-            return;
-        }
-        destptr = toscaMap(aspace, toscaStrToSize(p), size);
-    }
+    addr = toscaStrToAddr(args[1].sval);
+    if (addr.aspace)
+        destptr = toscaMap(addr.aspace, addr.address, size);
     else
-        destptr = (volatile void*)toscaStrToSize(args[1].sval);
-
+        destptr = (volatile void*)(size_t)toscaStrToSize(args[1].sval);
     if (!destptr)
     {
         fprintf(stderr, "cannot map dest address\n");

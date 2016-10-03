@@ -78,7 +78,7 @@ typedef uint64_t intrmask_t;
 #define INTR_USER2_INTR(n) (INTR_USER2_INTR0<<(n)) /* n = 0...15 */
 #define INTR_USER2_ANY      0xffff000000000000ULL
 
-#define INTR_INDEX_TO_BIT(i) ((i)<32?INTR_USER1_INTR(i):(i)>=TOSCA_INTR_INDX_ERR(0)?INTR_VME_FAIL((i)-TOSCA_INTR_INDX_ERR(0)):INTR_VME_LVL(((i)-32)>>8)+1)
+#define INTR_INDEX_TO_BIT(i) ((i)<32?INTR_USER1_INTR(i):(i)>=TOSCA_INTR_INDX_ERR(0)?INTR_VME_FAIL((i)-TOSCA_INTR_INDX_ERR(0)):INTR_VME_LVL((((i)-32)>>8)+1))
 #define INTR_INDEX_TO_INUM(i) ((i)<32?(i)&31:(i)>=TOSCA_INTR_INDX_ERR(0)?(i)-TOSCA_INTR_INDX_ERR(0):(((i)-32)>>8)+1)
 #define INTR_INDEX_TO_IVEC(i) ((i)<32||(i)>=TOSCA_INTR_INDX_ERR(0)?0:((i)-32)&255)
 
@@ -121,6 +121,8 @@ int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callbac
 void toscaIntrShow(int level);
 
 int toscaSendVMEIntr(unsigned int level, unsigned int vec);
+
+void toscaInstallSpuriousVMEInterruptHandler(void);
 
 #ifdef __cplusplus
 }

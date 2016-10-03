@@ -36,21 +36,19 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     char flags[40] = "";
     int l = 0;
     const char *resource;
-    unsigned int aspace;
+    unsigned int card;
+    toscaMapAddr_t addr;
+    char cardstr[10] = "";
 
     debug("card=%d, name=%s, resource=%s, offset=0x%x, protocol=%s, intrVec=%d, mapSize=0x%x, blockMode=%d, swap=%s, vmePktSize=%d",
         args[0].ival, args[1].sval, args[2].sval, args[3].ival, args[4].sval, args[5].ival, args[6].ival, args[7].ival, args[8].sval, args[9].ival);
 
-    if (args[0].ival != 0)
-    {
-        printf ("Only card 0 is supported\n");
-        return;
-    }
+    card = args[0].ival;
     resource = args[2].sval;
-    aspace = toscaStrToAddrSpace(resource);
+    addr = toscaStrToAddr(resource);
     
     if (args[5].ival) /* intrVec */
-        l += sprintf(flags+l, "intr=%d ", args[5].ival - (aspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? 0 : 1));
+        l += sprintf(flags+l, "intr=%d ", args[5].ival - (addr.aspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? 0 : 1));
     if (args[7].ival & 1 && l < sizeof(flags) - 6) /* blockMode */
     {
         l += sprintf(flags+l, "block ");
@@ -69,10 +67,12 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     /* args[9] = vmePktSize ignored */
     if (l) flags[l-1] = 0;
     
+    if (card) sprintf(cardstr, "%u:", card);
+    
     printf("Compatibility mode! pevConfigure replaced by:\n"
-        "toscaRegDevConfigure %s %s:0x%x 0x%x %s\n",
-        args[1].sval, toscaAddrSpaceToStr(aspace), args[3].ival, args[6].ival, flags);
-    if (toscaRegDevConfigure(args[1].sval, aspace, args[3].ival, args[6].ival, flags) != 0)
+        "toscaRegDevConfigure %s %s%s:0x%x 0x%x %s\n",
+        args[1].sval, cardstr, toscaAddrSpaceToStr(addr.aspace), args[3].ival, args[6].ival, flags);
+    if (toscaRegDevConfigure(args[1].sval, addr.aspace, args[3].ival, args[6].ival, flags) != 0)
     {
         fprintf(stderr, "toscaRegDevConfigure failed: %m\n");
     }
@@ -118,7 +118,7 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
     const char* target = args[4].sval;
     unsigned int targetOffset = args[5].ival;
     const char* swapping = args[6].sval;
-    unsigned int aspace;
+    toscaMapAddr_t addr;
     int swap;
 
     if (!slaveAddrSpace)
@@ -132,12 +132,12 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
         fprintf(stderr, "pevVmeSlaveTargetConfig(): ERROR, can map to AM32 only\n");
         return;
     }
-    aspace = toscaStrToAddrSpace(target);
+    addr = toscaStrToAddr(target);
     swap = swapping && strcmp(swapping, "AUTO") == 0;
     printf("Compatibility mode! pevVmeSlaveMainConfig and pevVmeSlaveTargetConfig replaced by:\n"
         "toscaMapVMESlave %s:0x%x 0x%x 0x%x%s\n",
-        toscaAddrSpaceToStr(aspace), targetOffset, winSize, mainBase+winBase, swap ? " 1" : "");
-    if (toscaMapVMESlave(aspace, targetOffset, winSize, mainBase+winBase, swap) != 0)
+        toscaAddrSpaceToStr(addr.aspace), targetOffset, winSize, mainBase+winBase, swap ? " 1" : "");
+    if (toscaMapVMESlave(addr.aspace, targetOffset, winSize, mainBase+winBase, swap) != 0)
     {
         fprintf(stderr, "toscaMapVMESlave failed: %m\n");
     }

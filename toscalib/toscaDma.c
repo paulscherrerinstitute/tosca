@@ -331,9 +331,10 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
     size_t size, int swap, int timeout,
     toscaDmaCallback callback, void* user)
 {
-    const char* filename = "/dev/dmaproxy0";
     struct dmaRequest* r;
     char* fname;
+    unsigned int card = (source | dest) >> 16;
+    char filename[20];
     
     debugLvl(2, "0x%x=%s:0x%zx -> 0x%x=%s:0x%zx [0x%zx] swap=%d tout=%d cb=%s(%p)",
         source, toscaDmaTypeToStr(source), source_addr, dest, toscaDmaTypeToStr(dest), dest_addr,
@@ -476,6 +477,7 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
         toscaDmaRelease(r);
         return NULL;
     }
+    sprintf(filename, "/dev/dmaproxy%u", card);
     r->fd = open(filename, O_RDWR);
     if (r->fd < 0)
     {

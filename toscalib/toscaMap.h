@@ -46,12 +46,19 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size);
    * for Tosca shared memory: TOSCA_SHM
    * for Tosca configuration space registers: TOSCA_CSR
    * for VME A32 slave windows: VME_SLAVE
+   * if using more than one tosca use aspace|(tosca<<16)
    At the moment Tosca does not support A64.
 */
 
-/* Convert aspace code to/from string. */
+/* Convert string to aspace, address */
+typedef struct {
+    unsigned int aspace;
+    vmeaddr_t address;
+} toscaMapAddr_t;
+toscaMapAddr_t toscaStrToAddr(const char* str);
+
+/* Convert aspace code to string. */
 const char* toscaAddrSpaceToStr(unsigned int aspace);
-unsigned int toscaStrToAddrSpace(const char* str);
 
 /* Several map lookup functions. aspace will be 0 if map is not found. */
 typedef struct {
@@ -69,11 +76,11 @@ toscaMapInfo_t toscaMapFind(const volatile void* ptr);
 toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void *usr), void *usr);
 
 /* Find a VME address from a user space pointer. */
-typedef struct {
-    unsigned int aspace;
-    vmeaddr_t address;
-} toscaMapAddr_t;
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);
+
+/* show all maps to out or stdout */
+int toscaMapPrintInfo(toscaMapInfo_t info, FILE* file);
+void toscaMapShow(FILE* out);
 
 /* Read (and clear) VME error status. Error is latched and not overwritten until read. */
 typedef struct {
@@ -105,7 +112,7 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
    Else silently check for overlaps.
    Return 1 if overlap is found, 0 if not, -1 on error.
 */
-int toscaCheckSlaveMaps(vmeaddr_t addr, size_t size);
+toscaMapAddr_t toscaCheckSlaveMaps(vmeaddr_t addr, size_t size);
 
 /* TOSCA CSR ACCESS */
 

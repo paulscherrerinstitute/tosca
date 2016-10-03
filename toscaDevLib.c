@@ -351,6 +351,7 @@ static void toscaDevLibRegistrar ()
     pdevLibVirtualOS = &toscaVirtualOS;
     epicsThreadId tid;
     
+    toscaInstallSpuriousVMEInterruptHandler();
     debug("starting interrupt handler thread");
     tid = epicsThreadCreate("irq-TOSCA", toscaIntrPrio,
         epicsThreadGetStackSize(epicsThreadStackMedium),

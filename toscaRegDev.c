@@ -413,12 +413,10 @@ static const iocshFuncDef toscaRegDevConfigureDef =
 
 static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
 {
-    unsigned int aspace;
-    size_t address;
+    toscaMapAddr_t addr;
     size_t size;
     int i, l=0;
     char flags[80] = "";
-    char* p;
 
     if (!args[0].sval)
     {
@@ -444,22 +442,19 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
         return;
     }
     
-    p = strchr(args[1].sval, ':');
-    if (!p)
+    addr = toscaStrToAddr(args[1].sval);
+    if (!addr.aspace)
     {
-        fprintf(stderr, "missing address space\n");
+        fprintf(stderr, "invalid address space %s\n", args[1].sval);
         return;
     }
-    *p++ = 0;
-    aspace = toscaStrToAddrSpace(args[1].sval);
-    address = toscaStrToSize(p);
     size = toscaStrToSize(args[2].sval);
 
     for (i = 1; i < args[3].aval.ac && l < sizeof(flags); i++)
         l += sprintf(flags+l, "%.*s ", (int)sizeof(flags)-l, args[3].aval.av[i]);
     if (l) flags[l-1] = 0;
 
-    if (toscaRegDevConfigure(args[0].sval, aspace, address, size, flags) != 0)
+    if (toscaRegDevConfigure(args[0].sval, addr.aspace, addr.address, size, flags) != 0)
     {
         if (!interruptAccept) epicsExit(-1);
     }

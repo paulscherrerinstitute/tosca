@@ -20,39 +20,29 @@ static const iocshFuncDef toscaMapDef =
 
 static void toscaMapFunc(const iocshArgBuf *args)
 {
-    unsigned int aspace;
+    toscaMapAddr_t addr;
     size_t size;
-    size_t address;
-    volatile void* addr;
-    char* p;
+    volatile void* ptr;
 
     if (!args[0].sval) 
     {
         iocshCmd("help toscaMap");
         return;
     }
-    p = strchr(args[0].sval, ':');
-    if (!p)
-    {
-        fprintf(stderr, "missing address space\n");
-        return;
-    }
-    *p++ = 0;
-    aspace = toscaStrToAddrSpace(args[0].sval);
-    if (!aspace)
+    addr = toscaStrToAddr(args[0].sval);
+    if (!addr.aspace)
     {
         fprintf(stderr, "invalid address space %s\n", args[0].sval);
         return;
     }
-    address = toscaStrToSize(p);
     size = toscaStrToSize(args[1].sval);
-    addr = toscaMap(aspace, address, size);
-    if (!addr)
+    ptr = toscaMap(addr.aspace, addr.address, size);
+    if (!ptr)
     {
         fprintf(stderr, "mapping failed: %m\n");
         return;
     }
-    printf("%p\n", addr);
+    printf("%p\n", ptr);
 }
 
 static const iocshFuncDef toscaMapVMESlaveDef =
@@ -65,34 +55,24 @@ static const iocshFuncDef toscaMapVMESlaveDef =
 
 static void toscaMapVMESlaveFunc(const iocshArgBuf *args)
 {
-    unsigned int aspace;
+    toscaMapAddr_t addr;
     size_t size;
-    size_t address;
     size_t vme_address;
-    char* p;
 
     if (!args[0].sval) 
     {
         iocshCmd("help toscaMapVMESlave");
         return;
     }
-    p = strchr(args[0].sval, ':');
-    if (!p)
-    {
-        fprintf(stderr, "missing address space\n");
-        return;
-    }
-    *p++ = 0;
-    aspace = toscaStrToAddrSpace(args[0].sval);
-    if (!(aspace & (VME_A32|TOSCA_USER1|TOSCA_SHM)))
+    addr = toscaStrToAddr(args[0].sval);
+    if (!(addr.aspace & (VME_A32|TOSCA_USER1|TOSCA_SHM)))
     {
         fprintf(stderr, "invalid address space %s\n", args[0].sval);
         return;
     }
-    address = toscaStrToSize(p);
     size = toscaStrToSize(args[1].sval);
     vme_address = toscaStrToSize(args[2].sval);
-    if (toscaMapVMESlave(aspace, address, size, vme_address, args[3].ival) != 0)
+    if (toscaMapVMESlave(addr.aspace, addr.address, size, vme_address, args[3].ival) != 0)
     {
         fprintf(stderr, "mapping failed: %m\n");
         return;
@@ -111,7 +91,7 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
     if (!vme_addr.aspace)
         printf("%p is not a TOSCA address\n", (void*)addr);
     else
-        printf("%s:%#0llx\n",
+        printf("%s:0x%llx\n",
             toscaAddrSpaceToStr(vme_addr.aspace),
             (unsigned long long)vme_addr.address);
 }
@@ -120,20 +100,9 @@ static const iocshFuncDef toscaMapShowDef =
     { "toscaMapShow", 0, (const iocshArg *[]) {
 }};
 
-int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
-{
-    char buf[SIZE_STRING_BUFFER_SIZE];
-    printf("%s:0x%llx [%s] MEM:%p\n",
-        toscaAddrSpaceToStr(info.aspace),
-        (unsigned long long)info.address,
-        toscaSizeToStr(info.size, buf),info.ptr);
-    return 0;
-}
-
 static void toscaMapShowFunc(const iocshArgBuf *args)
 {
-    toscaMapForeach(toscaMapPrintInfo, NULL);
-    toscaCheckSlaveMaps(0,0);
+    toscaMapShow(NULL);
 }
 
 static const iocshFuncDef toscaMapFindDef =
@@ -184,7 +153,7 @@ static void toscaCsrReadFunc(const iocshArgBuf *args)
     errno = 0;
     val = toscaCsrRead(args[0].ival);
     if (val == 0xffffffff && errno != 0) perror(NULL);
-    else printf("%#x\n", val);
+    else printf("0x%x\n", val);
 }
 
 static const iocshFuncDef toscaCsrWriteDef =
@@ -239,6 +208,15 @@ static const iocshFuncDef toscaSendVMEIntrDef =
 static void toscaSendVMEIntrFunc(const iocshArgBuf *args)
 {
     if (toscaSendVMEIntr(args[0].ival, args[1].ival) == -1) perror(NULL);
+}
+
+static const iocshFuncDef toscaInstallSpuriousVMEInterruptHandlerDef =
+    { "toscaInstallSpuriousVMEInterruptHandler", 0, (const iocshArg *[]) {
+}};
+
+static void toscaInstallSpuriousVMEInterruptHandlerFunc(const iocshArgBuf *args)
+{
+    toscaInstallSpuriousVMEInterruptHandler();
 }
 
 static const iocshFuncDef toscaDmaTransferDef =
@@ -319,14 +297,15 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     }
 }
 
-static const iocshFuncDef toscaStrToAddrSpaceDef =
-    { "toscaStrToAddrSpace", 1, (const iocshArg *[]) {
-    &(iocshArg) { "addrspace", iocshArgString },
+static const iocshFuncDef toscaStrToAddrDef =
+    { "toscaStrToAddr", 1, (const iocshArg *[]) {
+    &(iocshArg) { "addrspace[:address]", iocshArgString },
 }};
 
-static void toscaStrToAddrSpaceFunc(const iocshArgBuf *args)
+static void toscaStrToAddrFunc(const iocshArgBuf *args)
 {
-    printf("0x%x\n", toscaStrToAddrSpace(args[0].sval));
+    toscaMapAddr_t addr = toscaStrToAddr(args[0].sval);
+    printf("0x%x:0x%llx\n", addr.aspace, (unsigned long long)addr.address);
 }
 
 static const iocshFuncDef toscaAddrSpaceToStrDef =
@@ -383,8 +362,9 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaCsrClearDef, toscaCsrClearFunc);
     iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
     iocshRegister(&toscaSendVMEIntrDef, toscaSendVMEIntrFunc);
+    iocshRegister(&toscaInstallSpuriousVMEInterruptHandlerDef, toscaInstallSpuriousVMEInterruptHandlerFunc);
     iocshRegister(&toscaDmaTransferDef, toscaDmaTransferFunc);
-    iocshRegister(&toscaStrToAddrSpaceDef, toscaStrToAddrSpaceFunc);
+    iocshRegister(&toscaStrToAddrDef, toscaStrToAddrFunc);
     iocshRegister(&toscaAddrSpaceToStrDef, toscaAddrSpaceToStrFunc);
 }
 

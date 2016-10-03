@@ -17,6 +17,7 @@ typedef uint32_t __u32;
 typedef uint8_t __u8;
 #include "vme_user.h"
 #include "toscaIntr.h"
+#include "toscaMap.h"
 
 pthread_mutex_t handlerlist_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define sLOCK pthread_mutex_lock(&handlerlist_mutex)
@@ -122,7 +123,7 @@ int toscaIntrMonitorFile(int index, const char* filename)
     } 
     if (intrFd[index] >= FD_SETSIZE)
     {
-        debug("%s fd %d loo large for select", filename, intrFd[index]);
+        debug("%s fd %d too large for select", filename, intrFd[index]);
         return -1;
     }
     FD_SET(intrFd[index], &intrFdSet);
@@ -267,18 +268,20 @@ void toscaIntrShow(int level)
         for (index = 0; index < TOSCA_NUM_INTR; index++)
         {
             count = intrCount[index];
-            delta = count - prevIntrCount[index];
-            prevIntrCount[index] = count;
             if (count == 0 && handlers[index] == NULL) continue;
+            delta = count - prevIntrCount[index];
+            if (delta == 0 && period) continue;
+            prevIntrCount[index] = count;
             intrmask = INTR_INDEX_TO_BIT(index);
             printf("  %s", toscaIntrBitToStr(intrmask));
             if (intrmask & INTR_VME_LVL_ANY)
-                printf("-%-3d ", INTR_INDEX_TO_IVEC(index));
+                printf(".%-3d ", INTR_INDEX_TO_IVEC(index));
             printf(" count=%llu (+%llu)\n", count, delta);
             prevIntrCount[index] = count;
             if (level) for (handler = handlers[index]; handler; handler = handler->next)
             {
-                printf("    %s (%p)\n", fname=symbolName(handler->function, symbolDetail), handler->parameter), free(fname);
+                printf("    %s (0x%x)\n", fname=symbolName(handler->function, symbolDetail),
+                    (size_t)handler->parameter), free(fname);
             }
         }
         UNLOCK;
@@ -369,13 +372,6 @@ void toscaIntrInit ()
 
 int toscaSendVMEIntr(unsigned int level, unsigned int vec)
 {
-    const char* filename = "/dev/bus/vme/ctl";
-    static int fd = 0;
-    struct vme_irq_id {
-        __u8 level;
-        __u8 vec;
-    } irq;
-    
     if (level < 1 || level > 7)
     {
         errno = EINVAL;
@@ -388,6 +384,17 @@ int toscaSendVMEIntr(unsigned int level, unsigned int vec)
         debug("invalid VME interrupt vector %d", vec);
         return -1;
     }
+/*
+    return toscaCsrWrite(0x40c, 0x1000+(level<<8)+vec);
+
+*/
+    const char* filename = "/dev/bus/vme/ctl";
+    static int fd = 0;
+    struct vme_irq_id {
+        __u8 level;
+        __u8 vec;
+    } irq;
+    
     if (fd <= 0)
     {
         fd = open(filename, O_RDWR);
@@ -405,4 +412,18 @@ int toscaSendVMEIntr(unsigned int level, unsigned int vec)
         return -1;
     }
     return 0;
+}
+
+void toscaSpuriousVMEInterruptHandler(void* param, int inum, int vec)
+{
+    debug("level %d vector %d", inum, vec);
+}
+
+void toscaInstallSpuriousVMEInterruptHandler(void)
+{
+    static int first = 1;
+    if (!first) return;
+    first = 0;
+    toscaIntrConnectHandler(INTR_VME_LVL_ANY,   0, toscaSpuriousVMEInterruptHandler, NULL);
+    toscaIntrConnectHandler(INTR_VME_LVL_ANY, 255, toscaSpuriousVMEInterruptHandler, NULL);
 }
