@@ -50,6 +50,12 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size);
    At the moment Tosca does not support A64.
 */
 
+/* Release the map that contains ptr.
+   Reference counting is used in case multiple calls to toscaMap have
+   returned pointers to the same physical map.
+*/
+int toscaMapRelease(volatile void* ptr);
+
 /* Convert string to aspace, address */
 typedef struct {
     unsigned int aspace;
@@ -65,7 +71,7 @@ typedef struct {
     unsigned int aspace;
     vmeaddr_t address;
     size_t size;
-    volatile void* ptr;
+    volatile void* baseptr;
 } toscaMapInfo_t;
 
 /* Get map info from a user space pointer. */
