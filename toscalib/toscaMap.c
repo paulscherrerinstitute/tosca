@@ -44,7 +44,6 @@ pthread_mutex_t maplist_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct map {
     toscaMapInfo_t info;
     struct map *next;
-    size_t refcount;
 } *maps;
 
 static volatile uint32_t* tCsr = NULL;
@@ -257,7 +256,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             debug("use existing window addr=%#llx size=%#zx offset=%#llx",
                     (unsigned long long) (*pmap)->info.address, (*pmap)->info.size,
                     (unsigned long long) (address - (*pmap)->info.address));
-            (*pmap)->refcount++;
+            (*pmap)->info.refcount++;
             UNLOCK;
             return (*pmap)->info.baseptr + (address - (*pmap)->info.address);
         }
@@ -405,7 +404,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         munmap((void*) baseptr, size);
         return NULL;
     }
-    (map)->refcount = 1;
+    (map)->info.refcount = 1;
     (map)->info.baseptr = baseptr;
     (map)->info.aspace = aspace;
     (map)->info.address = address;
@@ -426,7 +425,7 @@ int toscaMapRelease(volatile void* ptr)
     {
         if (ptr - map->info.baseptr < map->info.size)
         {
-            --map->refcount;
+            --map->info.refcount;
             debug("%p, baseptr=%p, aspace=%#x(%s), address=%#llx, size=%#zx, --refcount=%zu",
                 ptr,
                 map->info.baseptr,
@@ -434,8 +433,8 @@ int toscaMapRelease(volatile void* ptr)
                 toscaAddrSpaceToStr(map->info.aspace),
                 (unsigned long long) map->info.address,
                 map->info.size,
-                map->refcount);
-            if (map->refcount == 0)
+                map->info.refcount);
+            if (map->info.refcount == 0)
             {
                 *pmap = map->next;
                 UNLOCK;
@@ -483,10 +482,12 @@ int toscaMapPrintInfo(toscaMapInfo_t info, FILE* file)
 {
     if (!file) file = stdout;
     char buf[SIZE_STRING_BUFFER_SIZE];
-    fprintf(file, "%5s:0x%-8llx [%s]\t%p\n",
+    fprintf(file, "%5s:0x%-8llx [%s]\t%p\t(%zu)\n",
         toscaAddrSpaceToStr(info.aspace),
         (unsigned long long)info.address,
-        toscaSizeToStr(info.size, buf),info.baseptr);
+        toscaSizeToStr(info.size, buf),
+        info.baseptr,
+        info.refcount);
     return 0;
 }
 

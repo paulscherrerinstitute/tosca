@@ -72,6 +72,7 @@ typedef struct {
     vmeaddr_t address;
     size_t size;
     volatile void* baseptr;
+    size_t refcount;
 } toscaMapInfo_t;
 
 /* Get map info from a user space pointer. */
