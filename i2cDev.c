@@ -134,9 +134,9 @@ int i2cDevOpen(const char* busname)
     }
     /* maybe busname is a device file? */
     fd = open(busname, O_RDWR);
+    if (i2cDevDebug) printf("i2cDevOpen: open %s returned %d\n", filename, fd);
     if (fd >= 0)
     {
-        if (i2cDevDebug) printf("i2cDevOpen: %s is device file\n", busname);
         return fd;
     }
 
