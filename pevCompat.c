@@ -143,12 +143,45 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
     }
 }
 
+int i2cDevConfigure(const char* name, const char* busname, int address, int maxreg);
+
+static const iocshArg * const pevI2cConfigureArgs[] = {
+    &(iocshArg) { "crate", iocshArgInt },
+    &(iocshArg) { "name", iocshArgString },
+    &(iocshArg) { "i2cControlWord", iocshArgInt },
+    &(iocshArg) { "command", iocshArgInt },
+};
+
+static const iocshFuncDef pevI2cConfigureDef =
+    { "pevI2cConfigure", 4, pevI2cConfigureArgs };
+static const iocshFuncDef pevAsynI2cConfigureDef =
+    { "pevAsynI2cConfigure", 4, pevI2cConfigureArgs };
+
+static void pevI2cConfigureFunc(const iocshArgBuf *args)
+{
+    unsigned int card = args[0].ival;
+    const char* name = args[1].sval;
+    unsigned int controlword = args[2].ival;
+    int i2c_addr = (controlword & 0x7f) | ((controlword & 0x70) >> 1);
+    int pev_i2c_bus = controlword >> 29;
+    int pon_addr = 0x80 + (pev_i2c_bus << 4);
+    char sysfspattern[80];
+    
+    debug("card=%d, name=%s, controlword=0x%08x bus=%d ponaddr=0x%02x addr=0x%02x", 
+        card, name, controlword, pev_i2c_bus, pon_addr, i2c_addr);
+
+    sprintf(sysfspattern, "/sys/devices/*.localbus/*%02x.pon-i2c/i2c-*", pon_addr);
+    i2cDevConfigure(name, sysfspattern, i2c_addr, 0);
+}
+
 static void pevRegistrar(void)
 {
     iocshRegister(&pevConfigureDef, pevConfigureFunc);
     iocshRegister(&pevAsynConfigureDef, pevConfigureFunc);
     iocshRegister(&pevVmeSlaveMainConfigDef, pevVmeSlaveMainConfigFunc);
     iocshRegister(&pevVmeSlaveTargetConfigDef, pevVmeSlaveTargetConfigFunc);
+    iocshRegister(&pevI2cConfigureDef, pevI2cConfigureFunc);
+    iocshRegister(&pevAsynI2cConfigureDef, pevI2cConfigureFunc);
 
     toscaRegDevConfigure("pev_csr", TOSCA_CSR, 0, 0x2000, NULL);
 }
