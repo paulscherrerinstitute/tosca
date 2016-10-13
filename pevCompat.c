@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include "toscaMap.h"
 
@@ -231,56 +232,85 @@ void pev_csr_set(int addr, int val)
     pevx_csr_set(0, addr, val);
 }
 
+static uint32_t *sramPtr(size_t addr)
+{
+    static volatile void* sram = NULL;
+    if (addr > 0x2000)
+    {
+        errno = ERANGE;
+        return NULL;
+    }
+    if (!sram)
+    {
+        sram = toscaMap(TOSCA_SRAM, 0, 0);
+        if (!sram) return NULL;
+    }
+    return (uint32_t*) ((size_t) sram + addr);
+}
+
 int pev_elb_rd(int addr)
 {
-    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    if (addr >= 0xe000) /* sram */
+    {
+        uint32_t* ptr = sramPtr(addr - 0xe000);
+        if (!ptr) return -1;
+        return *ptr;
+    }
+    errno = ENOSYS;
+    return -1;
+}
+
+int pev_elb_wr(int addr, int val)
+{
+    if (addr >= 0xe000) /* sram */
+    {
+        uint32_t* ptr = sramPtr(addr - 0xe000);
+        if (!ptr) return -1;
+        *ptr = val;
+        return 0;
+    }
+    errno = ENOSYS;
     return -1;
 }
 
 int pev_smon_rd(int addr)
 {
-    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    errno = ENOSYS;
     return -1;
 }
 
 int pev_bmr_read(unsigned int card, unsigned int addr, unsigned int *val, unsigned int count)
 {
-    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    errno = ENOSYS;
     return -1;
 }
 
 float pev_bmr_conv_11bit_u(unsigned short val)
 {
-    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    errno = ENOSYS;
     return 0.0/0.0;
 }
 
 float pev_bmr_conv_11bit_s(unsigned short val)
 {
-    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    errno = ENOSYS;
     return 0.0/0.0;
 }
 
 float pev_bmr_conv_16bit_u(unsigned short val)
 {
-    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    errno = ENOSYS;
     return 0.0/0.0;
-}
-
-int pev_elb_wr(int addr, int val)
-{
-    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
-    return -1;
 }
 
 void pev_smon_wr(int addr, int val)
 {
-    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    errno = ENOSYS;
 }
 
 int pev_bmr_write(unsigned int card, unsigned int addr, unsigned int val, unsigned int count)
 {
-    fprintf(stderr, "%s not implemented\n", __FUNCTION__);
+    errno = ENOSYS;
     return -1;
 }
 
