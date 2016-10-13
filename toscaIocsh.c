@@ -343,6 +343,8 @@ static void toscaRegistrar(void)
     memDisplayInstallAddrHandler("A24#*", toscaAddrHandler, VME_A24 | VME_PROG | VME_SUPER);
     memDisplayInstallAddrHandler("A32#*", toscaAddrHandler, VME_A32 | VME_PROG | VME_SUPER);
 
+    memDisplayInstallAddrHandler("SRAM",  toscaAddrHandler, TOSCA_SRAM);
+
     /* best access these with wordsize = -4 */
     memDisplayInstallAddrHandler("USER",  toscaAddrHandler, TOSCA_USER1);
     memDisplayInstallAddrHandler("USER1", toscaAddrHandler, TOSCA_USER1);

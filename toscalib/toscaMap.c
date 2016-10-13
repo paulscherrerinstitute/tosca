@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <endian.h>
 #include <glob.h>
+#include <libgen.h>
 
 #ifndef le32toh
 #if  __BYTE_ORDER == __LITTLE_ENDIAN
@@ -46,8 +47,9 @@ static struct map {
     struct map *next;
 } *maps;
 
-static volatile uint32_t* tCsr = NULL;
-static size_t tCsrSize = 0;
+static volatile uint32_t* tCsr;
+static size_t tCsrSize;
+static size_t sramSize;
 
 #define TOSCA_PCI_DIR "/sys/bus/pci/drivers/tosca"
 
@@ -73,29 +75,29 @@ pciAddr toscaPciFind(int card)
         #define GLOB_ONLYDIR 0
         #endif
 
-        glob_t results = {0};   
+        glob_t globresults = {0};   
         int status;
         int i;
         
         debug("glob("TOSCA_PCI_DIR "/*:*:*.*)");
-        status = glob(TOSCA_PCI_DIR "/*:*:*.*", GLOB_ONLYDIR, NULL, &results);
-        toscaNumDevices = results.gl_pathc;
+        status = glob(TOSCA_PCI_DIR "/*:*:*.*", GLOB_ONLYDIR, NULL, &globresults);
+        toscaNumDevices = globresults.gl_pathc;
         if (status == 0)
         {
-            toscaDevices = calloc(results.gl_pathc, sizeof(pciAddr));
-            debug ("found %zd tosca devices", results.gl_pathc);
-            for (i = 0; i < results.gl_pathc; i++)
+            toscaDevices = calloc(globresults.gl_pathc, sizeof(pciAddr));
+            debug ("found %zd tosca devices", globresults.gl_pathc);
+            for (i = 0; i < globresults.gl_pathc; i++)
             {
                 int dom, bus, dev, func;
-                debug ("found %s", results.gl_pathv[i]+sizeof(TOSCA_PCI_DIR));
-                sscanf(results.gl_pathv[i]+sizeof(TOSCA_PCI_DIR),
+                debug ("found %s", globresults.gl_pathv[i]+sizeof(TOSCA_PCI_DIR));
+                sscanf(globresults.gl_pathv[i]+sizeof(TOSCA_PCI_DIR),
                     "%x:%x:%x.%x", &dom, &bus, &dev, &func);
                 toscaDevices[i].dom = dom;
                 toscaDevices[i].bus = bus;
                 toscaDevices[i].dev = dev;
                 toscaDevices[i].func = func;
             }
-            globfree(&results);
+            globfree(&globresults);
         }
         else
         {
@@ -136,6 +138,7 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
         case TOSCA_USER2: return "USER2";
         case TOSCA_SHM:   return "SHM";
         case TOSCA_CSR:   return "TCSR";
+        case TOSCA_SRAM:  return "SRAM";
 
         case VME_SLAVE:   return "VME_SLAVE";
 
@@ -187,6 +190,9 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
     else
     if (strncmp(s, "TCSR", 4) == 0 && (s+=4))
         result.aspace |= TOSCA_CSR;
+    else
+    if (strncmp(s, "SRAM", 4) == 0 && (s+=4))
+        result.aspace |= TOSCA_SRAM;
     else
     {
         if (strncmp(s, "VME_", 4) == 0) s+=4;
@@ -253,13 +259,11 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             address >= (*pmap)->info.address &&
             address + size <= (*pmap)->info.address + (*pmap)->info.size)
         {
+            UNLOCK;
             debug("use existing window addr=%#llx size=%#zx offset=%#llx",
                     (unsigned long long) (*pmap)->info.address, (*pmap)->info.size,
                     (unsigned long long) (address - (*pmap)->info.address));
-            {
-                UNLOCK;
-                return (*pmap)->info.ptr + (address - (*pmap)->info.address);
-            }
+            return (*pmap)->info.ptr + (address - (*pmap)->info.address);
         }
     }
     if (aspace & TOSCA_CSR)
@@ -274,22 +278,64 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         fd = open(filename, O_RDWR);
         if (fd < 0)
         {
-            debugErrno("open %s", filename);
             UNLOCK;
+            debugErrno("open %s", filename);
             return NULL;
         }
         fstat(fd, &filestat);
-        tCsrSize = filestat.st_size;
+        tCsrSize = filestat.st_size; /* Map whole TCSR space */
         if (address + size > tCsrSize)
         {
-            errno = EINVAL;
-            debug("address or size too big");
             UNLOCK;
+            close(fd);
+            debug("address or size too big");
+            errno = EINVAL;
             return NULL;
         }
         size = tCsrSize;  /* Map whole TCSR space */
         offset = address; /* Location within fd that maps to requested address */
         address = 0;      /* This is the start address of the fd. */
+    }
+    else if (aspace & TOSCA_SRAM)
+    {
+        glob_t globresults = {0};            
+
+        if (card != 0)
+        {
+            UNLOCK;
+            debug("access to sram only on local card");
+            errno = EINVAL;
+            return NULL;
+        }
+        sprintf(filename, "/sys/bus/platform/devices/*.sram/uio/uio*");
+        debug("glob(%s)", filename);
+        if (glob(filename, GLOB_ONLYDIR, NULL, &globresults) != 0)
+        {
+            UNLOCK;
+            debug("cannot find sram device");
+            errno = ENODEV;
+            return NULL;
+        }
+        sprintf(filename, "/dev/%s", basename(globresults.gl_pathv[0]));
+        sramSize = 0x2000; /* should we read that from /sys/.../uioX/maps/mapY/size ? */
+        globfree(&globresults);
+        if (address + size > sramSize)
+        {
+            UNLOCK;
+            debug("address or size too big");
+            errno = EINVAL;
+            return NULL;
+        }
+        fd = open(filename, O_RDWR);
+        if (fd < 0)
+        {
+            UNLOCK;
+            debugErrno("open %s", filename);
+            return NULL;
+        }
+        size = sramSize;
+        offset = address;
+        address = 0;
     }
     else /* USER, SHM, VME, VME_SLAVE */
     {
