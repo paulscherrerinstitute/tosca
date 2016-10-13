@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
@@ -120,38 +121,52 @@ struct regDevSupport i2cDevRegDev = {
 int i2cDevOpen(const char* busname)
 {
     glob_t globinfo;
+    struct stat statinfo;
     char* p;
     int busnum;
     int fd;
     char filename[80];
     
     if (i2cDevDebug) printf("i2cDevOpen %s\n", busname);
-    
     if (!busname || !busname[0])
     {
         errno = EINVAL;
         return -1;
     }
     /* maybe busname is a device file? */
-    fd = open(busname, O_RDWR);
-    if (i2cDevDebug) printf("i2cDevOpen: open %s returned %d\n", filename, fd);
-    if (fd >= 0)
+    if (stat(busname, &statinfo) == 0)
     {
-        return fd;
+        /* file exists */
+        if (S_ISCHR(statinfo.st_mode))
+        {
+            if (i2cDevDebug) printf("i2cDevOpen: %s device major number is %d\n", busname, major(statinfo.st_rdev));
+            if (major(statinfo.st_rdev) != 89)
+            {
+                if (i2cDevDebug) printf("i2cDevOpen: %s is not an i2c device\n", busname);
+                errno = EINVAL;
+                return -1;
+            }
+        }
+        fd = open(busname, O_RDWR);
+        if (i2cDevDebug) printf("i2cDevOpen: open %s returned %d\n", busname, fd);
+        if (fd >= 0) return fd;
     }
+    if (i2cDevDebug) printf("i2cDevOpen: %s is not a file\n", busname);
 
     /* maybe busname is a number? */
     busnum = strtol(busname, &p, 10);
     if (*p == 0)
     {
-        if (i2cDevDebug) printf("i2cDevOpen: %d is bus number\n", busnum );
+        if (i2cDevDebug) printf("i2cDevOpen: %d is bus number\n", busnum);
     }
     if (*p != 0)
     {
+        if (i2cDevDebug) printf("i2cDevOpen: %s is not a number\n", busname);
+ 
         /* maybe busname is a sysfs pattern? */
         if (glob(busname, 0, NULL, &globinfo) != 0)
         {
-            if (i2cDevDebug) printf("i2cDevOpen: glob failed\n");
+            if (i2cDevDebug) printf("i2cDevOpen: %s is not a glob pattern\n", busname);
             return -1;
         }
         if (i2cDevDebug) printf("i2cDevOpen: glob found %s\n", globinfo.gl_pathv[0]);
@@ -175,12 +190,10 @@ int i2cDevOpen(const char* busname)
     sprintf(filename, "/dev/i2c-%d", busnum);
     fd = open(filename, O_RDWR);
     if (i2cDevDebug) printf("i2cDevOpen: open %s returned %d\n", filename, fd);
-    if (fd < 0)
-    {
-        sprintf(filename, "/dev/i2c/%d", busnum);
-        fd = open(filename, O_RDWR);
-        if (i2cDevDebug) printf("i2cDevOpen: open %s returned %d\n", filename, fd);
-    }
+    if (fd >= 0) return fd;
+    sprintf(filename, "/dev/i2c/%d", busnum);
+    fd = open(filename, O_RDWR);
+    if (i2cDevDebug) printf("i2cDevOpen: open %s returned %d\n", filename, fd);
     return fd;
 }
 
