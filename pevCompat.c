@@ -170,6 +170,7 @@ static void pevI2cConfigureFunc(const iocshArgBuf *args)
     debug("card=%d, name=%s, controlword=0x%08x bus=%d ponaddr=0x%02x addr=0x%02x", 
         card, name, controlword, pev_i2c_bus, pon_addr, i2c_addr);
 
+    /* pev i2c adapters are the ones on localbus/pon */
     sprintf(sysfspattern, "/sys/devices/*.localbus/*%02x.pon-i2c/i2c-*", pon_addr);
     i2cDevConfigure(name, sysfspattern, i2c_addr, 0);
 }
@@ -200,20 +201,34 @@ void* pevx_init(int x)
     return (void*) -1;
 }
 
+int pevx_csr_rd(int card, int addr)
+{
+    return toscaCsrRead((card << 16) | (addr & 0x7FFFFFFF));
+}
+
 int pev_csr_rd(int addr)
 {
-    return toscaCsrRead(addr & 0x7FFFFFFF);
+    return pevx_csr_rd(0, addr);
+}
+
+void pevx_csr_wr(int card, int addr, int val)
+{
+    toscaCsrWrite((card << 16) | (addr & 0x7FFFFFFF), val);
 }
 
 void pev_csr_wr(int addr, int val)
 {
-    debug ("pev_csr_wr(0x%x,0x%x)  -> toscaCsrWrite(0x%x,0x%x)", addr, val, addr & 0x7FFFFFFF, val);
-    toscaCsrWrite(addr & 0x7FFFFFFF, val);  
+    pevx_csr_wr(0, addr, val);
+}
+
+void pevx_csr_set(int card, int addr, int val)
+{
+    toscaCsrSet((card << 16) | (addr & 0x7FFFFFFF), val);
 }
 
 void pev_csr_set(int addr, int val)
 {
-    toscaCsrSet(addr & 0x7FFFFFFF, val);  
+    pevx_csr_set(0, addr, val);
 }
 
 int pev_elb_rd(int addr)
