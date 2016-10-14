@@ -128,8 +128,11 @@ uint32_t toscaCsrRead(unsigned int address);
 int toscaCsrWrite(unsigned int address, uint32_t value);  /* Write new value. */
 int toscaCsrSet(unsigned int address, uint32_t value);    /* Set bits in value, leave others unchanged. */
 int toscaCsrClear(unsigned int address, uint32_t value);  /* Clear bits in value, leave others unchanged. */
-uint32_t toscaSmonRead(unsigned int address);
-int toscaSmonWrite(unsigned int address, uint32_t value);
+
+/* Access to Virtex-6 System Monitor via toscaCsr */
+uint16_t toscaSmonRead(unsigned int address);
+int toscaSmonWrite(unsigned int address, uint16_t value);
+uint32_t toscaSmonStatus();
 
 /* If you prefer to access Tosca CSR directly using toscaMap
    instead of using functions above,

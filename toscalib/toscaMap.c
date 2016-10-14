@@ -687,7 +687,7 @@ int toscaCsrClear(unsigned int address, uint32_t value)
     return 0;
 }
 
-uint32_t toscaSmonRead(unsigned int address)
+uint16_t toscaSmonRead(unsigned int address)
 {
     if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
     if (address >= 0x80) { errno = EINVAL; return -1; }
@@ -697,7 +697,7 @@ uint32_t toscaSmonRead(unsigned int address)
     return le32toh(tCsr[0x44>>2]);
 }
 
-int toscaSmonWrite(unsigned int address, uint32_t value)
+int toscaSmonWrite(unsigned int address, uint16_t value)
 {
     if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
     if (address < 0x40) { errno = EACCES; return -1; }
@@ -707,6 +707,11 @@ int toscaSmonWrite(unsigned int address, uint32_t value)
     /* check status 0x48 here ? */
     tCsr[0x44>>2] = htole32(value);
     return 0;
+}
+
+uint32_t toscaSmonStatus()
+{
+    return le32toh(tCsr[0x48>>2]);
 }
 
 toscaMapVmeErr_t toscaGetVmeErr()
