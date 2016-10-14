@@ -241,7 +241,7 @@ int i2cDevConfigure(const char* name, const char* busname, int address, int maxr
     if (regDevInstallWorkQueue(device, 100) != SUCCESS)
     {
         perror("regDevInstallWorkQueue() failed");
-        goto fail;
+        return -1;
     }
     return 0;
 
