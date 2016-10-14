@@ -256,7 +256,7 @@ int pev_elb_rd(int addr)
         if (!ptr) return -1;
         return *ptr;
     }
-    debug("notimplemented");
+    debug("addr=0x%x -- not implemented", addr);
     errno = ENOSYS;
     return -1;
 }
@@ -270,7 +270,7 @@ int pev_elb_wr(int addr, int val)
         *ptr = val;
         return 0;
     }
-    debug("notimplemented");
+    debug("addr=0x%x val=0x%x -- not implemented", addr, val);
     errno = ENOSYS;
     return -1;
 }
