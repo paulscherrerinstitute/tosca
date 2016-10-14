@@ -277,15 +277,12 @@ int pev_elb_wr(int addr, int val)
 
 int pev_smon_rd(int addr)
 {
-    debug("addr=0x%x -- not implemented", addr);
-    errno = ENOSYS;
-    return -1;
+    return toscaSmonRead(addr);
 }
 
 void pev_smon_wr(int addr, int val)
 {
-    debug("addr=0x%x val=0x%x -- not implemented", addr, val);
-    errno = ENOSYS;
+    toscaSmonWrite(addr, val);
 }
 
 int pev_bmr_read(unsigned int card, unsigned int addr, unsigned int *val, unsigned int count)
