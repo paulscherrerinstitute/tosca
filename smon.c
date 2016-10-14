@@ -145,7 +145,7 @@ static void toscaSmonReadFunc(const iocshArgBuf *args)
     if (!args[0].sval)
     {
         int addr;
-        for (addr = 0; addr < 0x40; addr++)
+        for (addr = 0; addr < 0x43; addr++)
         {
             if (addr == 0x05) addr = 0x08;
             if (addr == 0x0a) addr = 0x10;
