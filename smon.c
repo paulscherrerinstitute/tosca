@@ -17,7 +17,7 @@ static const char* smonAddrToStr(int addr)
         case 0x00: return "Temp"; 
         case 0x01: return "Vccint";
         case 0x02: return "Vccaux";
-        case 0x03: return "V";
+        case 0x03: return "Vadj";
         case 0x04: return "VrefP";
         case 0x05: return "VrefN";
         case 0x08: return "Supply offs";
@@ -147,7 +147,7 @@ static void toscaSmonReadFunc(const iocshArgBuf *args)
         int addr;
         for (addr = 0; addr < 0x43; addr++)
         {
-            if (addr == 0x05) addr = 0x08;
+            if (addr == 0x06) addr = 0x08;
             if (addr == 0x0a) addr = 0x10;
             if (addr == 0x23) addr = 0x24;
             if (addr == 0x27) addr = 0x3f;
