@@ -280,7 +280,7 @@ void toscaIntrShow(int level)
             prevIntrCount[index] = count;
             if (level) for (handler = handlers[index]; handler; handler = handler->next)
             {
-                printf("    %s (0x%x)\n", fname=symbolName(handler->function, symbolDetail),
+                printf("    %s (0x%zx)\n", fname=symbolName(handler->function, symbolDetail),
                     (size_t)handler->parameter), free(fname);
             }
         }
