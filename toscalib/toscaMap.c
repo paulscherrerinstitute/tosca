@@ -241,28 +241,30 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
     unsigned int setcmd, getcmd;
     char filename[80];
 
-    debug("aspace=%#x(%s), address=%#llx, size=%#zx",
-            aspace,
-            toscaAddrSpaceToStr(aspace),
-            (unsigned long long) address,
-            size);
+    debug("aspace=0x%x(%s), address=0x%llx, size=0x%zx",
+        aspace,
+        toscaAddrSpaceToStr(aspace),
+        (unsigned long long) address,
+        size);
             
     LOCK;
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
-        debug("check aspace=%#x(%s), address=%#llx, size=%#zx",
-                (*pmap)->info.aspace,
-                toscaAddrSpaceToStr((*pmap)->info.aspace),
-                (unsigned long long) (*pmap)->info.address,
-                (*pmap)->info.size);
+        debug("%s:0x%llx[0x%zx] check aspace=0x%x(%s), address=0x%llx, size=0x%zx",
+            toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
+            (*pmap)->info.aspace,
+            toscaAddrSpaceToStr((*pmap)->info.aspace),
+            (unsigned long long) (*pmap)->info.address,
+            (*pmap)->info.size);
         if (aspace == (*pmap)->info.aspace &&
             address >= (*pmap)->info.address &&
             address + size <= (*pmap)->info.address + (*pmap)->info.size)
         {
             UNLOCK;
-            debug("use existing window addr=%#llx size=%#zx offset=%#llx",
-                    (unsigned long long) (*pmap)->info.address, (*pmap)->info.size,
-                    (unsigned long long) (address - (*pmap)->info.address));
+            debug("%s:0x%llx[0x%zx] use existing window addr=0x%llx size=0x%zx offset=0x%llx",
+                toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
+                (unsigned long long) (*pmap)->info.address, (*pmap)->info.size,
+                (unsigned long long) (address - (*pmap)->info.address));
             return (*pmap)->info.ptr + (address - (*pmap)->info.address);
         }
     }
@@ -272,6 +274,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         struct stat filestat = {0};
         pciAddr pciaddr;
         
+        debug("creating new TCSR mapping");        
         pciaddr = toscaPciFind(card);
         sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/resource3",
             pciaddr.dom, pciaddr.bus, pciaddr.dev, pciaddr.func);
@@ -287,9 +290,11 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         if (address + size > tCsrSize)
         {
             UNLOCK;
+            debug("address 0x%llx + size 0x%zx exceeds %s addres space size 0x%zx",
+                (unsigned long long) address, size,
+                toscaAddrSpaceToStr(aspace), tCsrSize);
             close(fd);
-            debug("address or size too big");
-            errno = EINVAL;
+            errno = ERANGE;
             return NULL;
         }
         size = tCsrSize;  /* Map whole TCSR space */
@@ -300,10 +305,11 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
     {
         glob_t globresults = {0};            
 
+        debug("creating new SRAM mapping");        
         if (card != 0)
         {
             UNLOCK;
-            debug("access to sram only on local card");
+            debug("access to SRAM only on local card");
             errno = EINVAL;
             return NULL;
         }
@@ -312,18 +318,21 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         if (glob(filename, GLOB_ONLYDIR, NULL, &globresults) != 0)
         {
             UNLOCK;
-            debug("cannot find sram device");
+            debug("cannot find SRAM device");
             errno = ENODEV;
             return NULL;
         }
+        debug ("found SRAM device %s", globresults.gl_pathv[0]);
         sprintf(filename, "/dev/%s", basename(globresults.gl_pathv[0]));
-        sramSize = 0x2000; /* should we read that from /sys/.../uioX/maps/mapY/size ? */
+        sramSize = 0x2000; /* read from /sys/.../uioX/maps/mapY/size ? */
         globfree(&globresults);
         if (address + size > sramSize)
         {
             UNLOCK;
-            debug("address or size too big");
-            errno = EINVAL;
+            debug("address 0x%llx + size 0x%zx exceeds %s addres space size 0x%zx",
+                (unsigned long long) address, size,
+                toscaAddrSpaceToStr(aspace), sramSize);
+            errno = ERANGE;
             return NULL;
         }
         fd = open(filename, O_RDWR);
@@ -345,15 +354,12 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         */
         struct vme_master vme_window = {0};
 
-        if (!size)
-        {
-            debug("size is 0");
-            errno = EINVAL;
-            return NULL;
-        }
-
+        debug("creating new %s mapping", toscaAddrSpaceToStr(aspace));
+        if (aspace & VME_A16)
+        
+        if (size == 0) size = 1;
         vme_window.enable = 1;
-        vme_window.vme_addr = address & ~0xffffful;
+        vme_window.vme_addr = address & ~0xffffful; /* 1 MB alignment */
         vme_window.size = (size + (address & 0xffffful) + 0xffffful) & ~0xffffful;
         
         if (aspace & VME_SLAVE)
@@ -405,34 +411,34 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
 
         if (!(aspace & VME_SLAVE)) /* reading back slave windows is buggy */
         {
-        /* If the request fits into an existing master window,
-           we may get that one instead of the requested one.
-           That window may have a different start adddress.
-        */
-        if (ioctl(fd, getcmd, &vme_window) != 0)
-        {
-            debugErrno("ioctl(%d, VME_GET_%s)",
-                fd, getcmd == VME_GET_MASTER ? "MASTER" : "SLAVE");
-            close(fd);
-            UNLOCK;
-            return NULL;
-        }
-        debug("got window address=%#llx size=%#llx",
-            (unsigned long long) vme_window.vme_addr,
-            (unsigned long long) vme_window.size);
+            /* If the request fits into an existing master window,
+               we may get that one instead of the requested one.
+               That window may have a different start adddress.
+            */
+            if (ioctl(fd, getcmd, &vme_window) != 0)
+            {
+                debugErrno("ioctl(%d, VME_GET_%s)",
+                    fd, getcmd == VME_GET_MASTER ? "MASTER" : "SLAVE");
+                close(fd);
+                UNLOCK;
+                return NULL;
+            }
+            debug("got window address=0x%llx size=0x%llx",
+                (unsigned long long) vme_window.vme_addr,
+                (unsigned long long) vme_window.size);
         }
         
         /* Find the MMU pages in the window we need to map */
         offset = address - vme_window.vme_addr;   /* Location within window that maps to requested address */
         address = vme_window.vme_addr;            /* Start address of the fd. */
-        if ((aspace & 0xfff) == VME_A16)
+        if (aspace & VME_A16)
             size = 0x10000;                       /* Map only the small A16 space, not the big window to user space. */
         else
             size = vme_window.size ;              /* Map the whole window to user space. */
     }
 
     ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    debug("mmap(NULL, size=%#zx, PROT_READ | PROT_WRITE, MAP_SHARED, %s, 0) = %p",
+    debug("mmap(NULL, size=0x%zx, PROT_READ | PROT_WRITE, MAP_SHARED, %s, 0) = %p",
             size, filename, ptr);
     if (ptr == MAP_FAILED)
     {
@@ -570,7 +576,8 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
                 return 0;
             }                
             debug("overlap with existing slave window %s:0x%llx",
-                toscaAddrSpaceToStr(overlap.aspace), overlap.address);
+                toscaAddrSpaceToStr(overlap.aspace),
+                (unsigned long long) overlap.address);
             errno = EADDRINUSE;
         }
         return -1;

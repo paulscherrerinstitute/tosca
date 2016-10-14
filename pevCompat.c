@@ -192,13 +192,13 @@ epicsExportRegistrar(pevRegistrar);
 
 void* pev_init(int x)
 {
-    printf("pev compatibility mode\n");
+    debug("pev compatibility mode");
     return (void*) -1;
 }
 
 void* pevx_init(int x)
 {
-    printf("pevx compatibility mode\n");
+    debug("pevx compatibility mode");
     return (void*) -1;
 }
 
@@ -256,6 +256,7 @@ int pev_elb_rd(int addr)
         if (!ptr) return -1;
         return *ptr;
     }
+    debug("notimplemented");
     errno = ENOSYS;
     return -1;
 }
@@ -269,48 +270,55 @@ int pev_elb_wr(int addr, int val)
         *ptr = val;
         return 0;
     }
+    debug("notimplemented");
     errno = ENOSYS;
     return -1;
 }
 
 int pev_smon_rd(int addr)
 {
+    debug("addr=0x%x -- not implemented", addr);
     errno = ENOSYS;
     return -1;
 }
 
+void pev_smon_wr(int addr, int val)
+{
+    debug("addr=0x%x val=0x%x -- not implemented", addr, val);
+    errno = ENOSYS;
+}
+
 int pev_bmr_read(unsigned int card, unsigned int addr, unsigned int *val, unsigned int count)
 {
+    debug("card=%u addr=0x%x *val=%p count=%u -- not implemented", card, addr, val, count);
     errno = ENOSYS;
     return -1;
 }
 
 float pev_bmr_conv_11bit_u(unsigned short val)
 {
+    debug("val=0x%x -- not implemented", val);
     errno = ENOSYS;
     return 0.0/0.0;
 }
 
 float pev_bmr_conv_11bit_s(unsigned short val)
 {
+    debug("val=0x%x -- not implemented", val);
     errno = ENOSYS;
     return 0.0/0.0;
 }
 
 float pev_bmr_conv_16bit_u(unsigned short val)
 {
+    debug("val=0x%x -- not implemented", val);
     errno = ENOSYS;
     return 0.0/0.0;
 }
 
-void pev_smon_wr(int addr, int val)
-{
-    errno = ENOSYS;
-}
-
 int pev_bmr_write(unsigned int card, unsigned int addr, unsigned int val, unsigned int count)
 {
+    debug("notimplemented");
     errno = ENOSYS;
     return -1;
 }
-
