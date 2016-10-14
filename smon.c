@@ -122,30 +122,17 @@ static void smonShow(int addr)
             printf(" = %.3f V\n", (val>>6) * 3.0 / 1024);
             return;
         case 0x3f:
-            printf(" = %u%u%u%u:%u%u%u%u:%u%u%u%u:%u%u%u%u\n"
-                   "%sternal reference voltage, sysmon %sabled%s\n",
-                (val>>15)&1,
-                (val>>14)&1,
-                (val>>13)&1,
-                (val>>12)&1,
-                (val>>11)&1,
-                (val>>10)&1,
-                (val>>9)&1,
-                (val>>8)&1,
-                (val>>7)&1,
-                (val>>6)&1,
-                (val>>5)&1,
-                (val>>4)&1,
-                (val>>3)&1,
-                (val>>2)&1,
-                (val>>1)&1,
-                val&1,
-                val & 0x0200 ? "in" : "ex",
-                val & 0x0100 ? "dis" : "en",
-                val & 0x0008 ? ", over temperature" : "");
+        case 0x40:
+        case 0x41:
+        case 0x42:
+            printf(" = %u%u%u%u:%u%u%u%u:%u%u%u%u:%u%u%u%u\n",
+                (val>>15)&1, (val>>14)&1, (val>>13)&1, (val>>12)&1,
+                (val>>11)&1, (val>>10)&1, (val>>9)&1, (val>>8)&1,
+                (val>>7)&1, (val>>6)&1, (val>>5)&1, (val>>4)&1,
+                (val>>3)&1, (val>>2)&1, (val>>1)&1, val&1);
             return;
     }
-    printf(" = %u\n", val);
+    printf("\n");
 }
 
 static const iocshFuncDef toscaSmonReadDef =
