@@ -1,2 +1,2 @@
-variable(i2cDevDebug, int)
-registrar(i2cDevRegistrar)
+variable(i2cDebug, int)
+registrar(i2cRegistrar)

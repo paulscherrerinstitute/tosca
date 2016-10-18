@@ -3,6 +3,7 @@
 #include <errno.h>
 
 #include "toscaMap.h"
+#include "i2cDev.h"
 
 #include <iocsh.h>
 #include <epicsExport.h>
@@ -163,16 +164,19 @@ static void pevI2cConfigureFunc(const iocshArgBuf *args)
     unsigned int card = args[0].ival;
     const char* name = args[1].sval;
     unsigned int controlword = args[2].ival;
-    int i2c_addr = (controlword & 0x7f) | ((controlword & 0x70) >> 1);
+    int i2c_addr = (controlword & 0x7f) | ((controlword & 0x70) >> 8);
     int pev_i2c_bus = controlword >> 29;
     int pon_addr = 0x80 + (pev_i2c_bus << 4);
     char sysfspattern[80];
     
-    debug("card=%d, name=%s, controlword=0x%08x bus=%d ponaddr=0x%02x addr=0x%02x", 
+    debug("card=%d, name=%s, controlword=0x%08x bus=elb-%d ponaddr=0x%02x addr=0x%02x", 
         card, name, controlword, pev_i2c_bus, pon_addr, i2c_addr);
 
     /* pev i2c adapters are the ones on localbus/pon */
     sprintf(sysfspattern, "/sys/devices/*.localbus/*%02x.pon-i2c/i2c-*", pon_addr);
+    
+    printf("Compatibility mode! evI2cConfigure replaced by:\n"
+        "i2cDevConfigure %s %s 0x%x\n", name, sysfspattern, i2c_addr);
     i2cDevConfigure(name, sysfspattern, i2c_addr, 0);
 }
 
@@ -285,37 +289,82 @@ void pev_smon_wr(int addr, int val)
     toscaSmonWrite(addr, val);
 }
 
-int pev_bmr_read(unsigned int card, unsigned int addr, unsigned int *val, unsigned int count)
+static int pev_bmr_fd(unsigned int bmr, unsigned int addr)
 {
-    debug("card=%u addr=0x%x *val=%p count=%u -- not implemented", card, addr, val, count);
-    errno = ENOSYS;
-    return -1;
+    static int fd[4] = {0};
+
+    if (bmr > 3)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+    if (!fd[bmr])
+    {
+        int i2cdev;
+        char sysfspattern[60];
+
+        i2cdev = bmr == 3 ? 0x24 : 0x53 + bmr * 8;
+        sprintf(sysfspattern, "/sys/devices/*localbus/*i2c*/i2c-*/*-%04x", i2cdev);
+        debug("i2cOpen(%s, 0x%x)", sysfspattern, i2cdev);
+        fd[bmr] = i2cOpen(sysfspattern, i2cdev);
+        if (fd[bmr] < 0)
+        {
+            debugErrno("open bmr=%u addr=0x%x sysfspattern=%s", bmr, addr, sysfspattern);
+            errno = ENODEV;
+            return -1;
+        }
+    }
+    if (fd[bmr] < 0)
+    {
+        errno = ENODEV;
+        return -1;
+    }
+    return fd[bmr];
+}
+
+int pev_bmr_read(unsigned int bmr, unsigned int addr, unsigned int *val, unsigned int count)
+{
+    int fd;
+    debug("bmr=%u addr=0x%x, count=%u", bmr, addr, count);
+    fd = pev_bmr_fd(bmr, addr);
+    if (fd < 0) return -1;
+    return i2cRead(fd, addr, count, val);
+}
+
+int pev_bmr_write(unsigned int bmr, unsigned int addr, unsigned int val, unsigned int count)
+{
+    int fd;
+    debug("bmr=%u addr=0x%x, val=0x%x  count=%u", bmr, addr, val, count);
+    fd = pev_bmr_fd(bmr, addr);
+    if (fd < 0) return -1;
+    return i2cWrite(fd, addr, 2, val);
 }
 
 float pev_bmr_conv_11bit_u(unsigned short val)
 {
-    debug("val=0x%x -- not implemented", val);
-    errno = ENOSYS;
-    return 0.0/0.0;
+    unsigned short l;
+    short h;
+
+    l = val & 0x7ff;
+    h = val >> 11;
+    h |= 0xffe0;
+    h = ~h + 1;
+    return(((float)l/(1 << h)));
 }
 
 float pev_bmr_conv_11bit_s(unsigned short val)
 {
-    debug("val=0x%x -- not implemented", val);
-    errno = ENOSYS;
-    return 0.0/0.0;
+    short h,l;
+
+    l = val & 0x7ff;
+    if( l & 0x400) l |= 0xf800;
+    h = val >> 11;
+    h |= 0xffe0;
+    h = ~h + 1;
+    return(((float)l/(1 << h)));
 }
 
 float pev_bmr_conv_16bit_u(unsigned short val)
 {
-    debug("val=0x%x -- not implemented", val);
-    errno = ENOSYS;
-    return 0.0/0.0;
-}
-
-int pev_bmr_write(unsigned int card, unsigned int addr, unsigned int val, unsigned int count)
-{
-    debug("notimplemented");
-    errno = ENOSYS;
-    return -1;
+    return(((float)val/(1 << 13)));
 }

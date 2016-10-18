@@ -155,19 +155,27 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
 toscaMapAddr_t toscaStrToAddr(const char* str)
 {
     toscaMapAddr_t result = {0};
+    unsigned long card;
     char *s, *p;
     
     if (!str) return result;
     
-    result.address = strtoul(str, &s, 0);
-    if (*s == ':') {
+    card = strtoul(str, &s, 0);
+    if (*s == ':')
+    {
+        debug("card=%lu", card);
         s++;
-        result.aspace = ((unsigned int) result.address) << 16;
-        result.address = 0;
+        result.aspace = card << 16;
+    }
+    else
+    {
+        s = (char*) str;
     }
     p = strchr(s, ':');
-    if (p) result.address = toscaStrToSize(p+1);
-    
+    result.address = toscaStrToSize(p ? p+1 : s);
+    debug("address %s = 0x%llx", p ? p+1 : s, (unsigned long long) result.address );
+
+    debug("aspace %s", s);
     if ((strncmp(s, "USR", 3) == 0 && (s+=3)) ||
         (strncmp(s, "USER", 4) == 0 && (s+=4)))
     {
@@ -226,8 +234,8 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
             } while (s++);
         }
     }
+    debug("aspace = 0x%x = %u:%s", result.aspace, result.aspace>>16, toscaAddrSpaceToStr(result.aspace));
     if (*s == 0) return result;
-    if (*s != ':') return (toscaMapAddr_t){0};
     return result;
 }
 
@@ -687,14 +695,21 @@ int toscaCsrClear(unsigned int address, uint32_t value)
     return 0;
 }
 
+
+pthread_mutex_t smon_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 uint16_t toscaSmonRead(unsigned int address)
 {
+    uint16_t value;
     if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
     if (address >= 0x80) { errno = EINVAL; return -1; }
+    pthread_mutex_lock(&smon_mutex);
     tCsr[0x40>>2] = htole32(address);
     (void) tCsr[0x40>>2]; /* read back to flush write */
     /* check status 0x48 here ? */
-    return le32toh(tCsr[0x44>>2]);
+    value = le32toh(tCsr[0x44>>2]);
+    pthread_mutex_unlock(&smon_mutex);
+    return value;
 }
 
 int toscaSmonWrite(unsigned int address, uint16_t value)
@@ -702,10 +717,12 @@ int toscaSmonWrite(unsigned int address, uint16_t value)
     if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
     if (address < 0x40) { errno = EACCES; return -1; }
     if (address >= 0x80) { errno = EINVAL; return -1; }
+    pthread_mutex_lock(&smon_mutex);
     tCsr[0x40>>2] = htole32(address);
     (void) tCsr[0x40>>2]; /* read back to flush write */
     /* check status 0x48 here ? */
     tCsr[0x44>>2] = htole32(value);
+    pthread_mutex_unlock(&smon_mutex);
     return 0;
 }
 
@@ -724,28 +741,38 @@ toscaMapVmeErr_t toscaGetVmeErr()
 
 size_t toscaStrToSize(const char* str)
 {
-    char* p;
+    const char* p = str;
+    size_t size = 0, val;
     if (!str) return 0;
-    size_t size = strtoul(str, &p, 0);
-    switch (*p)
+    while (1)
     {
-        case 'k':
-        case 'K':
-            size *= 1UL<<10; break;
-        case 'M':
-            size *= 1UL<<20; break;
-        case 'G':
-            size *= 1UL<<30; break;
-#if __WORDSIZE > 32
-        case 'T':
-            size *= 1ULL<<40; break;
-        case 'P':
-            size *= 1ULL<<50; break;
-        case 'E':
-            size *= 1ULL<<60; break;
-#endif
+        val = strtoul(p, (char**)&p, 0);
+        switch (*p++)
+        {
+    #if __WORDSIZE > 32
+            case 'e':
+            case 'E':
+                size += val <<= 60; break;
+            case 'p':
+            case 'P':
+                size += val <<= 50; break;
+            case 't':
+            case 'T':
+                size += val <<= 40; break;
+    #endif
+            case 'g':
+            case 'G':
+                size += val <<= 30; break;
+            case 'm':
+            case 'M':
+                size += val <<= 20; break;
+            case 'k':
+            case 'K':
+                size += val << 10; break;
+            default:
+                size += val; return size;
+        }
     }
-    return size;
 }
 
 char* toscaSizeToStr(size_t size, char* str)
