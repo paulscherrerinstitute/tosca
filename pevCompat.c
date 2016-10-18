@@ -241,7 +241,7 @@ static uint32_t *sramPtr(size_t addr)
     static volatile void* sram = NULL;
     if (addr > 0x2000)
     {
-        errno = ERANGE;
+        errno = EFAULT;
         return NULL;
     }
     if (!sram)
@@ -252,6 +252,59 @@ static uint32_t *sramPtr(size_t addr)
     return (uint32_t*) ((size_t) sram + addr);
 }
 
+#include <glob.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+static int pev_elb_fd(unsigned int addr)
+{
+    static int fd[10] = {0};
+    glob_t globresults;
+    int reg = addr>>2;
+    
+    const char* regname[10] = {
+        "vendor",
+        "static_options",
+        "vmectl",
+        "mezzanine",
+        "general",
+        "pciectl",
+        "user",
+        "signature",
+        "cfgctl",
+        "cfgdata",        
+    };
+
+    if (reg > 10)
+    {
+        debugLvl(0, "addr=0x%x -- not implemented", addr);
+        errno = EINVAL;
+        return -1;
+    }
+    if (!fd[reg])
+    {
+        char sysfspattern[50];
+
+        sprintf(sysfspattern, "/sys/devices/*localbus/*.pon/%s", regname[reg]);
+        if (glob(sysfspattern, 0, NULL, &globresults) != 0)
+        {
+            debug("glob %s failed", sysfspattern);
+            errno = ENOENT;
+            return fd[reg] = -1;
+        }
+        fd[reg] = open(globresults.gl_pathv[0], O_RDWR);
+        if (fd[reg] < 0)
+            fd[reg] = open(globresults.gl_pathv[0], O_RDONLY);
+        if (fd[reg] < 0)
+            debugErrno("open %s", globresults.gl_pathv[0]);
+        globfree(&globresults);
+    }
+    if (fd[reg] < 0)
+        errno = ENOENT;
+    return fd[reg];
+}
+
 int pev_elb_rd(int addr)
 {
     if (addr >= 0xe000) /* sram */
@@ -260,9 +313,23 @@ int pev_elb_rd(int addr)
         if (!ptr) return -1;
         return *ptr;
     }
-    debug("addr=0x%x -- not implemented", addr);
-    errno = ENOSYS;
-    return -1;
+    else
+    {
+        int fd = pev_elb_fd(addr);
+        char buffer[16] = {0};
+        if (fd <0) return -1;
+        if (lseek(fd, 0, SEEK_SET) < 0)
+        {
+            debugErrno("seek");
+            return -1;
+        }
+        if (read(fd, buffer, sizeof(buffer)-1) < 0)
+        {
+            debugErrno("read");
+            return -1;
+        }
+        return strtol(buffer, NULL, 0);
+    }        
 }
 
 int pev_elb_wr(int addr, int val)
@@ -274,9 +341,25 @@ int pev_elb_wr(int addr, int val)
         *ptr = val;
         return 0;
     }
-    debug("addr=0x%x val=0x%x -- not implemented", addr, val);
-    errno = ENOSYS;
-    return -1;
+    else
+    {
+        int n;
+        int fd = pev_elb_fd(addr);
+        char buffer[16];
+        if (fd <0) return -1;
+        if (lseek(fd, 0, SEEK_SET) < 0)
+        {
+            debugErrno("seek");
+            return -1;
+        }
+        n = sprintf(buffer, "%x", val);
+        if (write(fd, buffer, n) < 0)
+        {
+            debugErrno("dprintf");
+            return -1;
+        }
+        return 0;
+    }
 }
 
 int pev_smon_rd(int addr)
@@ -310,15 +393,10 @@ static int pev_bmr_fd(unsigned int bmr, unsigned int addr)
         if (fd[bmr] < 0)
         {
             debugErrno("open bmr=%u addr=0x%x sysfspattern=%s", bmr, addr, sysfspattern);
-            errno = ENODEV;
-            return -1;
         }
     }
     if (fd[bmr] < 0)
-    {
         errno = ENODEV;
-        return -1;
-    }
     return fd[bmr];
 }
 
