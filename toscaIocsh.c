@@ -14,7 +14,7 @@
 
 static const iocshFuncDef toscaMapDef =
     { "toscaMap", 2, (const iocshArg *[]) {
-    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SHM|TCSR|SRAM|VME_SLAVE):address", iocshArgString },
+    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SHM|TCSR|TIO|SRAM|VME_SLAVE):address", iocshArgString },
     &(iocshArg) { "size", iocshArgString },
 }};
 
@@ -351,6 +351,7 @@ static void toscaRegistrar(void)
     memDisplayInstallAddrHandler("USER2", toscaAddrHandler, TOSCA_USER2);
     memDisplayInstallAddrHandler("SHM",   toscaAddrHandler, TOSCA_SHM);
     memDisplayInstallAddrHandler("TCSR",  toscaAddrHandler, TOSCA_CSR);
+    memDisplayInstallAddrHandler("TIO",   toscaAddrHandler, TOSCA_IO);
 
     iocshRegister(&toscaMapDef, toscaMapFunc);
     iocshRegister(&toscaMapVMESlaveDef, toscaMapVMESlaveFunc);

@@ -19,7 +19,8 @@
 #define TOSCA_USER2	VME_USER2
 #define TOSCA_SHM	VME_USER3
 #define TOSCA_CSR	VME_USER4
-#define TOSCA_SRAM	0x200
+#define TOSCA_IO	0x200
+#define TOSCA_SRAM	0x400
 #define VME_SLAVE       0x800
 #define	VME_SUPER	0x1000
 #define	VME_PROG	0x4000

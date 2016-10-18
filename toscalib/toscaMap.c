@@ -138,6 +138,7 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
         case TOSCA_USER2: return "USER2";
         case TOSCA_SHM:   return "SHM";
         case TOSCA_CSR:   return "TCSR";
+        case TOSCA_IO:    return "TIO";
         case TOSCA_SRAM:  return "SRAM";
 
         case VME_SLAVE:   return "VME_SLAVE";
@@ -198,6 +199,9 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
     else
     if (strncmp(s, "TCSR", 4) == 0 && (s+=4))
         result.aspace |= TOSCA_CSR;
+    else
+    if (strncmp(s, "TIO", 4) == 0 && (s+=4))
+        result.aspace |= TOSCA_IO;
     else
     if (strncmp(s, "SRAM", 4) == 0 && (s+=4))
         result.aspace |= TOSCA_SRAM;
@@ -276,7 +280,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             return (*pmap)->info.ptr + (address - (*pmap)->info.address);
         }
     }
-    if (aspace & TOSCA_CSR)
+    if (aspace & (TOSCA_CSR | TOSCA_IO))
     {
         /* Handle TCSR in compatible way to other address spaces */
         struct stat filestat = {0};
@@ -284,8 +288,8 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         
         debug("creating new TCSR mapping");        
         pciaddr = toscaPciFind(card);
-        sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/resource3",
-            pciaddr.dom, pciaddr.bus, pciaddr.dev, pciaddr.func);
+        sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/resource%u",
+            pciaddr.dom, pciaddr.bus, pciaddr.dev, pciaddr.func, (aspace & TOSCA_CSR) ? 3 : 4);
         fd = open(filename, O_RDWR);
         if (fd < 0)
         {
@@ -294,20 +298,21 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             return NULL;
         }
         fstat(fd, &filestat);
-        tCsrSize = filestat.st_size; /* Map whole TCSR space */
-        if (address + size > tCsrSize)
+        if (aspace & TOSCA_CSR)
+            tCsrSize = filestat.st_size;
+        if (address + size > filestat.st_size)
         {
             UNLOCK;
-            debug("address 0x%llx + size 0x%zx exceeds %s addres space size 0x%zx",
+            debug("address 0x%llx + size 0x%zx exceeds %s address space size 0x%llx",
                 (unsigned long long) address, size,
-                toscaAddrSpaceToStr(aspace), tCsrSize);
+                toscaAddrSpaceToStr(aspace), (unsigned long long) filestat.st_size);
             close(fd);
-            errno = ERANGE;
+            errno = EFAULT;
             return NULL;
         }
-        size = tCsrSize;  /* Map whole TCSR space */
-        offset = address; /* Location within fd that maps to requested address */
-        address = 0;      /* This is the start address of the fd. */
+        size = filestat.st_size;  /* Map whole address space */
+        offset = address;         /* Location within fd that maps to requested address */
+        address = 0;              /* This is the start address of the fd. */
     }
     else if (aspace & TOSCA_SRAM)
     {
@@ -340,7 +345,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             debug("address 0x%llx + size 0x%zx exceeds %s addres space size 0x%zx",
                 (unsigned long long) address, size,
                 toscaAddrSpaceToStr(aspace), sramSize);
-            errno = ERANGE;
+            errno = EFAULT;
             return NULL;
         }
         fd = open(filename, O_RDWR);
