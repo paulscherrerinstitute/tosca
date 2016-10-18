@@ -1,2 +1,0 @@
-variable(i2cDebug, int)
-registrar(i2cRegistrar)
