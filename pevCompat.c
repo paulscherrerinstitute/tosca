@@ -2,8 +2,13 @@
 #include <string.h>
 #include <errno.h>
 
-#include "toscaMap.h"
+#include <pevulib.h>
+#include <pevxulib.h>
+
+#include "sysfsAccess.h"
 #include "i2cDev.h"
+
+#include "toscaMap.h"
 
 #include <iocsh.h>
 #include <epicsExport.h>
@@ -71,7 +76,7 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     
     if (card) sprintf(cardstr, "%u:", card);
     
-    printf("Compatibility mode! pevConfigure replaced by:\n"
+    printf("Compatibility mode! pev[Asyn]Configure replaced by:\n"
         "toscaRegDevConfigure %s %s%s:0x%x 0x%x %s\n",
         args[1].sval, cardstr, toscaAddrSpaceToStr(addr.aspace), args[3].ival, args[6].ival, flags);
     if (toscaRegDevConfigure(args[1].sval, addr.aspace, args[3].ival, args[6].ival, flags) != 0)
@@ -145,8 +150,6 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
     }
 }
 
-int i2cDevConfigure(const char* name, const char* busname, int address, int maxreg);
-
 static const iocshArg * const pevI2cConfigureArgs[] = {
     &(iocshArg) { "crate", iocshArgInt },
     &(iocshArg) { "name", iocshArgString },
@@ -174,39 +177,24 @@ static void pevI2cConfigureFunc(const iocshArgBuf *args)
 
     /* pev i2c adapters are the ones on localbus/pon */
     sprintf(sysfspattern, "/sys/devices/*.localbus/*%02x.pon-i2c/i2c-*", pon_addr);
-    
-    printf("Compatibility mode! evI2cConfigure replaced by:\n"
-        "i2cDevConfigure %s %s 0x%x\n", name, sysfspattern, i2c_addr);
+    printf("Compatibility mode! pev[Asyn]I2cConfigure replaced by:\n"
+        "toscaI2cConfigure %s 0x%x 0x%x\n", name, pon_addr, i2c_addr);
     i2cDevConfigure(name, sysfspattern, i2c_addr, 0);
 }
 
-static void pevRegistrar(void)
-{
-    iocshRegister(&pevConfigureDef, pevConfigureFunc);
-    iocshRegister(&pevAsynConfigureDef, pevConfigureFunc);
-    iocshRegister(&pevVmeSlaveMainConfigDef, pevVmeSlaveMainConfigFunc);
-    iocshRegister(&pevVmeSlaveTargetConfigDef, pevVmeSlaveTargetConfigFunc);
-    iocshRegister(&pevI2cConfigureDef, pevI2cConfigureFunc);
-    iocshRegister(&pevAsynI2cConfigureDef, pevI2cConfigureFunc);
-
-    toscaRegDevConfigure("pev_csr", TOSCA_CSR, 0, 0x2000, NULL);
-}
-
-epicsExportRegistrar(pevRegistrar);
-
-void* pev_init(int x)
+struct pev_node* pev_init(uint card)
 {
     debug("pev compatibility mode");
     return (void*) -1;
 }
 
-void* pevx_init(int x)
+struct pevx_node* pevx_init(uint card)
 {
     debug("pevx compatibility mode");
     return (void*) -1;
 }
 
-int pevx_csr_rd(int card, int addr)
+int pevx_csr_rd(uint card, int addr)
 {
     return toscaCsrRead((card << 16) | (addr & 0x7FFFFFFF));
 }
@@ -216,9 +204,9 @@ int pev_csr_rd(int addr)
     return pevx_csr_rd(0, addr);
 }
 
-void pevx_csr_wr(int card, int addr, int val)
+int pevx_csr_wr(uint card, int addr, int val)
 {
-    toscaCsrWrite((card << 16) | (addr & 0x7FFFFFFF), val);
+    return toscaCsrWrite((card << 16) | (addr & 0x7FFFFFFF), val);
 }
 
 void pev_csr_wr(int addr, int val)
@@ -226,9 +214,9 @@ void pev_csr_wr(int addr, int val)
     pevx_csr_wr(0, addr, val);
 }
 
-void pevx_csr_set(int card, int addr, int val)
+int pevx_csr_set(uint card, int addr, int val)
 {
-    toscaCsrSet((card << 16) | (addr & 0x7FFFFFFF), val);
+    return toscaCsrSet((card << 16) | (addr & 0x7FFFFFFF), val);
 }
 
 void pev_csr_set(int addr, int val)
@@ -252,61 +240,47 @@ static uint32_t *sramPtr(size_t addr)
     return (uint32_t*) ((size_t) sram + addr);
 }
 
-#include <glob.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
+static const char* elb_regname(int addr)
+{
+    switch (addr>>2)
+    {
+        case 0x00>>2: return "vendor";
+        case 0x04>>2: return "static_options";
+        case 0x08>>2: return "vmectl";
+        case 0x0c>>2: return "mezzanine";
+        case 0x10>>2: return "general";
+        case 0x14>>2: return "pciectl";
+        case 0x18>>2: return "user";
+        case 0x1c>>2: return "signature";
+        case 0x20>>2: return "cfgctl";
+        case 0x24>>2: return "cfgdata";
+        case 0x40>>2: return "bmrctl";
+        default: return "unknown";
+    }
+};
 
 static int pev_elb_fd(unsigned int addr)
 {
-    static int fd[10] = {0};
-    glob_t globresults;
-    int reg = addr>>2;
+    static int fd[11] = {0};
+    int reg;
     
-    const char* regname[10] = {
-        "vendor",
-        "static_options",
-        "vmectl",
-        "mezzanine",
-        "general",
-        "pciectl",
-        "user",
-        "signature",
-        "cfgctl",
-        "cfgdata",        
-    };
-
-    if (reg > 10)
+    if (addr >= 0x28 && addr != 0x40)
     {
         debugLvl(0, "addr=0x%x -- not implemented", addr);
         errno = EINVAL;
         return -1;
     }
+    if (addr == 40) reg = 10;
+    else reg = addr>>2;
+    debug("addr=0x%02x regname=%s", addr, elb_regname(addr));
     if (!fd[reg])
-    {
-        char sysfspattern[50];
-
-        sprintf(sysfspattern, "/sys/devices/*localbus/*.pon/%s", regname[reg]);
-        if (glob(sysfspattern, 0, NULL, &globresults) != 0)
-        {
-            debug("glob %s failed", sysfspattern);
-            errno = ENOENT;
-            return fd[reg] = -1;
-        }
-        fd[reg] = open(globresults.gl_pathv[0], O_RDWR);
-        if (fd[reg] < 0)
-            fd[reg] = open(globresults.gl_pathv[0], O_RDONLY);
-        if (fd[reg] < 0)
-            debugErrno("open %s", globresults.gl_pathv[0]);
-        globfree(&globresults);
-    }
-    if (fd[reg] < 0)
-        errno = ENOENT;
+        fd[reg] = sysfsOpenFmt("/sys/devices/*localbus/*.pon/%s", elb_regname(addr));
     return fd[reg];
 }
 
 int pev_elb_rd(int addr)
 {
+    debug("addr=0x%02x", addr);
     if (addr >= 0xe000) /* sram */
     {
         uint32_t* ptr = sramPtr(addr - 0xe000);
@@ -316,24 +290,14 @@ int pev_elb_rd(int addr)
     else
     {
         int fd = pev_elb_fd(addr);
-        char buffer[16] = {0};
-        if (fd <0) return -1;
-        if (lseek(fd, 0, SEEK_SET) < 0)
-        {
-            debugErrno("seek");
-            return -1;
-        }
-        if (read(fd, buffer, sizeof(buffer)-1) < 0)
-        {
-            debugErrno("read");
-            return -1;
-        }
-        return strtol(buffer, NULL, 0);
-    }        
+        if (fd < 0) return -1;
+        return sysfsReadULong(fd);
+    }
 }
 
 int pev_elb_wr(int addr, int val)
 {
+    debug("addr=0x%02x val=0x%x", addr, val);
     if (addr >= 0xe000) /* sram */
     {
         uint32_t* ptr = sramPtr(addr - 0xe000);
@@ -343,23 +307,41 @@ int pev_elb_wr(int addr, int val)
     }
     else
     {
-        int n;
         int fd = pev_elb_fd(addr);
-        char buffer[16];
-        if (fd <0) return -1;
-        if (lseek(fd, 0, SEEK_SET) < 0)
-        {
-            debugErrno("seek");
-            return -1;
-        }
-        n = sprintf(buffer, "%x", val);
-        if (write(fd, buffer, n) < 0)
-        {
-            debugErrno("dprintf");
-            return -1;
-        }
-        return 0;
+        if (fd < 0) return -1;
+        return sysfsWrite(fd, "%x", val);
     }
+}
+
+static const iocshFuncDef pev_elb_rdDef =
+    { "pev_elb_rd", 1, (const iocshArg *[]) {
+    &(iocshArg) { "addr", iocshArgInt },
+}};
+
+static void pev_elb_rdFunc(const iocshArgBuf *args)
+{
+    int addr = args[0].ival;
+    int val;
+    errno = 0;
+    val = pev_elb_rd(addr);
+    if (val == -1 && errno != 0)
+        fprintf(stderr, "pev_elb_rd %s: %m\n", elb_regname(addr));
+    else
+        printf("0x%08x\n", val);
+}
+
+static const iocshFuncDef pev_elb_wrDef =
+    { "pev_elb_wr", 2, (const iocshArg *[]) {
+    &(iocshArg) { "addr", iocshArgInt },
+    &(iocshArg) { "value", iocshArgInt },
+}};
+
+static void pev_elb_wrFunc(const iocshArgBuf *args)
+{
+    int addr = args[0].ival;
+    int val = args[1].ival;
+    if (pev_elb_wr(addr, val) == -1)
+        fprintf(stderr, "pev_elb_wr %s: %m\n", elb_regname(addr));
 }
 
 int pev_smon_rd(int addr)
@@ -384,16 +366,9 @@ static int pev_bmr_fd(unsigned int bmr, unsigned int addr)
     if (!fd[bmr])
     {
         int i2cdev;
-        char sysfspattern[60];
 
         i2cdev = bmr == 3 ? 0x24 : 0x53 + bmr * 8;
-        sprintf(sysfspattern, "/sys/devices/*localbus/*i2c*/i2c-*/*-%04x", i2cdev);
-        debug("i2cOpen(%s, 0x%x)", sysfspattern, i2cdev);
-        fd[bmr] = i2cOpen(sysfspattern, i2cdev);
-        if (fd[bmr] < 0)
-        {
-            debugErrno("open bmr=%u addr=0x%x sysfspattern=%s", bmr, addr, sysfspattern);
-        }
+        fd[bmr] = i2cOpenFmt(i2cdev, "/sys/devices/*localbus/*i2c*/i2c-*/*-%04x", i2cdev);
     }
     if (fd[bmr] < 0)
         errno = ENODEV;
@@ -415,7 +390,7 @@ int pev_bmr_write(unsigned int bmr, unsigned int addr, unsigned int val, unsigne
     debug("bmr=%u addr=0x%x, val=0x%x  count=%u", bmr, addr, val, count);
     fd = pev_bmr_fd(bmr, addr);
     if (fd < 0) return -1;
-    return i2cWrite(fd, addr, 2, val);
+    return i2cWrite(fd, addr, count, val);
 }
 
 float pev_bmr_conv_11bit_u(unsigned short val)
@@ -446,3 +421,20 @@ float pev_bmr_conv_16bit_u(unsigned short val)
 {
     return(((float)val/(1 << 13)));
 }
+
+static void pevRegistrar(void)
+{
+    iocshRegister(&pevConfigureDef, pevConfigureFunc);
+    iocshRegister(&pevAsynConfigureDef, pevConfigureFunc);
+    iocshRegister(&pevVmeSlaveMainConfigDef, pevVmeSlaveMainConfigFunc);
+    iocshRegister(&pevVmeSlaveTargetConfigDef, pevVmeSlaveTargetConfigFunc);
+    iocshRegister(&pevI2cConfigureDef, pevI2cConfigureFunc);
+    iocshRegister(&pevAsynI2cConfigureDef, pevI2cConfigureFunc);
+    iocshRegister(&pev_elb_rdDef, pev_elb_rdFunc);
+    iocshRegister(&pev_elb_wrDef, pev_elb_wrFunc);
+
+    toscaRegDevConfigure("pev_csr", TOSCA_CSR, 0, 0x2000, NULL);
+}
+
+epicsExportRegistrar(pevRegistrar);
+
