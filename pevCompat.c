@@ -2,6 +2,18 @@
 #include <string.h>
 #include <errno.h>
 
+#include <endian.h>
+#ifndef le32toh
+#if  __BYTE_ORDER == __LITTLE_ENDIAN
+#define le32toh(x) (x)
+#define htole32(x) (x)
+#else
+#include <byteswap.h>
+#define le32toh(x) __bswap_32 (x)
+#define htole32(x) __bswap_32 (x)
+#endif
+#endif
+
 #include <pevulib.h>
 #include <pevxulib.h>
 
@@ -16,6 +28,8 @@
 #define TOSCA_DEBUG_NAME pev
 #include "toscaDebug.h"
 epicsExportAddress(int, pevDebug);
+
+/** MASTER WINDOW ******************************************/
 
 /* pev compatibility mode */
 int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, size_t size, const char* flags);
@@ -77,13 +91,15 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     if (card) sprintf(cardstr, "%u:", card);
     
     printf("Compatibility mode! pev[Asyn]Configure replaced by:\n"
-        "toscaRegDevConfigure %s %s%s:0x%x 0x%x %s\n",
+        "toscaRegDevConfigure %s, %s%s:0x%x, 0x%x %s\n",
         args[1].sval, cardstr, toscaAddrSpaceToStr(addr.aspace), args[3].ival, args[6].ival, flags);
     if (toscaRegDevConfigure(args[1].sval, addr.aspace, args[3].ival, args[6].ival, flags) != 0)
     {
         fprintf(stderr, "toscaRegDevConfigure failed: %m\n");
     }
 }
+
+/** VME SLAVE WINDOW ***************************************/
 
 static const iocshFuncDef pevVmeSlaveMainConfigDef =
     { "pevVmeSlaveMainConfig", 3, (const iocshArg *[]) {
@@ -142,13 +158,15 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
     addr = toscaStrToAddr(target);
     swap = swapping && strcmp(swapping, "AUTO") == 0;
     printf("Compatibility mode! pevVmeSlaveMainConfig and pevVmeSlaveTargetConfig replaced by:\n"
-        "toscaMapVMESlave %s:0x%x 0x%x 0x%x%s\n",
+        "toscaMapVMESlave %s:0x%x, 0x%x, 0x%x%s\n",
         toscaAddrSpaceToStr(addr.aspace), targetOffset, winSize, mainBase+winBase, swap ? " 1" : "");
     if (toscaMapVMESlave(addr.aspace, targetOffset, winSize, mainBase+winBase, swap) != 0)
     {
         fprintf(stderr, "toscaMapVMESlave failed: %m\n");
     }
 }
+
+/** I2C ****************************************************/
 
 static const iocshArg * const pevI2cConfigureArgs[] = {
     &(iocshArg) { "crate", iocshArgInt },
@@ -178,7 +196,7 @@ static void pevI2cConfigureFunc(const iocshArgBuf *args)
     /* pev i2c adapters are the ones on localbus/pon */
     sprintf(sysfspattern, "/sys/devices/*.localbus/*%02x.pon-i2c/i2c-*", pon_addr);
     printf("Compatibility mode! pev[Asyn]I2cConfigure replaced by:\n"
-        "toscaI2cConfigure %s 0x%x 0x%x\n", name, pon_addr, i2c_addr);
+        "toscaI2cConfigure %s, 0x%x, 0x%x\n", name, pon_addr, i2c_addr);
     i2cDevConfigure(name, sysfspattern, i2c_addr, 0);
 }
 
@@ -194,40 +212,60 @@ struct pevx_node* pevx_init(uint card)
     return (void*) -1;
 }
 
-int pevx_csr_rd(uint card, int addr)
+/** CSR ****************************************************/
+
+static volatile uint32_t* tIo;
+
+int pevx_csr_rd(uint card, int address)
 {
-    return toscaCsrRead((card << 16) | (addr & 0x7FFFFFFF));
+    if (address & 0x80000000)
+        return toscaCsrRead((card << 16) | (address & 0x7FFFFFFF));
+    if (address > 256 - 4) return -1;
+    if (!tIo && !(tIo = toscaMap(TOSCA_IO, 0, 0)) ) return -1;
+    return le32toh(tIo[address>>2]);
 }
 
-int pev_csr_rd(int addr)
+int pev_csr_rd(int address)
 {
-    return pevx_csr_rd(0, addr);
+    return pevx_csr_rd(0, address);
 }
 
-int pevx_csr_wr(uint card, int addr, int val)
+int pevx_csr_wr(uint card, int address, int value)
 {
-    return toscaCsrWrite((card << 16) | (addr & 0x7FFFFFFF), val);
+    if (address & 0x80000000)
+        return toscaCsrWrite((card << 16) | (address & 0x7FFFFFFF), value);
+    if (address > 256 - 4) return -1;
+    if (!tIo && !(tIo = toscaMap(TOSCA_IO, 0, 0)) ) return -1;
+    tIo[address>>2] = htole32(value);
+    return 0;
 }
 
-void pev_csr_wr(int addr, int val)
+void pev_csr_wr(int address, int value)
 {
-    pevx_csr_wr(0, addr, val);
+    pevx_csr_wr(0, address, value);
 }
 
-int pevx_csr_set(uint card, int addr, int val)
+int pevx_csr_set(uint card, int address, int value)
 {
-    return toscaCsrSet((card << 16) | (addr & 0x7FFFFFFF), val);
+    if (address & 0x80000000)
+        return toscaCsrSet((card << 16) | (address & 0x7FFFFFFF), value);
+    if (address > 256 - 4) return -1;
+    if (!tIo && !(tIo = toscaMap(TOSCA_IO, 0, 0)) ) return -1;
+    tIo[address>>2] |= htole32(value);
+    return 0;
 }
 
-void pev_csr_set(int addr, int val)
+void pev_csr_set(int address, int value)
 {
-    pevx_csr_set(0, addr, val);
+    pevx_csr_set(0, address, value);
 }
 
-static uint32_t *sramPtr(size_t addr)
+/** ELB AND SRAM *******************************************/
+
+static uint32_t *sramPtr(size_t address)
 {
     static volatile void* sram = NULL;
-    if (addr > 0x2000)
+    if (address > 0x2000)
     {
         errno = EFAULT;
         return NULL;
@@ -237,12 +275,12 @@ static uint32_t *sramPtr(size_t addr)
         sram = toscaMap(TOSCA_SRAM, 0, 0);
         if (!sram) return NULL;
     }
-    return (uint32_t*) ((size_t) sram + addr);
+    return (uint32_t*) ((size_t) sram + address);
 }
 
-static const char* elb_regname(int addr)
+static const char* elb_regname(int address)
 {
-    switch (addr>>2)
+    switch (address>>2)
     {
         case 0x00>>2: return "vendor";
         case 0x04>>2: return "static_options";
@@ -259,102 +297,106 @@ static const char* elb_regname(int addr)
     }
 };
 
-static int pev_elb_fd(unsigned int addr)
+static int pev_elb_fd(unsigned int address)
 {
     static int fd[11] = {0};
     int reg;
     
-    if (addr >= 0x28 && addr != 0x40)
+    if (address >= 0x28 && address != 0x40)
     {
-        debugLvl(0, "addr=0x%x -- not implemented", addr);
+        debugLvl(0, "address=0x%x -- not implemented", address);
         errno = EINVAL;
         return -1;
     }
-    if (addr == 40) reg = 10;
-    else reg = addr>>2;
-    debug("addr=0x%02x regname=%s", addr, elb_regname(addr));
+    if (address == 40) reg = 10;
+    else reg = address>>2;
+    debug("address=0x%02x regname=%s", address, elb_regname(address));
     if (!fd[reg])
-        fd[reg] = sysfsOpenFmt("/sys/devices/*localbus/*.pon/%s", elb_regname(addr));
+        fd[reg] = sysfsOpenFmt("/sys/devices/*localbus/*.pon/%s", elb_regname(address));
     return fd[reg];
 }
 
-int pev_elb_rd(int addr)
+int pev_elb_rd(int address)
 {
-    debug("addr=0x%02x", addr);
-    if (addr >= 0xe000) /* sram */
+    debug("address=0x%02x", address);
+    if (address >= 0xe000) /* sram */
     {
-        uint32_t* ptr = sramPtr(addr - 0xe000);
+        uint32_t* ptr = sramPtr(address - 0xe000);
         if (!ptr) return -1;
         return *ptr;
     }
     else
     {
-        int fd = pev_elb_fd(addr);
+        int fd = pev_elb_fd(address);
         if (fd < 0) return -1;
         return sysfsReadULong(fd);
     }
 }
 
-int pev_elb_wr(int addr, int val)
+int pev_elb_wr(int address, int value)
 {
-    debug("addr=0x%02x val=0x%x", addr, val);
-    if (addr >= 0xe000) /* sram */
+    debug("address=0x%02x value=0x%x", address, value);
+    if (address >= 0xe000) /* sram */
     {
-        uint32_t* ptr = sramPtr(addr - 0xe000);
+        uint32_t* ptr = sramPtr(address - 0xe000);
         if (!ptr) return -1;
-        *ptr = val;
+        *ptr = value;
         return 0;
     }
     else
     {
-        int fd = pev_elb_fd(addr);
+        int fd = pev_elb_fd(address);
         if (fd < 0) return -1;
-        return sysfsWrite(fd, "%x", val);
+        return sysfsWrite(fd, "%x", value);
     }
 }
 
 static const iocshFuncDef pev_elb_rdDef =
     { "pev_elb_rd", 1, (const iocshArg *[]) {
-    &(iocshArg) { "addr", iocshArgInt },
+    &(iocshArg) { "address", iocshArgInt },
 }};
 
 static void pev_elb_rdFunc(const iocshArgBuf *args)
 {
-    int addr = args[0].ival;
-    int val;
+    int address = args[0].ival;
+    int value;
     errno = 0;
-    val = pev_elb_rd(addr);
-    if (val == -1 && errno != 0)
-        fprintf(stderr, "pev_elb_rd %s: %m\n", elb_regname(addr));
+    value = pev_elb_rd(address);
+    if (value == -1 && errno != 0)
+        fprintf(stderr, "pev_elb_rd %s: %m\n", elb_regname(address));
     else
-        printf("0x%08x\n", val);
+        printf("0x%08x\n", value);
 }
 
 static const iocshFuncDef pev_elb_wrDef =
     { "pev_elb_wr", 2, (const iocshArg *[]) {
-    &(iocshArg) { "addr", iocshArgInt },
-    &(iocshArg) { "value", iocshArgInt },
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "valueue", iocshArgInt },
 }};
 
 static void pev_elb_wrFunc(const iocshArgBuf *args)
 {
-    int addr = args[0].ival;
-    int val = args[1].ival;
-    if (pev_elb_wr(addr, val) == -1)
-        fprintf(stderr, "pev_elb_wr %s: %m\n", elb_regname(addr));
+    int address = args[0].ival;
+    int value = args[1].ival;
+    if (pev_elb_wr(address, value) == -1)
+        fprintf(stderr, "pev_elb_wr %s: %m\n", elb_regname(address));
 }
 
-int pev_smon_rd(int addr)
+/** SMON ***************************************************/
+
+int pev_smon_rd(int address)
 {
-    return toscaSmonRead(addr);
+    return toscaSmonRead(address);
 }
 
-void pev_smon_wr(int addr, int val)
+void pev_smon_wr(int address, int value)
 {
-    toscaSmonWrite(addr, val);
+    toscaSmonWrite(address, value);
 }
 
-static int pev_bmr_fd(unsigned int bmr, unsigned int addr)
+/** BMR ****************************************************/
+
+static int pev_bmr_fd(unsigned int bmr, unsigned int address)
 {
     static int fd[4] = {0};
 
@@ -375,52 +417,54 @@ static int pev_bmr_fd(unsigned int bmr, unsigned int addr)
     return fd[bmr];
 }
 
-int pev_bmr_read(unsigned int bmr, unsigned int addr, unsigned int *val, unsigned int count)
+int pev_bmr_read(unsigned int bmr, unsigned int address, unsigned int *value, unsigned int count)
 {
     int fd;
-    debug("bmr=%u addr=0x%x, count=%u", bmr, addr, count);
-    fd = pev_bmr_fd(bmr, addr);
+    debug("bmr=%u address=0x%x, count=%u", bmr, address, count);
+    fd = pev_bmr_fd(bmr, address);
     if (fd < 0) return -1;
-    return i2cRead(fd, addr, count, val);
+    return i2cRead(fd, address, count, value);
 }
 
-int pev_bmr_write(unsigned int bmr, unsigned int addr, unsigned int val, unsigned int count)
+int pev_bmr_write(unsigned int bmr, unsigned int address, unsigned int value, unsigned int count)
 {
     int fd;
-    debug("bmr=%u addr=0x%x, val=0x%x  count=%u", bmr, addr, val, count);
-    fd = pev_bmr_fd(bmr, addr);
+    debug("bmr=%u address=0x%x, value=0x%x  count=%u", bmr, address, value, count);
+    fd = pev_bmr_fd(bmr, address);
     if (fd < 0) return -1;
-    return i2cWrite(fd, addr, count, val);
+    return i2cWrite(fd, address, count, value);
 }
 
-float pev_bmr_conv_11bit_u(unsigned short val)
+float pev_bmr_conv_11bit_u(unsigned short value)
 {
     unsigned short l;
     short h;
 
-    l = val & 0x7ff;
-    h = val >> 11;
+    l = value & 0x7ff;
+    h = value >> 11;
     h |= 0xffe0;
     h = ~h + 1;
     return(((float)l/(1 << h)));
 }
 
-float pev_bmr_conv_11bit_s(unsigned short val)
+float pev_bmr_conv_11bit_s(unsigned short value)
 {
     short h,l;
 
-    l = val & 0x7ff;
+    l = value & 0x7ff;
     if( l & 0x400) l |= 0xf800;
-    h = val >> 11;
+    h = value >> 11;
     h |= 0xffe0;
     h = ~h + 1;
     return(((float)l/(1 << h)));
 }
 
-float pev_bmr_conv_16bit_u(unsigned short val)
+float pev_bmr_conv_16bit_u(unsigned short value)
 {
-    return(((float)val/(1 << 13)));
+    return(((float)value/(1 << 13)));
 }
+
+/***********************************************************/
 
 static void pevRegistrar(void)
 {

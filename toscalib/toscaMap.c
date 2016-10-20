@@ -9,10 +9,10 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <endian.h>
 #include <glob.h>
 #include <libgen.h>
 
+#include <endian.h>
 #ifndef le32toh
 #if  __BYTE_ORDER == __LITTLE_ENDIAN
 #define le32toh(x) (x)
