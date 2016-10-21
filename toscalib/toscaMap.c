@@ -62,24 +62,23 @@ typedef union {
     uint32_t addr;
 } pciAddr;
 
-pciAddr *toscaDevices;
 int toscaNumDevices = -1;
 
-pciAddr toscaPciFind(unsigned int card)
+int toscaOpen(unsigned int card, const char* resource)
 {
+    static pciAddr *toscaDevices;
+    int fd;
+    char filename[80];
+
     debug("card=%u", card);
     if (toscaNumDevices == -1)
     {     
-        #ifndef GLOB_ONLYDIR
-        #define GLOB_ONLYDIR 0
-        #endif
-
         glob_t globresults = {0};
         int status;
         size_t i;
         
-        debug("glob("TOSCA_PCI_DIR "/*:*:*.*)");
-        status = glob(TOSCA_PCI_DIR "/*:*:*.*", GLOB_ONLYDIR, NULL, &globresults);
+        debug("glob("TOSCA_PCI_DIR "/*:*:*.*/)");
+        status = glob(TOSCA_PCI_DIR "/*:*:*.*/", 0, NULL, &globresults);
         toscaNumDevices = globresults.gl_pathc;
         if (status == 0)
         {
@@ -108,10 +107,24 @@ pciAddr toscaPciFind(unsigned int card)
     {
         debug("card=%u but only %u tosca devices found", card, toscaNumDevices);
         errno = ENODEV;
-        return (pciAddr) {.addr=-1};
+        return -1;
     }
-    return toscaDevices[card];
+    sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/%s",
+        toscaDevices[card].dom,
+        toscaDevices[card].bus,
+        toscaDevices[card].dev,
+        toscaDevices[card].func,
+        resource);
+    fd = open(filename, O_RDWR);
+    if (fd < 0)
+        fd = open(filename, O_RDONLY);
+    if (fd < 0)
+        fd = open(filename, O_WRONLY);
+    if (fd < 0)
+        debugErrno("open %s", filename);
+    return fd;
 }
+
 
 const char* toscaAddrSpaceToStr(unsigned int aspace)
 {
@@ -288,22 +301,20 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
     {
         /* Handle TCSR in compatible way to other address spaces */
         struct stat filestat = {0};
-        pciAddr pciaddr;
         
-        debug("creating new TCSR mapping");        
-        pciaddr = toscaPciFind(card);
-        if (pciaddr.addr == -1)
+        if (aspace & TOSCA_CSR)
         {
-            UNLOCK;
-            return NULL;
+            debug("creating new TCSR mapping");
+            fd = toscaOpen(card, "resource3");
         }
-        sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/resource%u",
-            pciaddr.dom, pciaddr.bus, pciaddr.dev, pciaddr.func, (aspace & TOSCA_CSR) ? 3 : 4);
-        fd = open(filename, O_RDWR);
+        else
+        {
+            debug("creating new TIO mapping");
+            fd = toscaOpen(card, "resource4");
+        }
         if (fd < 0)
         {
             UNLOCK;
-            debugErrno("open %s", filename);
             return NULL;
         }
         fstat(fd, &filestat);
@@ -542,8 +553,7 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
     const char* res;
     FILE* file;
     unsigned int card = aspace >> 16;;
-    pciAddr pciaddr;
-    char filename[80];
+    char filename[60];
     
     switch (aspace & 0xffff)
     {
@@ -581,23 +591,26 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
         res,
         swap ? 'y' : 'n',
         filename);
-    fprintf(file, "0x%llx:0x%zx:0x%llx:%s:%c",
+    if (fprintf(file, "0x%llx:0x%zx:0x%llx:%s:%c",
         (unsigned long long) vme_address,
         size,
         (unsigned long long) res_address,
         res,
-        swap ? 'y' : 'n');
+        swap ? 'y' : 'n') == -1)
+    {
+        debugErrno("fprintf %s", filename);
+    }
     if (fclose(file) == -1)
     {
         toscaMapAddr_t overlap;
-        debugErrno("add slave window");
+        debug("add slave window failed: %m");
         errno = EAGAIN;
         overlap = toscaCheckSlaveMaps(vme_address, size);
         if (overlap.aspace || overlap.address)
         {
             if (overlap.aspace == aspace && overlap.address == res_address)
             {
-                debug("slave window already mapped");
+                error("slave window already mapped");
                 return 0;
             }                
             debug("overlap with existing slave window %s:0x%llx",
@@ -607,51 +620,30 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
         }
         return -1;
     }
-    pciaddr = toscaPciFind(card);
-    if (pciaddr.addr == -1)
-        return -1;
-    sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/enableVMESlave",
-        pciaddr.dom, pciaddr.bus, pciaddr.dev, pciaddr.func);
-    file = fopen(filename, "w");
+    file = fdopen(toscaOpen(card, "enableVMESlave"), "w");
     if (file == NULL)
-    {
-        debugErrno("fopen %s", filename);
         return -1;
-    }
     fprintf(file, "1");
-    if (fclose(file) == -1)
-    {
-        debugErrno("enable slave window");
-        return -1;
-    }
+    fclose(file);
     return 0;
 }
 
 toscaMapAddr_t toscaCheckSlaveMaps(vmeaddr_t addr, size_t size)
 {
     FILE* file;
-    unsigned long long slaveBase=-1, vmeOffs, resOffs;
+    unsigned long long slaveBase = -1, vmeOffs, resOffs;
     size_t mapSize;
     unsigned int mode;
     const char* res;
     toscaMapAddr_t overlap = (toscaMapAddr_t) {0,0};
     unsigned int card = 0;
-    pciAddr pciaddr;
     char buf[SIZE_STRING_BUFFER_SIZE];
-    char filename[60];
     
     while (1)
     {
-        pciaddr = toscaPciFind(card);
-        if (pciaddr.addr == -1) break;
-        sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/slavemaps",
-            pciaddr.dom, pciaddr.bus, pciaddr.dev, pciaddr.func);
-        file = fopen(filename, "r");
+        file = fdopen(toscaOpen(card, "slavemaps"), "r");
         if (file == NULL)
-        {
-            debugErrno("fopen %s", filename);
             return overlap;
-        }
         fscanf(file, "%*[^0]%lli", &slaveBase);
         fscanf(file, "%*[^0]");
         while (fscanf(file, "%lli %zi %i %lli", &vmeOffs, &mapSize, &mode, &resOffs) > 0)
@@ -677,8 +669,9 @@ toscaMapAddr_t toscaCheckSlaveMaps(vmeaddr_t addr, size_t size)
             }
         }
         fclose(file);
-        card++;
+        if (++card >= toscaNumDevices) break;
     }
+    debug("overlap=%s:0x%llx", toscaAddrSpaceToStr(overlap.aspace), overlap.address);
     return overlap;
 }
 
