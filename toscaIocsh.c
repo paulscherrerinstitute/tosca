@@ -122,12 +122,19 @@ static void toscaMapFindFunc(const iocshArgBuf *args)
 }
 
 static const iocshFuncDef toscaGetVmeErrDef =
-    { "toscaGetVmeErr", 0, (const iocshArg *[]) {
+    { "toscaGetVmeErr", 1, (const iocshArg *[]) {
+    &(iocshArg) { "card", iocshArgInt },
 }};
 
 static void toscaGetVmeErrFunc(const iocshArgBuf *args)
 {
-    toscaMapVmeErr_t err = toscaGetVmeErr();
+    errno = 0;
+    toscaMapVmeErr_t err = toscaGetVmeErr(args[0].ival);
+    if (errno)
+    {
+        perror("toscaGetVmeErr failed");
+        return;
+    }
     printf("0x%08x,0x%08x (%s %s%c%s %s id=%d len=%d %s:0x%x)\n",
         err.address,
         err.status,
@@ -188,6 +195,53 @@ static const iocshFuncDef toscaCsrClearDef =
 static void toscaCsrClearFunc(const iocshArgBuf *args)
 {
     if (toscaCsrClear(args[0].ival, args[1].ival) == -1) perror(NULL);
+}
+
+static const iocshFuncDef toscaIoReadDef =
+    { "toscaIoRead", 1, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+}};
+
+static void toscaIoReadFunc(const iocshArgBuf *args)
+{
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaIoRead(args[0].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%x\n", val);
+}
+
+static const iocshFuncDef toscaIoWriteDef =
+    { "toscaIoWrite", 2, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "value", iocshArgInt },
+}};
+
+static void toscaIoWriteFunc(const iocshArgBuf *args)
+{
+    if (toscaIoWrite(args[0].ival, args[1].ival) == -1) perror(NULL);
+}
+
+static const iocshFuncDef toscaIoSetDef =
+    { "toscaIoSet", 2, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "setbits", iocshArgInt },
+}};
+
+static void toscaIoSetFunc(const iocshArgBuf *args)
+{
+    if (toscaIoSet(args[0].ival, args[1].ival) == -1) perror(NULL);
+}
+
+static const iocshFuncDef toscaIoClearDef =
+    { "toscaIoClear", 2, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "clearbits", iocshArgInt },
+}};
+
+static void toscaIoClearFunc(const iocshArgBuf *args)
+{
+    if (toscaIoClear(args[0].ival, args[1].ival) == -1) perror(NULL);
 }
 
 static const iocshFuncDef toscaIntrShowDef =
@@ -383,6 +437,10 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaCsrWriteDef, toscaCsrWriteFunc);
     iocshRegister(&toscaCsrSetDef, toscaCsrSetFunc);
     iocshRegister(&toscaCsrClearDef, toscaCsrClearFunc);
+    iocshRegister(&toscaIoReadDef, toscaIoReadFunc);
+    iocshRegister(&toscaIoWriteDef, toscaIoWriteFunc);
+    iocshRegister(&toscaIoSetDef, toscaIoSetFunc);
+    iocshRegister(&toscaIoClearDef, toscaIoClearFunc);
     iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
     iocshRegister(&toscaSendVMEIntrDef, toscaSendVMEIntrFunc);
     iocshRegister(&toscaInstallSpuriousVMEInterruptHandlerDef, toscaInstallSpuriousVMEInterruptHandlerFunc);

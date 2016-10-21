@@ -47,18 +47,17 @@ static struct map {
     struct map *next;
 } *maps;
 
-static volatile uint32_t* tCsr;
-static size_t tCsrSize;
+static size_t* tCsrSize;
 static size_t sramSize;
 
 #define TOSCA_PCI_DIR "/sys/bus/pci/drivers/tosca"
 
 typedef union {
     struct {
-        int dom:16;
-        int bus:8;
-        int dev:5;
-        int func:3;
+        unsigned int dom:16;
+        unsigned int bus:8;
+        unsigned int dev:5;
+        unsigned int func:3;
     };
     uint32_t addr;
 } pciAddr;
@@ -66,18 +65,18 @@ typedef union {
 pciAddr *toscaDevices;
 int toscaNumDevices = -1;
 
-pciAddr toscaPciFind(int card)
+pciAddr toscaPciFind(unsigned int card)
 {
-    
+    debug("card=%u", card);
     if (toscaNumDevices == -1)
     {     
         #ifndef GLOB_ONLYDIR
         #define GLOB_ONLYDIR 0
         #endif
 
-        glob_t globresults = {0};   
+        glob_t globresults = {0};
         int status;
-        int i;
+        size_t i;
         
         debug("glob("TOSCA_PCI_DIR "/*:*:*.*)");
         status = glob(TOSCA_PCI_DIR "/*:*:*.*", GLOB_ONLYDIR, NULL, &globresults);
@@ -102,10 +101,15 @@ pciAddr toscaPciFind(int card)
         else
         {
             debug("no tosca devices found: %m");
+            errno = ENODEV;
         }
     }
     if (card >= toscaNumDevices)
+    {
+        debug("card=%u but only %u tosca devices found", card, toscaNumDevices);
+        errno = ENODEV;
         return (pciAddr) {.addr=-1};
+    }
     return toscaDevices[card];
 }
 
@@ -253,8 +257,8 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
     unsigned int setcmd, getcmd;
     char filename[80];
 
-    debug("aspace=0x%x(%s), address=0x%llx, size=0x%zx",
-        aspace,
+    debug("card=%u aspace=0x%x(%s), address=0x%llx, size=0x%zx",
+        card, aspace,
         toscaAddrSpaceToStr(aspace),
         (unsigned long long) address,
         size);
@@ -262,8 +266,8 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
     LOCK;
     for (pmap = &maps; *pmap; pmap = &(*pmap)->next)
     {
-        debug("%s:0x%llx[0x%zx] check aspace=0x%x(%s), address=0x%llx, size=0x%zx",
-            toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
+        debug("%u:%s:0x%llx[0x%zx] check aspace=0x%x(%s), address=0x%llx, size=0x%zx",
+            card, toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
             (*pmap)->info.aspace,
             toscaAddrSpaceToStr((*pmap)->info.aspace),
             (unsigned long long) (*pmap)->info.address,
@@ -273,8 +277,8 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             address + size <= (*pmap)->info.address + (*pmap)->info.size)
         {
             UNLOCK;
-            debug("%s:0x%llx[0x%zx] use existing window addr=0x%llx size=0x%zx offset=0x%llx",
-                toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
+            debug("%u:%s:0x%llx[0x%zx] use existing window addr=0x%llx size=0x%zx offset=0x%llx",
+                card, toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
                 (unsigned long long) (*pmap)->info.address, (*pmap)->info.size,
                 (unsigned long long) (address - (*pmap)->info.address));
             return (*pmap)->info.ptr + (address - (*pmap)->info.address);
@@ -288,6 +292,11 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         
         debug("creating new TCSR mapping");        
         pciaddr = toscaPciFind(card);
+        if (pciaddr.addr == -1)
+        {
+            UNLOCK;
+            return NULL;
+        }
         sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/resource%u",
             pciaddr.dom, pciaddr.bus, pciaddr.dev, pciaddr.func, (aspace & TOSCA_CSR) ? 3 : 4);
         fd = open(filename, O_RDWR);
@@ -299,7 +308,10 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
         }
         fstat(fd, &filestat);
         if (aspace & TOSCA_CSR)
-            tCsrSize = filestat.st_size;
+        {
+            if (!tCsrSize) tCsrSize = calloc(toscaNumDevices, sizeof(size_t));
+            if (tCsrSize) tCsrSize[card] = filestat.st_size;
+        }
         if (address + size > filestat.st_size)
         {
             UNLOCK;
@@ -596,6 +608,8 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
         return -1;
     }
     pciaddr = toscaPciFind(card);
+    if (pciaddr.addr == -1)
+        return -1;
     sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/enableVMESlave",
         pciaddr.dom, pciaddr.bus, pciaddr.dev, pciaddr.func);
     file = fopen(filename, "w");
@@ -668,80 +682,139 @@ toscaMapAddr_t toscaCheckSlaveMaps(vmeaddr_t addr, size_t size)
     return overlap;
 }
 
+static volatile uint32_t* toscaCsrPtr(unsigned int address)
+{
+    unsigned int card = address >> 16;
+    volatile uint32_t* csr;
+    
+    address &= 0xffff;
+    debug("card=%u addr=0x%x", card, address);
+    csr = toscaMap((card << 16)|TOSCA_CSR, 0, 0);
+    debug("card=%u addr=0x%x csr=%p", card, address, csr);
+    if (!csr) return NULL;
+    if (address >= tCsrSize[card]) { errno = EINVAL; return NULL; }
+    debug("card=%u addr=0x%x ptr=%p", card, address, csr + (address >> 2));
+    return csr + (address >> 2);
+}
 
 uint32_t toscaCsrRead(unsigned int address)
 {
-    if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
-    if (address >= tCsrSize) { errno = EINVAL; return -1; }
-    return le32toh(tCsr[address>>2]);
+    volatile uint32_t* ptr = toscaCsrPtr(address);
+    if (!ptr) return -1;
+    return le32toh(*ptr);
 }
 
 int toscaCsrWrite(unsigned int address, uint32_t value)
 {
-    if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
-    if (address >= tCsrSize) { errno = EINVAL; return -1; }
-    tCsr[address>>2] = htole32(value);
+    volatile uint32_t* ptr = toscaCsrPtr(address);
+    if (!ptr) return -1;
+    *ptr = htole32(value);
     return 0;
 }
 
 int toscaCsrSet(unsigned int address, uint32_t value)
 {
-    if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
-    if (address >= tCsrSize) { errno = EINVAL; return -1; }
-    tCsr[address>>2] |= htole32(value);
+    volatile uint32_t* ptr = toscaCsrPtr(address);
+    if (!ptr) return -1;
+    *ptr |= htole32(value);
     return 0;
 }
 
 int toscaCsrClear(unsigned int address, uint32_t value)
 {
-    if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
-    if (address >= tCsrSize) { errno = EINVAL; return -1; }
-    tCsr[address>>2] &= ~htole32(value);
+    volatile uint32_t* ptr = toscaCsrPtr(address);
+    if (!ptr) return -1;
+    *ptr &= ~htole32(value);
     return 0;
 }
 
+static volatile uint32_t* toscaIoPtr(unsigned int address)
+{
+    static volatile uint32_t* tIo[16];
+    unsigned int card = address >> 16;
+    if (card >= 16) { errno = EINVAL; return NULL; }
+    if (!tIo[card] && !(tIo[card] = toscaMap(card | TOSCA_IO, 0, 0))) return NULL;
+    if (address >= 256) { errno = EINVAL; return NULL; }
+    return tIo[card]+((address&0xffff)>>2);
+}
+
+uint32_t toscaIoRead(unsigned int address)
+{
+    volatile uint32_t* ptr = toscaIoPtr(address);
+    if (!ptr) return -1;
+    return le32toh(*ptr);
+}
+
+int toscaIoWrite(unsigned int address, uint32_t value)
+{
+    volatile uint32_t* ptr = toscaIoPtr(address);
+    if (!ptr) return -1;
+    *ptr = htole32(value);
+    return 0;
+}
+
+int toscaIoSet(unsigned int address, uint32_t value)
+{
+    volatile uint32_t* ptr = toscaIoPtr(address);
+    if (!ptr) return -1;
+    *ptr |= htole32(value);
+    return 0;
+}
+
+int toscaIoClear(unsigned int address, uint32_t value)
+{
+    volatile uint32_t* ptr = toscaIoPtr(address);
+    if (!ptr) return -1;
+    *ptr &= ~htole32(value);
+    return 0;
+}
 
 pthread_mutex_t smon_mutex = PTHREAD_MUTEX_INITIALIZER;
+#define CSR_SMON 0x40
 
 uint16_t toscaSmonRead(unsigned int address)
 {
+    volatile uint32_t* smon = toscaCsrPtr(CSR_SMON);
     uint16_t value;
-    if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
+    if (!smon) return -1;
     if (address >= 0x80) { errno = EINVAL; return -1; }
     pthread_mutex_lock(&smon_mutex);
-    tCsr[0x40>>2] = htole32(address);
-    (void) tCsr[0x40>>2]; /* read back to flush write */
+    smon[0] = htole32(address);
+    (void) smon[0]; /* read back to flush write */
     /* check status 0x48 here ? */
-    value = le32toh(tCsr[0x44>>2]);
+    value = le32toh(smon[1]);
     pthread_mutex_unlock(&smon_mutex);
     return value;
 }
 
 int toscaSmonWrite(unsigned int address, uint16_t value)
 {
-    if (!tCsr && !(tCsr = toscaMap(TOSCA_CSR, 0, 0)) ) return -1;
+    volatile uint32_t* smon = toscaCsrPtr(CSR_SMON);
+    if (!smon) return -1;
     if (address < 0x40) { errno = EACCES; return -1; }
     if (address >= 0x80) { errno = EINVAL; return -1; }
     pthread_mutex_lock(&smon_mutex);
-    tCsr[0x40>>2] = htole32(address);
-    (void) tCsr[0x40>>2]; /* read back to flush write */
+    smon[0] = htole32(address);
+    (void) smon[0]; /* read back to flush write */
     /* check status 0x48 here ? */
-    tCsr[0x44>>2] = htole32(value);
+    smon[1] = htole32(value);
     pthread_mutex_unlock(&smon_mutex);
     return 0;
 }
 
 uint32_t toscaSmonStatus()
 {
-    return le32toh(tCsr[0x48>>2]);
+    volatile uint32_t* smon = toscaCsrPtr(CSR_SMON);
+    return le32toh(smon[3]);
 }
 
-toscaMapVmeErr_t toscaGetVmeErr()
-{
-    int addr = toscaCsrRead(0x418); /* last VME error address modulo 32 bit */
-    int stat = toscaCsrRead(0x41C); /* last VME error access code */
+#define CSR_VMEERR 0x418
 
-    return (toscaMapVmeErr_t) { addr, {stat} };
+toscaMapVmeErr_t toscaGetVmeErr(unsigned int card)
+{
+    volatile uint32_t* vmeerr = toscaCsrPtr((card<<16) | CSR_VMEERR);
+    if (!vmeerr) return (toscaMapVmeErr_t) {0};
+    return (toscaMapVmeErr_t) { .address = vmeerr[0], .status = vmeerr[1] };
 }
 
 size_t toscaStrToSize(const char* str)

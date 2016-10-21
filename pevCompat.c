@@ -2,18 +2,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include <endian.h>
-#ifndef le32toh
-#if  __BYTE_ORDER == __LITTLE_ENDIAN
-#define le32toh(x) (x)
-#define htole32(x) (x)
-#else
-#include <byteswap.h>
-#define le32toh(x) __bswap_32 (x)
-#define htole32(x) __bswap_32 (x)
-#endif
-#endif
-
 #include <pevulib.h>
 #include <pevxulib.h>
 
@@ -214,15 +202,12 @@ struct pevx_node* pevx_init(uint card)
 
 /** CSR ****************************************************/
 
-static volatile uint32_t* tIo;
-
 int pevx_csr_rd(uint card, int address)
 {
     if (address & 0x80000000)
         return toscaCsrRead((card << 16) | (address & 0x7FFFFFFF));
-    if (address > 256 - 4) return -1;
-    if (!tIo && !(tIo = toscaMap(TOSCA_IO, 0, 0)) ) return -1;
-    return le32toh(tIo[address>>2]);
+    else
+        return toscaIoRead((card << 16) | address);
 }
 
 int pev_csr_rd(int address)
@@ -234,10 +219,8 @@ int pevx_csr_wr(uint card, int address, int value)
 {
     if (address & 0x80000000)
         return toscaCsrWrite((card << 16) | (address & 0x7FFFFFFF), value);
-    if (address > 256 - 4) return -1;
-    if (!tIo && !(tIo = toscaMap(TOSCA_IO, 0, 0)) ) return -1;
-    tIo[address>>2] = htole32(value);
-    return 0;
+    else
+        return toscaIoWrite((card << 16) | address, value);
 }
 
 void pev_csr_wr(int address, int value)
@@ -249,10 +232,8 @@ int pevx_csr_set(uint card, int address, int value)
 {
     if (address & 0x80000000)
         return toscaCsrSet((card << 16) | (address & 0x7FFFFFFF), value);
-    if (address > 256 - 4) return -1;
-    if (!tIo && !(tIo = toscaMap(TOSCA_IO, 0, 0)) ) return -1;
-    tIo[address>>2] |= htole32(value);
-    return 0;
+    else
+        return toscaIoSet((card << 16) | address, value);
 }
 
 void pev_csr_set(int address, int value)
@@ -278,9 +259,8 @@ static uint32_t *sramPtr(size_t address)
     return (uint32_t*) ((size_t) sram + address);
 }
 
-int pev_elb_rd(int address)
+int pevx_elb_rd(uint card, int address)
 {
-    debug("address=0x%02x", address);
     if (address >= 0xe000) /* sram */
     {
         uint32_t* ptr = sramPtr(address - 0xe000);
@@ -293,9 +273,13 @@ int pev_elb_rd(int address)
     }
 }
 
-int pev_elb_wr(int address, int value)
+int pev_elb_rd(int address)
 {
-    debug("address=0x%02x value=0x%x", address, value);
+    return pevx_elb_rd(0, address);
+}
+
+int pevx_elb_wr(uint card, int address, int value)
+{
     if (address >= 0xe000) /* sram */
     {
         uint32_t* ptr = sramPtr(address - 0xe000);
@@ -307,6 +291,11 @@ int pev_elb_wr(int address, int value)
     {
         return toscaElbWrite(address, value);
     }
+}
+
+int pev_elb_wr(int address, int value)
+{
+    return pevx_elb_wr(0, address, value);
 }
 
 /** SMON ***************************************************/

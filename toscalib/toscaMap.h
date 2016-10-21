@@ -50,7 +50,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size);
    * for Tosca IO space registers: TOSCA_IO
    * for Tosca PON SRAM on ELB: TOSCA_SRAM
    * for VME A32 slave windows: VME_SLAVE
-   * if using more than one tosca use aspace|(tosca<<16)
+   * if using more than one Tosca use aspace|(tosca<<16).
    At the moment Tosca does not support A64.
 */
 
@@ -103,7 +103,7 @@ typedef struct {
      };
    };
 } toscaMapVmeErr_t;
-toscaMapVmeErr_t toscaGetVmeErr();
+toscaMapVmeErr_t toscaGetVmeErr(unsigned int tosca);
 
 /* VME SLAVE MAPS */
 
@@ -126,23 +126,29 @@ toscaMapAddr_t toscaCheckSlaveMaps(vmeaddr_t addr, size_t size);
    On error these functions set errno and return -1 or 0xffffffff, respectively.
    An invalid address sets errno to EINVAL. Other errors may come from open() and mmap() on first use.
    Be aware that 0xffffffff can be a valid result of toscaCsrRead. First clear and then check errno.
+   If using more than one Tosca use address|(tosca<<16).
 */
 uint32_t toscaCsrRead(unsigned int address);
 int toscaCsrWrite(unsigned int address, uint32_t value);  /* Write new value. */
 int toscaCsrSet(unsigned int address, uint32_t value);    /* Set bits in value, leave others unchanged. */
 int toscaCsrClear(unsigned int address, uint32_t value);  /* Clear bits in value, leave others unchanged. */
 
+/* The same for TOSCA IO Registers */
+uint32_t toscaIoRead(unsigned int address);
+int toscaIoWrite(unsigned int address, uint32_t value);   /* Write new value. */
+int toscaIoSet(unsigned int address, uint32_t value);     /* Set bits in value, leave others unchanged. */
+int toscaIoClear(unsigned int address, uint32_t value);   /* Clear bits in value, leave others unchanged. */
+
 /* Access to Virtex-6 System Monitor via toscaCsr */
 uint16_t toscaSmonRead(unsigned int address);
 int toscaSmonWrite(unsigned int address, uint16_t value);
 uint32_t toscaSmonStatus();
 
-/* If you prefer to access Tosca CSR directly using toscaMap
-   instead of using functions above,
+/* If you prefer to access Tosca CSR or IO directly using
+   toscaMap instead of using functions above,
    be aware that all registers are little endian.
    Use htole32() for writing and le32toh() for reading.
 */
-
 
 /* Some utilities */
 size_t toscaStrToSize(const char* str);
