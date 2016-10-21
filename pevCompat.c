@@ -17,10 +17,10 @@
 #include <pevulib.h>
 #include <pevxulib.h>
 
-#include "sysfsAccess.h"
 #include "i2cDev.h"
 
 #include "toscaMap.h"
+#include "toscaElb.h"
 
 #include <iocsh.h>
 #include <epicsExport.h>
@@ -278,44 +278,6 @@ static uint32_t *sramPtr(size_t address)
     return (uint32_t*) ((size_t) sram + address);
 }
 
-static const char* elb_regname(int address)
-{
-    switch (address>>2)
-    {
-        case 0x00>>2: return "vendor";
-        case 0x04>>2: return "static_options";
-        case 0x08>>2: return "vmectl";
-        case 0x0c>>2: return "mezzanine";
-        case 0x10>>2: return "general";
-        case 0x14>>2: return "pciectl";
-        case 0x18>>2: return "user";
-        case 0x1c>>2: return "signature";
-        case 0x20>>2: return "cfgctl";
-        case 0x24>>2: return "cfgdata";
-        case 0x40>>2: return "bmrctl";
-        default: return "unknown";
-    }
-};
-
-static int pev_elb_fd(unsigned int address)
-{
-    static int fd[11] = {0};
-    int reg;
-    
-    if (address >= 0x28 && address != 0x40)
-    {
-        debugLvl(0, "address=0x%x -- not implemented", address);
-        errno = EINVAL;
-        return -1;
-    }
-    if (address == 40) reg = 10;
-    else reg = address>>2;
-    debug("address=0x%02x regname=%s", address, elb_regname(address));
-    if (!fd[reg])
-        fd[reg] = sysfsOpenFmt("/sys/devices/*localbus/*.pon/%s", elb_regname(address));
-    return fd[reg];
-}
-
 int pev_elb_rd(int address)
 {
     debug("address=0x%02x", address);
@@ -327,9 +289,7 @@ int pev_elb_rd(int address)
     }
     else
     {
-        int fd = pev_elb_fd(address);
-        if (fd < 0) return -1;
-        return sysfsReadULong(fd);
+        return toscaElbRead(address);
     }
 }
 
@@ -345,41 +305,8 @@ int pev_elb_wr(int address, int value)
     }
     else
     {
-        int fd = pev_elb_fd(address);
-        if (fd < 0) return -1;
-        return sysfsWrite(fd, "%x", value);
+        return toscaElbWrite(address, value);
     }
-}
-
-static const iocshFuncDef pev_elb_rdDef =
-    { "pev_elb_rd", 1, (const iocshArg *[]) {
-    &(iocshArg) { "address", iocshArgInt },
-}};
-
-static void pev_elb_rdFunc(const iocshArgBuf *args)
-{
-    int address = args[0].ival;
-    int value;
-    errno = 0;
-    value = pev_elb_rd(address);
-    if (value == -1 && errno != 0)
-        fprintf(stderr, "pev_elb_rd %s: %m\n", elb_regname(address));
-    else
-        printf("0x%08x\n", value);
-}
-
-static const iocshFuncDef pev_elb_wrDef =
-    { "pev_elb_wr", 2, (const iocshArg *[]) {
-    &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "valueue", iocshArgInt },
-}};
-
-static void pev_elb_wrFunc(const iocshArgBuf *args)
-{
-    int address = args[0].ival;
-    int value = args[1].ival;
-    if (pev_elb_wr(address, value) == -1)
-        fprintf(stderr, "pev_elb_wr %s: %m\n", elb_regname(address));
 }
 
 /** SMON ***************************************************/
@@ -474,8 +401,6 @@ static void pevRegistrar(void)
     iocshRegister(&pevVmeSlaveTargetConfigDef, pevVmeSlaveTargetConfigFunc);
     iocshRegister(&pevI2cConfigureDef, pevI2cConfigureFunc);
     iocshRegister(&pevAsynI2cConfigureDef, pevI2cConfigureFunc);
-    iocshRegister(&pev_elb_rdDef, pev_elb_rdFunc);
-    iocshRegister(&pev_elb_wrDef, pev_elb_wrFunc);
 
     toscaRegDevConfigure("pev_csr", TOSCA_CSR, 0, 0x2000, NULL);
 }
