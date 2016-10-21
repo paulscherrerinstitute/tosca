@@ -95,12 +95,12 @@ int toscaElbDevRead(
     if (dlen == 0) return 0; /* any way to check online status ? */
     if (dlen != 4)
     {
-        fprintf(stderr, "%s %s: only 4 bytes supported\n", user, regDevName(device));
+        error("%s %s: only 4 bytes supported", user, regDevName(device));
         return -1;
     }
     if (offset & 3)
     {
-        fprintf(stderr, "%s %s: offset must be multiple of 4\n", user, regDevName(device));
+        error("%s %s: offset must be multiple of 4", user, regDevName(device));
         return -1;
     }
     for (i = 0; i < nelem; i++)
@@ -125,12 +125,12 @@ int toscaElbDevWrite(
     
     if (dlen != 4)
     {
-        fprintf(stderr, "%s %s: only 4 bytes supported\n", user, regDevName(device));
+        error("%s %s: only 4 bytes supported", user, regDevName(device));
         return -1;
     }
     if (offset & 3)
     {
-        fprintf(stderr, "%s %s: offset must be multiple of 4\n", user, regDevName(device));
+        error("%s %s: offset must be multiple of 4", user, regDevName(device));
         return -1;
     }
     for (i = 0; i < nelem; i++)
@@ -188,7 +188,7 @@ static void toscaElbReadFunc(const iocshArgBuf *args)
     errno = 0;
     value = toscaElbRead(address);
     if (value == -1 && errno != 0)
-        fprintf(stderr, "toscaElbRead %s: %m\n", toscaElbAddrToRegname(address));
+        error("toscaElbRead %s: %m", toscaElbAddrToRegname(address));
     else
         printf("0x%08x\n", value);
 }
@@ -204,7 +204,7 @@ static void toscaElbWriteFunc(const iocshArgBuf *args)
     int address = args[0].ival;
     int value = args[1].ival;
     if (toscaElbWrite(address, value) == -1)
-        fprintf(stderr, "toscaElbWrite %s: %m\n", toscaElbAddrToRegname(address));
+        error("toscaElbWrite %s: %m", toscaElbAddrToRegname(address));
 }
 
 static const iocshFuncDef toscaElbDevConfigureDef =

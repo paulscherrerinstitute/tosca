@@ -445,7 +445,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
     addr = toscaStrToAddr(args[1].sval);
     if (!addr.aspace)
     {
-        fprintf(stderr, "invalid address space %s\n", args[1].sval);
+        error("invalid address space %s", args[1].sval);
         return;
     }
     size = toscaStrToSize(args[2].sval);

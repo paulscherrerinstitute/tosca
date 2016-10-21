@@ -83,7 +83,7 @@ static void pevConfigureFunc(const iocshArgBuf *args)
         args[1].sval, cardstr, toscaAddrSpaceToStr(addr.aspace), args[3].ival, args[6].ival, flags);
     if (toscaRegDevConfigure(args[1].sval, addr.aspace, args[3].ival, args[6].ival, flags) != 0)
     {
-        fprintf(stderr, "toscaRegDevConfigure failed: %m\n");
+        perror("toscaRegDevConfigure failed");
     }
 }
 
@@ -104,7 +104,7 @@ static void pevVmeSlaveMainConfigFunc (const iocshArgBuf *args)
 
     if (!addrSpace)
     {
-        fprintf(stderr, "usage: pevVmeSlaveMainConfig (\"AM24\"|\"AM32\", base, size)\n");
+        error("usage: pevVmeSlaveMainConfig (\"AM24\"|\"AM32\", base, size)");
         return;
     }
     mainBase = args[1].ival;
@@ -134,13 +134,13 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
 
     if (!slaveAddrSpace)
     {
-        fprintf(stderr, "usage: pevVmeSlaveTargetConfig (\"AM32\", base, size, \"BLT\"|\"MBLT\"|\"2eVME\"|\"2eSST160\"|\"2eSST233\"|\"2eSST320\", \"SH_MEM\"|\"PCIE\"|\"USR1/2\", offset, \"WS\"|\"DS\"|\"QS\")\n");
+        error("usage: pevVmeSlaveTargetConfig (\"AM32\", base, size, \"BLT\"|\"MBLT\"|\"2eVME\"|\"2eSST160\"|\"2eSST233\"|\"2eSST320\", \"SH_MEM\"|\"PCIE\"|\"USR1/2\", offset, \"WS\"|\"DS\"|\"QS\")");
         return;
     }
 
     if (strcmp(slaveAddrSpace, "AM32") != 0)
     {
-        fprintf(stderr, "pevVmeSlaveTargetConfig(): ERROR, can map to AM32 only\n");
+        error("pevVmeSlaveTargetConfig(): ERROR, can map to AM32 only");
         return;
     }
     addr = toscaStrToAddr(target);
@@ -150,7 +150,7 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
         toscaAddrSpaceToStr(addr.aspace), targetOffset, winSize, mainBase+winBase, swap ? " 1" : "");
     if (toscaMapVMESlave(addr.aspace, targetOffset, winSize, mainBase+winBase, swap) != 0)
     {
-        fprintf(stderr, "toscaMapVMESlave failed: %m\n");
+        perror("toscaMapVMESlave failed");
     }
 }
 

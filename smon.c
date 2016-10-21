@@ -7,7 +7,8 @@
 #include "toscaMap.h"
 #include <epicsExport.h>
 
-int smonDebug;
+#define TOSCA_DEBUG_NAME smon
+#include "toscaDebug.h"
 epicsExportAddress(int, smonDebug);
 
 static const char* smonAddrToStr(int addr)
@@ -203,8 +204,7 @@ int smonDevRead(
 
     if (dlen != 2)
     {
-        fprintf(stderr, "%s %s: dlen must be 4 bytes\n",
-            regDevName(device), user);
+        error("%s %s: dlen must be 4 bytes", regDevName(device), user);
         return -1;
     }
     for (i = 0; i < nelem; i++)
@@ -227,8 +227,7 @@ int smonDevWrite(
 
     if (dlen != 2)
     {
-        fprintf(stderr, "%s %s: dlen must be 4 bytes\n",
-            regDevName(device), user);
+        error("%s %s: dlen must be 4 bytes", regDevName(device), user);
         return -1;
     }
     for (i = 0; i < nelem; i++)

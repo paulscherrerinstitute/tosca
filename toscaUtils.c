@@ -96,7 +96,7 @@ static void memfillFunc(const iocshArgBuf *args)
             }
             break;
         default:
-            fprintf(stderr, "Illegal width %d: must be 1, 2, or 4\n", width);
+            error("Illegal width %d: must be 1, 2, or 4", width);
     }
 
     sigaction(SIGSEGV, &oldsa, NULL);
@@ -133,7 +133,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
         sourceptr = (volatile void*)(size_t)addr.address;
     if (!sourceptr)
     {
-        fprintf(stderr, "cannot map source address\n");
+        error("cannot map source address");
         return;
     }
 
@@ -144,7 +144,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
         destptr = (volatile void*)(size_t)toscaStrToSize(args[1].sval);
     if (!destptr)
     {
-        fprintf(stderr, "cannot map dest address\n");
+        error("cannot map dest address");
         return;
     }
     int width = args[3].ival;
@@ -200,7 +200,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
             }
             break;
         default:
-            fprintf(stderr, "Illegal width %d: must be 1, 2, 4, 8, -2, -4, -8\n", width);
+            error("Illegal width %d: must be 1, 2, 4, 8, -2, -4, -8", width);
             return;
     }
     if (toscaDmaDebug)
