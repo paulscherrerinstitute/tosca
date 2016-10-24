@@ -116,7 +116,7 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
    Else silently check for overlaps.
    Return 1 if overlap is found, 0 if not, -1 on error.
 */
-toscaMapAddr_t toscaCheckSlaveMaps(vmeaddr_t addr, size_t size);
+toscaMapAddr_t toscaCheckSlaveMaps(unsigned int card, vmeaddr_t addr, size_t size);
 
 /* TOSCA CSR ACCESS */
 
