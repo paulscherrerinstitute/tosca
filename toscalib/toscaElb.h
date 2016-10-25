@@ -4,11 +4,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+extern int toscaElbDebug;
 
 const char* toscaElbAddrToRegname(int address);
 int toscaElbRead(int address);
 int toscaElbWrite(int address, int value);
-int toscaElbDevConfigure(const char* name);
 
 #ifdef __cplusplus
 }

@@ -2,6 +2,8 @@
 #error Please define TOSCA_DEBUG_NAME before including toscaDebug.h
 #endif
 
+#include <stdio.h>
+
 #ifdef TOSCA_EXTERN_DEBUG
 #define __EX extern
 #else
