@@ -615,7 +615,7 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
     }
     if (fclose(file) == -1)
     {
-        toscaMapAddr_t overlap;
+        toscaMapInfo_t overlap;
         debug("add slave window failed: %m");
         errno = EAGAIN;
         overlap = toscaCheckSlaveMaps(card, vme_address, size);
@@ -641,14 +641,14 @@ int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vm
     return 0;
 }
 
-toscaMapAddr_t toscaCheckSlaveMaps(unsigned int card, vmeaddr_t addr, size_t size)
+toscaMapInfo_t toscaCheckSlaveMaps(unsigned int card, vmeaddr_t addr, size_t size)
 {
     FILE* file;
     unsigned long long slaveBase = -1, vmeOffs, resOffs;
     size_t mapSize;
     unsigned int mode;
     const char* res;
-    toscaMapAddr_t overlap = (toscaMapAddr_t) {0,0};
+    toscaMapInfo_t overlap = (toscaMapInfo_t) {0};
     char buf[SIZE_STRING_BUFFER_SIZE];
     
     while (1)
@@ -663,6 +663,8 @@ toscaMapAddr_t toscaCheckSlaveMaps(unsigned int card, vmeaddr_t addr, size_t siz
             if (size==0 || (addr+size > vmeOffs && addr < vmeOffs+mapSize))
             {
                 overlap.address = resOffs;
+                overlap.size = mapSize;
+                overlap.ptr = (void*)(size_t)vmeOffs;
                 switch (mode & 0xf000)
                 {
                     case 0x0000: res=""; break;
