@@ -282,7 +282,7 @@ long toscaDevLibConnectInterrupt(
     void *parameter)
 {
     return toscaIntrConnectHandler(
-        vec < 256 ? INTR_VME_LVL_ANY : INTR_USER1_INTR(vec&31),
+        vec < 256 ? TOSCA_VME_INTR_ANY : TOSCA_USER1_INTR(vec&31),
         vec, function, parameter);
 }
 
@@ -291,7 +291,7 @@ long toscaDevLibDisconnectInterrupt(
     void (*function)())
 {
     return toscaIntrDisconnectHandler(
-        vec < 256 ? INTR_VME_LVL_ANY : INTR_USER1_INTR(vec&31),
+        vec < 256 ? TOSCA_VME_INTR_ANY : TOSCA_USER1_INTR(vec&31),
         vec, function, NULL) ? S_dev_success : S_dev_vectorNotInUse;
 }
 

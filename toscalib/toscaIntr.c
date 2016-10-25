@@ -49,64 +49,64 @@ static struct intr_handler* handlers[TOSCA_NUM_INTR];
     { int i; for (i=first; i <= last; i++) if (mask & maskbit) action(index, maskbit) }
 
 #define FOREACH_MASKBIT(mask, vec, action) \
-{                                                                                \
-    /* handle VME_SYSFAIL, VME_ACFAIL, VME_ERROR */                              \
-    if ((mask) & INTR_VME_FAIL_ANY)                                              \
-        FOR_BITS_IN_MASK(0, 2, IX(ERR, i), INTR_VME_FAIL(i), (mask), action)     \
-    /* handle VME_LVL */                                                         \
-    if ((mask) & INTR_VME_LVL_ANY)                                               \
-        FOR_BITS_IN_MASK(1, 7, IX(VME, i, vec), INTR_VME_LVL(i), (mask), action) \
-    /* handle USER */                                                            \
-    if ((mask) & (INTR_USER1_ANY | INTR_USER2_ANY))                              \
-        FOR_BITS_IN_MASK(0, 31, IX(USER, i), INTR_USER1_INTR(i), (mask), action) \
+{                                                                                  \
+    /* handle VME_SYSFAIL, VME_ACFAIL, VME_ERROR */                                \
+    if ((mask) & INTR_VME_FAIL_ANY)                                                \
+        FOR_BITS_IN_MASK(0, 2, IX(ERR, i), INTR_VME_FAIL(i), (mask), action)       \
+    /* handle VME_LVL */                                                           \
+    if ((mask) & TOSCA_VME_INTR_ANY)                                               \
+        FOR_BITS_IN_MASK(1, 7, IX(VME, i, vec), TOSCA_VME_INTR(i), (mask), action) \
+    /* handle USER */                                                              \
+    if ((mask) & (TOSCA_USER1_INTR_ANY | TOSCA_USER2_INTR_ANY))                    \
+        FOR_BITS_IN_MASK(0, 31, IX(USER, i), TOSCA_USER1_INTR(i), (mask), action)  \
 }
 
 const char* toscaIntrBitToStr(intrmask_t intrmaskbit)
 {
     switch(intrmaskbit)
     {
-        case INTR_VME_LVL_1:     return "VME-1";
-        case INTR_VME_LVL_2:     return "VME-2";
-        case INTR_VME_LVL_3:     return "VME-3";
-        case INTR_VME_LVL_4:     return "VME-4";
-        case INTR_VME_LVL_5:     return "VME-5";
-        case INTR_VME_LVL_6:     return "VME-6";
-        case INTR_VME_LVL_7:     return "VME-7";
+        case TOSCA_VME_INTR1:    return "VME-1";
+        case TOSCA_VME_INTR2:    return "VME-2";
+        case TOSCA_VME_INTR3:    return "VME-3";
+        case TOSCA_VME_INTR4:    return "VME-4";
+        case TOSCA_VME_INTR5:    return "VME-5";
+        case TOSCA_VME_INTR6:    return "VME-6";
+        case TOSCA_VME_INTR7:    return "VME-7";
         case INTR_VME_SYSFAIL:   return "VME-SYSFAIL";
         case INTR_VME_ACFAIL:    return "VME-ACFAIL";
         case INTR_VME_ERROR:     return "VME-ERROR";
-        case INTR_USER1_INTR0:   return "USER1-0";
-        case INTR_USER1_INTR1:   return "USER1-1";
-        case INTR_USER1_INTR2:   return "USER1-2";
-        case INTR_USER1_INTR3:   return "USER1-3";
-        case INTR_USER1_INTR4:   return "USER1-4";
-        case INTR_USER1_INTR5:   return "USER1-5";
-        case INTR_USER1_INTR6:   return "USER1-6";
-        case INTR_USER1_INTR7:   return "USER1-7";
-        case INTR_USER1_INTR8:   return "USER1-8";
-        case INTR_USER1_INTR9:   return "USER1-9";
-        case INTR_USER1_INTR10:  return "USER1-10";
-        case INTR_USER1_INTR11:  return "USER1-11";
-        case INTR_USER1_INTR12:  return "USER1-12";
-        case INTR_USER1_INTR13:  return "USER1-13";
-        case INTR_USER1_INTR14:  return "USER1-14";
-        case INTR_USER1_INTR15:  return "USER1-15";
-        case INTR_USER2_INTR0:   return "USER2-0";
-        case INTR_USER2_INTR1:   return "USER2-1";
-        case INTR_USER2_INTR2:   return "USER2-2";
-        case INTR_USER2_INTR3:   return "USER2-3";
-        case INTR_USER2_INTR4:   return "USER2-4";
-        case INTR_USER2_INTR5:   return "USER2-5";
-        case INTR_USER2_INTR6:   return "USER2-6";
-        case INTR_USER2_INTR7:   return "USER2-7";
-        case INTR_USER2_INTR8:   return "USER2-8";
-        case INTR_USER2_INTR9:   return "USER2-9";
-        case INTR_USER2_INTR10:  return "USER2-10";
-        case INTR_USER2_INTR11:  return "USER2-11";
-        case INTR_USER2_INTR12:  return "USER2-12";
-        case INTR_USER2_INTR13:  return "USER2-13";
-        case INTR_USER2_INTR14:  return "USER2-14";
-        case INTR_USER2_INTR15:  return "USER2-15";
+        case TOSCA_USER1_INTR0:  return "USER1-0";
+        case TOSCA_USER1_INTR1:  return "USER1-1";
+        case TOSCA_USER1_INTR2:  return "USER1-2";
+        case TOSCA_USER1_INTR3:  return "USER1-3";
+        case TOSCA_USER1_INTR4:  return "USER1-4";
+        case TOSCA_USER1_INTR5:  return "USER1-5";
+        case TOSCA_USER1_INTR6:  return "USER1-6";
+        case TOSCA_USER1_INTR7:  return "USER1-7";
+        case TOSCA_USER1_INTR8:  return "USER1-8";
+        case TOSCA_USER1_INTR9:  return "USER1-9";
+        case TOSCA_USER1_INTR10: return "USER1-10";
+        case TOSCA_USER1_INTR11: return "USER1-11";
+        case TOSCA_USER1_INTR12: return "USER1-12";
+        case TOSCA_USER1_INTR13: return "USER1-13";
+        case TOSCA_USER1_INTR14: return "USER1-14";
+        case TOSCA_USER1_INTR15: return "USER1-15";
+        case TOSCA_USER2_INTR0:  return "USER2-0";
+        case TOSCA_USER2_INTR1:  return "USER2-1";
+        case TOSCA_USER2_INTR2:  return "USER2-2";
+        case TOSCA_USER2_INTR3:  return "USER2-3";
+        case TOSCA_USER2_INTR4:  return "USER2-4";
+        case TOSCA_USER2_INTR5:  return "USER2-5";
+        case TOSCA_USER2_INTR6:  return "USER2-6";
+        case TOSCA_USER2_INTR7:  return "USER2-7";
+        case TOSCA_USER2_INTR8:  return "USER2-8";
+        case TOSCA_USER2_INTR9:  return "USER2-9";
+        case TOSCA_USER2_INTR10: return "USER2-10";
+        case TOSCA_USER2_INTR11: return "USER2-11";
+        case TOSCA_USER2_INTR12: return "USER2-12";
+        case TOSCA_USER2_INTR13: return "USER2-13";
+        case TOSCA_USER2_INTR14: return "USER2-14";
+        case TOSCA_USER2_INTR15: return "USER2-15";
         default:                 return "unknown";
     }  
 }
@@ -153,13 +153,13 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
         }                                                                 \
     }
 
-    if (intrmask & (INTR_USER1_ANY | INTR_USER2_ANY))
+    if (intrmask & (TOSCA_USER1_INTR_ANY | TOSCA_USER2_INTR_ANY))
         for (i = 0; i < 32; i++)
         {
-            if (intrmask & INTR_USER1_INTR(i))
-                ADD_FD(IX(USER, i), "/dev/toscauserevent%u.%u", i & INTR_USER2_ANY ? 2 : 1, i & 15);
+            if (intrmask & TOSCA_USER1_INTR(i))
+                ADD_FD(IX(USER, i), "/dev/toscauserevent%u.%u", i & TOSCA_USER2_INTR_ANY ? 2 : 1, i & 15);
         }
-    if (intrmask & INTR_VME_LVL_ANY)
+    if (intrmask & TOSCA_VME_INTR_ANY)
     {
         if (vec > 255)
         {
@@ -170,7 +170,7 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
         else
         for (i = 1; i <= 7; i++)
         {
-            if (intrmask & INTR_VME_LVL(i))
+            if (intrmask & TOSCA_VME_INTR(i))
                 ADD_FD(IX(VME, i, vec), "/dev/toscavmeevent%u.%u", i, vec);
         }
     }
@@ -274,7 +274,7 @@ void toscaIntrShow(int level)
             prevIntrCount[index] = count;
             intrmask = INTR_INDEX_TO_BIT(index);
             printf("  %s", toscaIntrBitToStr(intrmask));
-            if (intrmask & INTR_VME_LVL_ANY)
+            if (intrmask & TOSCA_VME_INTR_ANY)
                 printf(".%-3d ", INTR_INDEX_TO_IVEC(index));
             printf(" count=%llu (+%llu)\n", count, delta);
             prevIntrCount[index] = count;
@@ -424,6 +424,6 @@ void toscaInstallSpuriousVMEInterruptHandler(void)
     static int first = 1;
     if (!first) return;
     first = 0;
-    toscaIntrConnectHandler(INTR_VME_LVL_ANY,   0, toscaSpuriousVMEInterruptHandler, NULL);
-    toscaIntrConnectHandler(INTR_VME_LVL_ANY, 255, toscaSpuriousVMEInterruptHandler, NULL);
+    toscaIntrConnectHandler(TOSCA_VME_INTR_ANY,   0, toscaSpuriousVMEInterruptHandler, NULL);
+    toscaIntrConnectHandler(TOSCA_VME_INTR_ANY, 255, toscaSpuriousVMEInterruptHandler, NULL);
 }
