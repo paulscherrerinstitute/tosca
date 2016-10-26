@@ -358,9 +358,12 @@ int pev_evt_queue_free(struct pev_ioctl_evt *evt)
 static void pev_intr_vme(struct pev_ioctl_evt *evt, int inum, int vec)
 {
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
+    debug("inum=%i vec=%i enabled=%i mask=0x%x masked=%i",
+        inum, vec, q->enabled, q->mask_vme, q->mask_vme & (1 << inum));
     if (!q->enabled) return;
     if (q->mask_vme & (1 << inum)) return;
     uint16_t ev = (EVT_SRC_VME | inum) << 8 | vec;
+    debug("ev=0x%04x sig=%i", ev, evt->sig);
     write(q->fd[1], &ev, 2);
     if (evt->sig) kill(getpid(), evt->sig);
 }
@@ -368,9 +371,12 @@ static void pev_intr_vme(struct pev_ioctl_evt *evt, int inum, int vec)
 static void pev_intr_usr(struct pev_ioctl_evt *evt, int inum)
 {
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
+    debug("inum=%i enabled=%i mask=0x%x masked=%i",
+        inum, q->enabled, q->mask_vme, q->mask_vme & (1 << inum));
     if (!q->enabled) return;
     if (q->mask_usr & (1 << inum)) return;
     uint16_t ev = (EVT_SRC_USR1 | inum) << 8;
+    debug("ev=0x%04x sig=%i", ev, evt->sig);
     write(q->fd[1], &ev, 2);
     if (evt->sig) kill(getpid(), evt->sig);
 }
@@ -417,8 +423,13 @@ int pevx_evt_read(uint crate, struct pev_ioctl_evt *evt, int timeout)
         tv.tv_usec = (timeout%1000)*1000;
     }
     n = select(fd + 1, &read_fs, NULL, NULL, timeout >= 0 ? &tv : NULL);
-    if (n < 1) return -1;
+    if (n < 1)
+    {
+        debugErrno("crate=%d select", crate);
+        return -1;
+    }
     if (read(fd, &ev, 2) < 0) return -1;
+    debug("crate=%d ev=0x%04x", crate, ev);
     return ev;
 }
 
