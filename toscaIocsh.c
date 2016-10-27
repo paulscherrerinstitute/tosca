@@ -17,20 +17,20 @@
 #include "toscaDebug.h"
 
 static const iocshFuncDef toscaMapDef =
-    { "toscaMap", 3, (const iocshArg *[]) {
-    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SHM|TCSR|TIO|SRAM|VME_SLAVE):address", iocshArgString },
+    { "toscaMap", 4, (const iocshArg *[]) {
+    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SHM|TCSR|TIO|SRAM|SLAVE):address", iocshArgString },
     &(iocshArg) { "size", iocshArgString },
-    &(iocshArg) { "[res_address]", iocshArgString },
+    &(iocshArg) { "[(USER|SHM):address", iocshArgString },
+    &(iocshArg) { "[SWAP]]", iocshArgString },
 }};
 
 static void toscaMapFunc(const iocshArgBuf *args)
 {
-    toscaMapAddr_t addr;
-    vmeaddr_t res_address;
+    toscaMapAddr_t addr, res_addr = {0};
     size_t size;
     volatile void* ptr;
 
-    if (!args[0].sval) 
+    if (!args[1].sval)
     {
         iocshCmd("help toscaMap");
         return;
@@ -42,48 +42,32 @@ static void toscaMapFunc(const iocshArgBuf *args)
         return;
     }
     size = toscaStrToSize(args[1].sval);
-    res_address = toscaStrToSize(args[2].sval);
-    ptr = toscaMap(addr.aspace, addr.address, size, res_address);
+    if (args[2].sval)
+    {
+        if (!(addr.aspace & VME_SLAVE))
+        {
+            error("no VME SLAVE map: resource address %s ignored", args[2].sval);
+        }
+        else
+        {
+            res_addr = toscaStrToAddr(args[2].sval);
+            addr.aspace |= res_addr.aspace;
+            if (args[3].sval)
+            {
+                if (strtol(args[3].sval, NULL, 0) > 0 ||
+                    strcasecmp(args[3].sval, "SWAP") == 0)
+                    addr.aspace |= VME_SWAP;
+            }
+        }
+    }
+    ptr = toscaMap(addr.aspace, addr.address, size, res_addr.address);
+    if (addr.aspace & VME_SLAVE) return;
     if (!ptr)
     {
         error("mapping failed: %m");
         return;
     }
     printf("%p\n", ptr);
-}
-
-static const iocshFuncDef toscaMapVMESlaveDef =
-    { "toscaMapVMESlave", 4, (const iocshArg *[]) {
-    &(iocshArg) { "(A32|USER|SHM):address", iocshArgString },
-    &(iocshArg) { "size", iocshArgString },
-    &(iocshArg) { "VME_address", iocshArgString },
-    &(iocshArg) { "swap", iocshArgInt },
-}};
-
-static void toscaMapVMESlaveFunc(const iocshArgBuf *args)
-{
-    toscaMapAddr_t addr;
-    size_t size;
-    size_t vme_address;
-
-    if (!args[0].sval) 
-    {
-        iocshCmd("help toscaMapVMESlave");
-        return;
-    }
-    addr = toscaStrToAddr(args[0].sval);
-    if (!(addr.aspace & (VME_A32|TOSCA_USER1|TOSCA_SHM)))
-    {
-        error("invalid address space %s", args[0].sval);
-        return;
-    }
-    size = toscaStrToSize(args[1].sval);
-    vme_address = toscaStrToSize(args[2].sval);
-    if (toscaMapVMESlave(addr.aspace, addr.address, size, vme_address, args[3].ival) != 0)
-    {
-        error("mapping failed: %m");
-        return;
-    }
 }
 
 static const iocshFuncDef toscaMapLookupAddrDef =
@@ -434,7 +418,6 @@ static void toscaRegistrar(void)
     memDisplayInstallAddrHandler("TIO",   toscaAddrHandler, TOSCA_IO);
 
     iocshRegister(&toscaMapDef, toscaMapFunc);
-    iocshRegister(&toscaMapVMESlaveDef, toscaMapVMESlaveFunc);
     iocshRegister(&toscaMapLookupAddrDef, toscaMapLookupAddrFunc);
     iocshRegister(&toscaMapShowDef, toscaMapShowFunc);
     iocshRegister(&toscaMapFindDef, toscaMapFindFunc);

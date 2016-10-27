@@ -238,14 +238,18 @@ int pevx_map_alloc(uint crate, struct pev_ioctl_map_pg *map_p)
 
     if (map_p->sg_id == MAP_SLAVE_VME && (map_p->mode & 0xf000) != MAP_SPACE_PCIE)
     {
+        /* for slave maps, loc_addr is the vme address and rem_add is the resource address */
+
         debug("VME slave sg_id=0x%x mode=0x%x size=0x%x rem_addr=0x%lx loc_addr=0x%lx",
             map_p->sg_id, map_p->mode, map_p->size, map_p->rem_addr, map_p->loc_addr);
-        toscaMapVMESlave(crate<<16 | pev_mode_to_tosca_aspace(map_p->mode),
-            map_p->loc_addr, map_p->size, map_p->rem_addr, (map_p->mode & MAP_SWAP_AUTO) != 0);
-        mapInfo = toscaCheckSlaveMaps(crate, map_p->rem_addr, map_p->size);
-        map_p->win_size = mapInfo.size;
-        map_p->rem_base = mapInfo.address;
-        map_p->loc_base = (size_t) mapInfo.ptr;
+
+        toscaMap(crate<<16 | pev_mode_to_tosca_aspace(map_p->mode) | MAP_SLAVE_VME |
+            (map_p->mode & MAP_SWAP_AUTO) ? VME_SWAP : 0,
+            map_p->loc_addr, map_p->size, map_p->rem_addr);
+
+        map_p->win_size = (map_p->size + (map_p->loc_addr & 0xfffffu) + 0xfffffu) & ~0xfffffu;
+        map_p->rem_base = map_p->rem_addr - (map_p->loc_addr & 0xfffffu);
+        map_p->loc_base = map_p->loc_addr & ~0xfffffu;
         return 0;
     }
 
@@ -259,8 +263,10 @@ int pevx_map_alloc(uint crate, struct pev_ioctl_map_pg *map_p)
     }
 
     map_p->loc_addr = 0;
+
     ptr = toscaMap(crate<<16 | pev_mode_to_tosca_aspace(map_p->mode),
         map_p->rem_addr, map_p->size, 0);
+
     if (!ptr) return -1;
     mapInfo = toscaMapFind(ptr);
     map_p->win_size = mapInfo.size;

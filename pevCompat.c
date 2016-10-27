@@ -126,7 +126,6 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
     unsigned int targetOffset = args[5].ival;
     const char* swapping = args[6].sval;
     toscaMapAddr_t addr;
-    int swap;
 
     if (!slaveAddrSpace)
     {
@@ -140,14 +139,17 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
         return;
     }
     addr = toscaStrToAddr(target);
-    swap = swapping && strcmp(swapping, "AUTO") == 0;
+    addr.aspace |= VME_SLAVE;
+    if (swapping && strcmp(swapping, "AUTO") == 0)
+        addr.aspace |= VME_SWAP;
+    
     printf("Compatibility mode! pevVmeSlaveMainConfig and pevVmeSlaveTargetConfig replaced by:\n"
-        "toscaMapVMESlave %s:0x%x, 0x%x, 0x%x%s\n",
-        toscaAddrSpaceToStr(addr.aspace), targetOffset, winSize, mainBase+winBase, swap ? " 1" : "");
-    if (toscaMapVMESlave(addr.aspace, targetOffset, winSize, mainBase+winBase, swap) != 0)
-    {
-        perror("toscaMapVMESlave failed");
-    }
+        "toscaMap SLAVE:0x%x, 0x%x, %s:0x%x%s\n",
+        mainBase+winBase, winSize,
+        toscaAddrSpaceToStr(addr.aspace & ~(VME_SLAVE|VME_SWAP)),
+        targetOffset,  
+        addr.aspace & VME_SWAP ? " SWAP" : "");
+    toscaMap(addr.aspace, mainBase+winBase, winSize, targetOffset);
 }
 
 /** I2C ****************************************************/

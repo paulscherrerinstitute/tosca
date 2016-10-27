@@ -5,25 +5,26 @@
 #include <stdio.h>
 
 /* VME access modes from vme.h */
-#define VME_A16		0x1
-#define VME_A24		0x2
-#define	VME_A32		0x4
-#define VME_A64		0x8
-#define VME_CRCSR	0x10
-#define VME_USER1	0x20
-#define VME_USER2	0x40
-#define VME_USER3	0x80
-#define VME_USER4	0x100
-#define TOSCA_USER	VME_USER1
-#define TOSCA_USER1	VME_USER1
-#define TOSCA_USER2	VME_USER2
-#define TOSCA_SHM	VME_USER3
-#define TOSCA_CSR	VME_USER4
-#define TOSCA_IO	0x200
-#define TOSCA_SRAM	0x400
+#define VME_A16	          0x1
+#define VME_A24	          0x2
+#define	VME_A32	          0x4
+#define VME_A64	          0x8
+#define VME_CRCSR        0x10
+#define VME_USER1        0x20
+#define VME_USER2        0x40
+#define VME_USER3        0x80
+#define VME_USER4       0x100
+#define TOSCA_USER  VME_USER1
+#define TOSCA_USER1 VME_USER1
+#define TOSCA_USER2 VME_USER2
+#define TOSCA_SHM   VME_USER3
+#define TOSCA_CSR   VME_USER4
+#define TOSCA_IO        0x200
+#define TOSCA_SRAM      0x400
 #define VME_SLAVE       0x800
-#define	VME_SUPER	0x1000
-#define	VME_PROG	0x4000
+#define	VME_SUPER      0x1000
+#define	VME_PROG       0x4000
+#define	VME_SWAP       0x8000
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,19 +105,6 @@ typedef struct {
    };
 } toscaMapVmeErr_t;
 toscaMapVmeErr_t toscaGetVmeErr(unsigned int tosca);
-
-/* VME SLAVE MAPS */
-
-/* Configure VME slave maps to USR1, SHM or back to VME A32
-   These maps stay after the program exits!
-*/
-int toscaMapVMESlave(unsigned int aspace, vmeaddr_t res_address, size_t size, vmeaddr_t vme_address, int swap);
-
-/* With size == 0 print all slave maps.
-   Else silently check for overlaps.
-   Return 1 if overlap is found, 0 if not, -1 on error.
-*/
-toscaMapInfo_t toscaCheckSlaveMaps(unsigned int card, vmeaddr_t addr, size_t size);
 
 /* TOSCA CSR ACCESS */
 
