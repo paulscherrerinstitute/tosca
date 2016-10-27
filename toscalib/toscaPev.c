@@ -85,7 +85,7 @@ static uint32_t *sramPtr(size_t address)
     }
     if (!sram)
     {
-        sram = toscaMap(TOSCA_SRAM, 0, 0);
+        sram = toscaMap(TOSCA_SRAM, 0, 0, 0);
         if (!sram) return NULL;
     }
     return (uint32_t*) ((size_t) sram + address);
@@ -260,7 +260,7 @@ int pevx_map_alloc(uint crate, struct pev_ioctl_map_pg *map_p)
 
     map_p->loc_addr = 0;
     ptr = toscaMap(crate<<16 | pev_mode_to_tosca_aspace(map_p->mode),
-        map_p->rem_addr, map_p->size);
+        map_p->rem_addr, map_p->size, 0);
     if (!ptr) return -1;
     mapInfo = toscaMapFind(ptr);
     map_p->win_size = mapInfo.size;

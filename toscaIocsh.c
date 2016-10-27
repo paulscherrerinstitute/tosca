@@ -17,14 +17,16 @@
 #include "toscaDebug.h"
 
 static const iocshFuncDef toscaMapDef =
-    { "toscaMap", 2, (const iocshArg *[]) {
+    { "toscaMap", 3, (const iocshArg *[]) {
     &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SHM|TCSR|TIO|SRAM|VME_SLAVE):address", iocshArgString },
     &(iocshArg) { "size", iocshArgString },
+    &(iocshArg) { "[res_address]", iocshArgString },
 }};
 
 static void toscaMapFunc(const iocshArgBuf *args)
 {
     toscaMapAddr_t addr;
+    vmeaddr_t res_address;
     size_t size;
     volatile void* ptr;
 
@@ -40,7 +42,8 @@ static void toscaMapFunc(const iocshArgBuf *args)
         return;
     }
     size = toscaStrToSize(args[1].sval);
-    ptr = toscaMap(addr.aspace, addr.address, size);
+    res_address = toscaStrToSize(args[2].sval);
+    ptr = toscaMap(addr.aspace, addr.address, size, res_address);
     if (!ptr)
     {
         error("mapping failed: %m");
@@ -397,7 +400,7 @@ static void toscaAddrSpaceToStrFunc(const iocshArgBuf *args)
 
 volatile void* toscaAddrHandler(size_t address, size_t size, size_t aspace)
 {
-    return toscaMap(aspace, address, size);
+    return toscaMap(aspace, address, size, 0);
 }
 
 static void toscaRegistrar(void)

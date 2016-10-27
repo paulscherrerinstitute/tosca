@@ -39,7 +39,7 @@ extern FILE* toscaMapDebugFile;
 typedef uint64_t vmeaddr_t;
 
 /* Map a Tosca resource to user space. Re-use maps if possible. */
-volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size);
+volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vmeaddr_t res_address);
 
 /* For aspace use
    * for VME address spaces A16, A24, A32: VME_A16, VME_A24, VME_A32 ( | VME_SUPER, VME_PROG)
@@ -49,7 +49,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size);
    * for Tosca configuration space registers: TOSCA_CSR
    * for Tosca IO space registers: TOSCA_IO
    * for Tosca PON SRAM on ELB: TOSCA_SRAM
-   * for VME A32 slave windows: VME_SLAVE
+   * for VME A32 slave windows: VME_SLAVE|{TOSCA_USER1|TOSCA_USER2|TOSCA_SHM} and pass res_address
    * if using more than one Tosca use aspace|(tosca<<16).
    At the moment Tosca does not support A64.
 */
@@ -151,8 +151,8 @@ uint32_t toscaSmonStatus();
 */
 
 /* Some utilities */
-size_t toscaStrToSize(const char* str);
-char* toscaSizeToStr(size_t size, char* str);
+vmeaddr_t toscaStrToSize(const char* str);
+char* toscaSizeToStr(vmeaddr_t size, char* str);
 #define SIZE_STRING_BUFFER_SIZE 60
 
 #ifdef __cplusplus

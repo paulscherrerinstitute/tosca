@@ -252,7 +252,7 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
     return result;
 }
 
-volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
+volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vmeaddr_t res_address)
 {
     struct map **pmap, *map;
     volatile void *ptr;
@@ -377,32 +377,32 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
            Thus round down address to the full MiB.
            Adjust and round up size to the next full MiB.
         */
-        struct vme_master vme_window = {0};
+        struct vme_slave vme_window = {0};
 
-        debug("creating new %s mapping", toscaAddrSpaceToStr(aspace));
-        if (aspace & VME_A16)
-        
+        debug("creating new %s mapping", toscaAddrSpaceToStr(aspace));        
         if (size == 0) size = 1;
         vme_window.enable = 1;
-        vme_window.vme_addr = address & ~0xffffful; /* 1 MB alignment */
-        vme_window.size = (size + (address & 0xffffful) + 0xffffful) & ~0xffffful;
-        
+        vme_window.vme_addr = address & ~0xffffful; /* round down to 1 MB alignment */
+        vme_window.size = (size + (address & 0xffffful) + 0xffffful) & ~0xffffful; /* round up to full MB boundaries */
+        vme_window.aspace = aspace & 0x0fff;
+        vme_window.cycle = aspace & 0xf000;
+        vme_window.aspace = aspace & 0x0fff;
+        vme_window.cycle = aspace & 0xf000;
+
         if (aspace & VME_SLAVE)
         {
             sprintf(filename, "/dev/bus/vme/s%u", card);
             setcmd = VME_SET_SLAVE;
-            getcmd = VME_GET_SLAVE;
-            vme_window.aspace = VME_A32;
+            getcmd = 0;            /* reading back slave windows is buggy */
+            vme_window.resource_offset = res_address;
         }
         else
         {
             sprintf(filename, "/dev/bus/vme/m%u", card);
             setcmd = VME_SET_MASTER;
             getcmd = VME_GET_MASTER;
-            vme_window.aspace = aspace & 0x0fff;
-            vme_window.cycle = aspace & 0xf000;
         }
-        
+
         fd = open(filename, O_RDWR);
         if (fd < 0)
         {
@@ -411,32 +411,32 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size)
             return NULL;
         }
 
-        debug("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, dwidth=0x%x})",
+        debug("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, resource_offset=0x%x})",
             fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
             vme_window.enable,
             (unsigned long long) vme_window.vme_addr,
             (unsigned long long) vme_window.size,
             vme_window.aspace,
             vme_window.cycle,
-            vme_window.dwidth);
+            vme_window.resource_offset);
         if (ioctl(fd, setcmd, &vme_window) != 0)
         {
-            debugErrno("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, dwidth=0x%x})",
+            debugErrno("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, resource_offset=0x%x})",
                 fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
                 vme_window.enable,
                 (unsigned long long) vme_window.vme_addr,
                 (unsigned long long) vme_window.size,
                 vme_window.aspace,
                 vme_window.cycle,
-                vme_window.dwidth);
+                vme_window.resource_offset);
             close(fd);
             pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             return NULL;
         }
 
-        if (!(aspace & VME_SLAVE)) /* reading back slave windows is buggy */
+        if (getcmd)
         {
-            /* If the request fits into an existing master window,
+            /* If the request fits into an existing window,
                we may get that one instead of the requested one.
                That window may have a different start adddress.
             */
@@ -516,7 +516,7 @@ toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void* usr), void*
         }
         if (map) return map->info;           /* info of map where user func returned non 0 */
     }
-    return (toscaMapInfo_t) { 0, 0, 0, NULL };
+    return (toscaMapInfo_t) {0};
 }
 
 int toscaMapPtrCompare(toscaMapInfo_t info, void* ptr)
@@ -691,14 +691,14 @@ toscaMapInfo_t toscaCheckSlaveMaps(unsigned int card, vmeaddr_t addr, size_t siz
 
 uint32_t toscaCsrRead(unsigned int address)
 {
-    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4);
+    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     return le32toh(*ptr);
 }
 
 int toscaCsrWrite(unsigned int address, uint32_t value)
 {
-    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4);
+    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     *ptr = htole32(value);
     return 0;
@@ -706,7 +706,7 @@ int toscaCsrWrite(unsigned int address, uint32_t value)
 
 int toscaCsrSet(unsigned int address, uint32_t value)
 {
-    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4);
+    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     *ptr |= htole32(value);
     return 0;
@@ -714,7 +714,7 @@ int toscaCsrSet(unsigned int address, uint32_t value)
 
 int toscaCsrClear(unsigned int address, uint32_t value)
 {
-    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4);
+    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     *ptr &= ~htole32(value);
     return 0;
@@ -722,14 +722,14 @@ int toscaCsrClear(unsigned int address, uint32_t value)
 
 uint32_t toscaIoRead(unsigned int address)
 {
-    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4);
+    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     return le32toh(*ptr);
 }
 
 int toscaIoWrite(unsigned int address, uint32_t value)
 {
-    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4);
+    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     *ptr = htole32(value);
     return 0;
@@ -737,7 +737,7 @@ int toscaIoWrite(unsigned int address, uint32_t value)
 
 int toscaIoSet(unsigned int address, uint32_t value)
 {
-    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4);
+    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     *ptr |= htole32(value);
     return 0;
@@ -745,7 +745,7 @@ int toscaIoSet(unsigned int address, uint32_t value)
 
 int toscaIoClear(unsigned int address, uint32_t value)
 {
-    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4);
+    volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     *ptr &= ~htole32(value);
     return 0;
@@ -757,7 +757,7 @@ pthread_mutex_t smon_mutex = PTHREAD_MUTEX_INITIALIZER;
 uint16_t toscaSmonRead(unsigned int address)
 {
     uint16_t value;
-    volatile uint32_t* smon = toscaMap((address & 0xffff0000)|TOSCA_CSR, CSR_SMON, 12);
+    volatile uint32_t* smon = toscaMap((address & 0xffff0000)|TOSCA_CSR, CSR_SMON, 12, 0);
     if (!smon) return -1;
     address &= 0xffff;
     if (address >= 0x80) { errno = EINVAL; return -1; }
@@ -772,7 +772,7 @@ uint16_t toscaSmonRead(unsigned int address)
 
 int toscaSmonWrite(unsigned int address, uint16_t value)
 {
-    volatile uint32_t* smon = toscaMap((address & 0xffff0000)|TOSCA_CSR, CSR_SMON, 12);
+    volatile uint32_t* smon = toscaMap((address & 0xffff0000)|TOSCA_CSR, CSR_SMON, 12, 0);
     if (!smon) return -1;
     address &= 0xffff;
     if (address < 0x40) { errno = EACCES; return -1; }
@@ -788,7 +788,7 @@ int toscaSmonWrite(unsigned int address, uint16_t value)
 
 uint32_t toscaSmonStatus()
 {
-    volatile uint32_t* smon = toscaMap(TOSCA_IO, CSR_SMON, 12);
+    volatile uint32_t* smon = toscaMap(TOSCA_IO, CSR_SMON, 12, 0);
     return le32toh(smon[3]);
 }
 
@@ -796,22 +796,21 @@ uint32_t toscaSmonStatus()
 
 toscaMapVmeErr_t toscaGetVmeErr(unsigned int card)
 {
-    volatile uint32_t* vmeerr = toscaMap((card<<16)|TOSCA_CSR, CSR_VMEERR, 8);
+    volatile uint32_t* vmeerr = toscaMap((card<<16)|TOSCA_CSR, CSR_VMEERR, 8, 0);
     if (!vmeerr) return (toscaMapVmeErr_t) { .address = -1, .status = 0 };
     return (toscaMapVmeErr_t) { .address = vmeerr[0], .status = vmeerr[1] };
 }
 
-size_t toscaStrToSize(const char* str)
+vmeaddr_t toscaStrToSize(const char* str)
 {
     const char* p = str;
-    size_t size = 0, val;
+    vmeaddr_t size = 0, val;
     if (!str) return 0;
     while (1)
     {
-        val = strtoul(p, (char**)&p, 0);
+        val = strtoull(p, (char**)&p, 0);
         switch (*p++)
         {
-    #if __WORDSIZE > 32
             case 'e':
             case 'E':
                 size += val <<= 60; break;
@@ -821,7 +820,6 @@ size_t toscaStrToSize(const char* str)
             case 't':
             case 'T':
                 size += val <<= 40; break;
-    #endif
             case 'g':
             case 'G':
                 size += val <<= 30; break;
@@ -837,33 +835,32 @@ size_t toscaStrToSize(const char* str)
     }
 }
 
-char* toscaSizeToStr(size_t size, char* str)
+char* toscaSizeToStr(vmeaddr_t size, char* str)
 {
+    unsigned long long val = size;
     int l = 0;
-    l = sprintf(str, "0x%zx", size);
+    l = sprintf(str, "0x%llx", val);
     l += sprintf(str+l, "=");
-#if __WORDSIZE > 32
-    if (size >= 1ULL<<60)
-        l += sprintf(str+l, "%zuE", size>>50);
-    size &= (1ULL<<60)-1;
-    if (size >= 1ULL<<50)
-        l += sprintf(str+l, "%zuP", size>>40);
-    size &= (1ULL<<50)-1;
-    if (size >= 1ULL<<40)
-        l += sprintf(str+l, "%zuT", size>>30);
-    size &= (1ULL<<40)-1;
-#endif
-    if (size >= 1UL<<30)
-        l += sprintf(str+l, "%zuG", size>>30);
-    size &= (1UL<<30)-1;
-    if (size >= 1UL<<20)
-        l += sprintf(str+l, "%zuM", size>>20);
-    size &= (1UL<<20)-1;
-    if (size >= 1UL<<10)
-        l += sprintf(str+l, "%zuK", size>>10);
-    size &= (1UL<<10)-1;
-    if (size > 0)
-        l += sprintf(str+l, "%zu", size);
+    if (val >= 1ULL<<60)
+        l += sprintf(str+l, "%lluE", val>>50);
+    val &= (1ULL<<60)-1;
+    if (val >= 1ULL<<50)
+        l += sprintf(str+l, "%lluP", val>>40);
+    val &= (1ULL<<50)-1;
+    if (val >= 1ULL<<40)
+        l += sprintf(str+l, "%lluT", val>>30);
+    val &= (1ULL<<40)-1;
+    if (val >= 1UL<<30)
+        l += sprintf(str+l, "%lluG", val>>30);
+    val &= (1UL<<30)-1;
+    if (val >= 1UL<<20)
+        l += sprintf(str+l, "%lluM", val>>20);
+    val &= (1UL<<20)-1;
+    if (val >= 1UL<<10)
+        l += sprintf(str+l, "%lluK", val>>10);
+    val &= (1UL<<10)-1;
+    if (val > 0)
+        l += sprintf(str+l, "%llu", val);
     return str;
 }
 

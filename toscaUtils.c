@@ -128,7 +128,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
     
     addr = toscaStrToAddr(args[0].sval);
     if (addr.aspace)
-        sourceptr = toscaMap(addr.aspace, addr.address, size);
+        sourceptr = toscaMap(addr.aspace, addr.address, size, 0);
     else
         sourceptr = (volatile void*)(size_t)addr.address;
     if (!sourceptr)
@@ -139,7 +139,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
 
     addr = toscaStrToAddr(args[1].sval);
     if (addr.aspace)
-        destptr = toscaMap(addr.aspace, addr.address, size);
+        destptr = toscaMap(addr.aspace, addr.address, size, 0);
     else
         destptr = (volatile void*)(size_t)toscaStrToSize(args[1].sval);
     if (!destptr)

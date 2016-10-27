@@ -374,7 +374,7 @@ int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, 
 
     if (device->dmaReadLimit != 1 || device->dmaWriteLimit != 1) /* not DMA only */
     {
-        if ((device->baseptr = toscaMap(aspace, address, size)) == NULL)
+        if ((device->baseptr = toscaMap(aspace, address, size, 0)) == NULL)
         {
             error("error mapping Tosca %s:0x%zx[0x%zx]: %m", toscaAddrSpaceToStr(aspace), address, size);
             return -1;

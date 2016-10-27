@@ -61,7 +61,7 @@ long toscaDevLibMapAddr(
                 return S_dev_badA16;
             }
             /* Map full A16 (64KiB). */
-            mapAddress = toscaMap(VME_A16 | VME_DEFAULT_MODE, 0, 0x10000);
+            mapAddress = toscaMap(VME_A16 | VME_DEFAULT_MODE, 0, 0x10000, 0);
             if (mapAddress) mapAddress += vmeAddress;
             break;
         }
@@ -75,11 +75,11 @@ long toscaDevLibMapAddr(
             /* Map A24 (16MiB) in 4 MiB chunks as long as the request does not cross a 4 MiB boundary. */
             if (((vmeAddress ^ (vmeAddress + size)) & 0xc00000) == 0) /* All is in one 4 MiB block. */
             {
-                mapAddress = toscaMap(VME_A24 | VME_DEFAULT_MODE, vmeAddress & 0xc00000, 0x400000);
+                mapAddress = toscaMap(VME_A24 | VME_DEFAULT_MODE, vmeAddress & 0xc00000, 0x400000, 0);
                 if (mapAddress) mapAddress += (vmeAddress & 0x3fffff);
             }
             else
-                mapAddress = toscaMap(VME_A24 | VME_DEFAULT_MODE, vmeAddress, size);
+                mapAddress = toscaMap(VME_A24 | VME_DEFAULT_MODE, vmeAddress, size, 0);
             break;
         }
         case atVMEA32:
@@ -90,7 +90,7 @@ long toscaDevLibMapAddr(
                 return S_dev_badA32;
             }
 #endif
-            mapAddress = toscaMap(VME_A32 | VME_DEFAULT_MODE, vmeAddress, size);
+            mapAddress = toscaMap(VME_A32 | VME_DEFAULT_MODE, vmeAddress, size, 0);
             break;
         case atVMECSR:
             if (vmeAddress + size > 0x1000000ULL)
@@ -98,7 +98,7 @@ long toscaDevLibMapAddr(
                 debug("CRCSR address %#zx out of range", vmeAddress + size);
                 return S_dev_badCRCSR;
             }
-            mapAddress = toscaMap(VME_CRCSR, vmeAddress, size);
+            mapAddress = toscaMap(VME_CRCSR, vmeAddress, size, 0);
             break;
         default:
             return S_dev_uknAddrType;
