@@ -383,7 +383,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         if (size == 0) size = 1;
         vme_window.enable = 1;
         vme_window.vme_addr = address & ~0xffffful; /* round down to 1 MB alignment */
-        vme_window.size = (size + (address & 0xffffful) + 0xffffful) & ~0xffffful; /* round up to full MB boundaries */
+        vme_window.size = size + (address & 0xffffful); /* do not round up to MB or A16 will fail */
         vme_window.aspace = aspace & 0x0fff;
         vme_window.cycle = aspace & 0xf000;
         vme_window.aspace = aspace & 0x0fff;
