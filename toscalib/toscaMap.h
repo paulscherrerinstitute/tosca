@@ -139,7 +139,6 @@ uint32_t toscaSmonStatus();
 */
 
 /* Some utilities */
-vmeaddr_t toscaStrToSize(const char* str);
 char* toscaSizeToStr(vmeaddr_t size, char* str);
 #define SIZE_STRING_BUFFER_SIZE 60
 

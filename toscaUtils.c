@@ -6,6 +6,7 @@
 #include <byteswap.h>
 #include "toscaMap.h"
 #include "toscaDma.h"
+#include "toscaAddrStr.h"
 
 #include <iocsh.h>
 #include <epicsExport.h>
@@ -141,7 +142,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
     if (addr.aspace)
         destptr = toscaMap(addr.aspace, addr.address, size, 0);
     else
-        destptr = (volatile void*)(size_t)toscaStrToSize(args[1].sval);
+        destptr = (volatile void*)toscaStrToSize(args[1].sval);
     if (!destptr)
     {
         error("cannot map dest address");

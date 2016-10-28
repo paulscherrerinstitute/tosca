@@ -17,6 +17,7 @@
 #include "toscaMap.h"
 #include "toscaDma.h"
 #include "toscaIntr.h"
+#include "toscaAddrStr.h"
 
 typedef uint8_t __u8;
 typedef uint32_t __u32;

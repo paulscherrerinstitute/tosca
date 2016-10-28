@@ -8,6 +8,7 @@
 
 #include "memDisplay.h"
 
+#include "toscaAddrStr.h"
 #include "toscaMap.h"
 #include "toscaIntr.h"
 #include "toscaDma.h"
@@ -30,7 +31,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
     size_t size;
     volatile void* ptr;
 
-    if (!args[1].sval)
+    if (!args[0].sval)
     {
         iocshCmd("help toscaMap");
         return;
@@ -38,7 +39,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
     addr = toscaStrToAddr(args[0].sval);
     if (!addr.aspace)
     {
-        error("invalid address space %s", args[0].sval);
+        error("invalid Tosca address %s", args[0].sval);
         return;
     }
     size = toscaStrToSize(args[1].sval);
