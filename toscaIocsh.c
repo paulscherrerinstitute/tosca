@@ -61,14 +61,14 @@ static void toscaMapFunc(const iocshArgBuf *args)
             }
         }
     }
+    errno = 0;
     ptr = toscaMap(addr.aspace, addr.address, size, res_addr.address);
-    if (addr.aspace & VME_SLAVE) return;
-    if (!ptr)
+    if (!ptr && errno)
     {
         error("mapping failed: %m");
         return;
     }
-    printf("%p\n", ptr);
+    printf("0x%zx\n", (size_t) ptr);
 }
 
 static const iocshFuncDef toscaMapLookupAddrDef =

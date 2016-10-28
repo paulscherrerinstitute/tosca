@@ -239,6 +239,15 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
             address + size <= map->info.address + map->info.size)
         {
             pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
+            if ((aspace & 0xfff) > VME_SLAVE)
+            {
+                /* existing VME slave to Tosca resource: check resource address */
+                if (res_address != (vmeaddr_t)(size_t) map->info.ptr + (address - map->info.address))
+                {
+                    errno = EADDRINUSE;
+                    return NULL;
+                }
+            }
             debug("%u:%s:0x%llx[0x%zx] use existing window addr=0x%llx size=0x%zx offset=0x%llx",
                 card, toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
                 (unsigned long long) map->info.address, map->info.size,
@@ -435,7 +444,12 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
             mapsize = vme_window.size ;           /* Map the whole window to user space. */
     }
 
-    if ((aspace & 0xfff) <= VME_SLAVE) /* VME_SLAVE windows to Tosca resources do not need mmap */
+    if ((aspace & 0xfff) > VME_SLAVE)
+    {
+        /* VME_SLAVE windows to Tosca resources do not use mmap */
+        ptr = (void*)(size_t) res_address;
+    }
+    else
     {
         ptr = mmap((void*)(size_t) res_address, mapsize, PROT_READ | PROT_WRITE, res_address ? MAP_PRIVATE | MAP_FIXED : MAP_SHARED, fd, 0);
         debug("mmap(%p, size=0x%zx, PROT_READ | PROT_WRITE, %s, %s, 0) = %p",
@@ -447,10 +461,6 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
             close(fd);
             return NULL;
         }
-    }
-    else
-    {
-        ptr = (void*)(size_t) res_address;
     }
 
     map = malloc(sizeof(struct map));
