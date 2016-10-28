@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <glob.h>
-#include <libgen.h>
 
 #include <endian.h>
 #ifndef le32toh

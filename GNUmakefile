@@ -6,4 +6,4 @@ CMPLR=STD
 USR_CFLAGS += -I /opt/eldk-5.2/ifc/include/
 
 DIRS = toscalib .
-SOURCES = $(wildcard $(DIRS:%=%/*.c) $(DIRS:%=%/*.cc))
+SOURCES = $(wildcard $(DIRS:%=%/*.c))

@@ -2,65 +2,29 @@
 #include <string.h>
 #include <errno.h>
 
+#include "memDisplay.h"
+
 #include "toscaMap.h"
 #include "toscaAddrStr.h"
 
-#define TOSCA_DEBUG_NAME toscaAddrString
+#define TOSCA_EXTERN_DEBUG
+#define TOSCA_DEBUG_NAME toscaMap
 #include "toscaDebug.h"
-
-vmeaddr_t toscaStrToOffset(const char* str)
-{
-    char* p = (char*)str, *q;
-    vmeaddr_t size = 0, val;
-    if (!str) return 0;
-    while (1)
-    {
-        if (!*p) return size;
-        val = strtoull(p, &q, 0);
-        if (q == p) goto fail;
-        switch (*q)
-        {
-            case 'e':
-            case 'E':
-                val <<= 60; break;
-            case 'p':
-            case 'P':
-                val <<= 50; break;
-            case 't':
-            case 'T':
-                val <<= 40; break;
-            case 'g':
-            case 'G':
-                val <<= 30; break;
-            case 'm':
-            case 'M':
-                val <<= 20; break;
-            case 'k':
-            case 'K':
-                val <<= 10; break;
-            case 0:
-                return size + val;
-            default:
-                goto fail;
-        }
-        size += val;
-        p = q+1;
-        if (!*p) return size;
-    }
-fail:
-    if (q > str) error("rubbish \"%s\" after %.*s", q, (int)(q-str), str);
-    errno = EINVAL;
-    return -1;
-}
 
 size_t toscaStrToSize(const char* str)
 {
-    vmeaddr_t size = toscaStrToOffset(str);
-    if (size == -1) return -1;
+    char *q;
+    if (!str) return 0;
+    vmeaddr_t size = strToSize(str, &q);
+    if (*q)
+    {
+        errno = EINVAL;
+        return -1;
+    }
     if (size & ~(vmeaddr_t)(size_t) -1)
     {
         error("%s too big for %u bit", str, (int)sizeof(size_t)*8);
-        errno = EINVAL;
+        errno = EFAULT;
         return -1;
     }
     return size;
@@ -70,9 +34,9 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
 {
     toscaMapAddr_t result = {0};
     unsigned long card;
-    char *s, *p;
+    char *s;
     
-    if (!str) return result;
+    if (!str) return (toscaMapAddr_t){0};
     
     card = strtoul(str, &s, 0);
     if (*s == ':')
@@ -82,8 +46,6 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
     }
     else
         s = (char*) str;
-    p = strchr(s, ':');
-    result.address = toscaStrToOffset(p ? p+1 : s);
     if ((strncmp(s, "USR", 3) == 0 && (s+=3)) ||
         (strncmp(s, "USER", 4) == 0 && (s+=4)))
     {
@@ -145,15 +107,9 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
             } while (s++);
         }
     }
-    if (result.address == -1)
-    {
-        if (!p) result.address = 0;
-        else return (toscaMapAddr_t){0};
-    }
-    debug("0x%x=%u:%s:0x%llx",
-        result.aspace, result.aspace>>16,
-        toscaAddrSpaceToStr(result.aspace),
-        (unsigned long long) result.address);
-    if (*s == 0) return result;
+    if (s > str && *s != 0 && *s != ':') return (toscaMapAddr_t){0};
+    if (*s == ':') s++;
+    result.address = strToSize(s, &s);
+    if (*s) return (toscaMapAddr_t){0};
     return result;
 }
