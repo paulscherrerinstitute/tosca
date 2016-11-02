@@ -265,25 +265,6 @@ static void toscaInstallSpuriousVMEInterruptHandlerFunc(const iocshArgBuf *args)
     toscaInstallSpuriousVMEInterruptHandler();
 }
 
-static const iocshFuncDef toscaI2cConfigureDef =
-    { "toscaI2cConfigure", 3, (const iocshArg *[]) {
-    &(iocshArg) { "name", iocshArgString },
-    &(iocshArg) { "pon_addr", iocshArgInt },
-    &(iocshArg) { "i2c_addr", iocshArgInt },
-}};
-
-static void toscaI2cConfigureFunc(const iocshArgBuf *args)
-{
-    const char* name = args[0].sval;
-    unsigned int pon_addr = args[1].ival;
-    unsigned int i2c_addr = args[2].ival;
-    char sysfspattern[80];
-
-    /* pev i2c adapters are the ones on localbus/pon */
-    sprintf(sysfspattern, "/sys/devices/*.localbus/*%02x.pon-i2c/i2c-*", pon_addr);
-    i2cDevConfigure(name, sysfspattern, i2c_addr, 0);
-}
-
 static const iocshFuncDef toscaDmaTransferDef =
     { "toscaDmaTransfer", 5, (const iocshArg *[]) {
     &(iocshArg) { "[addrspace:]sourceaddr", iocshArgString },
@@ -434,7 +415,6 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
     iocshRegister(&toscaSendVMEIntrDef, toscaSendVMEIntrFunc);
     iocshRegister(&toscaInstallSpuriousVMEInterruptHandlerDef, toscaInstallSpuriousVMEInterruptHandlerFunc);
-    iocshRegister(&toscaI2cConfigureDef, toscaI2cConfigureFunc);
     iocshRegister(&toscaDmaTransferDef, toscaDmaTransferFunc);
     iocshRegister(&toscaStrToAddrDef, toscaStrToAddrFunc);
     iocshRegister(&toscaAddrSpaceToStrDef, toscaAddrSpaceToStrFunc);
