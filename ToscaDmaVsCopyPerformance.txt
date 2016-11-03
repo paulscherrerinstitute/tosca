@@ -1,4 +1,4 @@
-                SHM -> MEM          MEM -> SHM
+                SMEM -> MEM        MEM -> SMEM
 size  dma[µs](min max) copy[µs]    dma     copy
    4        133   151        8     134       1     
    8         :     :        14      :        1      

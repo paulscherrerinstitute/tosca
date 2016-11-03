@@ -19,9 +19,9 @@
 
 static const iocshFuncDef toscaMapDef =
     { "toscaMap", 4, (const iocshArg *[]) {
-    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SHM|TCSR|TIO|SRAM|SLAVE):address", iocshArgString },
+    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SMEM|TCSR|TIO|SRAM|SLAVE):address", iocshArgString },
     &(iocshArg) { "size", iocshArgString },
-    &(iocshArg) { "[(USER|SHM):address", iocshArgString },
+    &(iocshArg) { "[(USER|SMEM):address", iocshArgString },
     &(iocshArg) { "[SWAP]]", iocshArgString },
 }};
 
@@ -283,7 +283,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     if (!args[0].sval || !args[1].sval) 
     {
         iocshCmd("help toscaDmaTransfer");
-        printf("addrspaces: USER, SHM, A32, BLT, MBLT, 2eVME, 2eVMEFast, 2eSST(160|267|320)\n");
+        printf("addrspaces: USER, SMEM, A32, BLT, MBLT, 2eVME, 2eVMEFast, 2eSST(160|267|320)\n");
         return;
     }
 
@@ -395,7 +395,7 @@ static void toscaRegistrar(void)
     memDisplayInstallAddrHandler("USER",  toscaAddrHandler, TOSCA_USER1);
     memDisplayInstallAddrHandler("USER1", toscaAddrHandler, TOSCA_USER1);
     memDisplayInstallAddrHandler("USER2", toscaAddrHandler, TOSCA_USER2);
-    memDisplayInstallAddrHandler("SHM",   toscaAddrHandler, TOSCA_SHM);
+    memDisplayInstallAddrHandler("SMEM",  toscaAddrHandler, TOSCA_SMEM);
     memDisplayInstallAddrHandler("TCSR",  toscaAddrHandler, TOSCA_CSR);
     memDisplayInstallAddrHandler("TIO",   toscaAddrHandler, TOSCA_IO);
 

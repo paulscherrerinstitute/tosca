@@ -36,7 +36,7 @@ struct dmaRequest* toscaDmaSetup(
     size_t size, int swap, int timeout, toscaDmaCallback callback, void* user);
 
 /* source and/or dest are one of:
-   0, TOSCA_USER, TOSCA_SHM, VME_SCT, VME_BLT, VME_MBLT, VME_2eVME, VME_2eVMEFast, VME_2eSST160, VME_2eSST267, VME_2eSST320
+   0, TOSCA_USER, TOSCA_SMEM, VME_SCT, VME_BLT, VME_MBLT, VME_2eVME, VME_2eVMEFast, VME_2eSST160, VME_2eSST267, VME_2eSST320
    0 means local buffer (RAM)
    source and dest cannot be the same space (RAM, USER, SHM, VME)
    Returns NULL on error and sets errno (EINVAL: invalid parameter, e.g. invalid DMA route).

@@ -217,7 +217,7 @@ static int pev_mode_to_tosca_aspace(int mode)
         case MAP_SPACE_VME|MAP_VME_A16: return VME_A16;
         case MAP_SPACE_VME|MAP_VME_A24: return VME_A24;
         case MAP_SPACE_VME|MAP_VME_A32: return VME_A32;
-        case MAP_SPACE_SHM:             return TOSCA_SHM;
+        case MAP_SPACE_SHM:             return TOSCA_SMEM;
         case MAP_SPACE_USR1:            return TOSCA_USER1;
         case MAP_SPACE_USR2:            return TOSCA_USER2;
         case MAP_SPACE_PCIE:            return VME_SLAVE;

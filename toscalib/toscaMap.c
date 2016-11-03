@@ -143,7 +143,7 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
 
         case TOSCA_USER1: return "USER1";
         case TOSCA_USER2: return "USER2";
-        case TOSCA_SHM:   return "SHM";
+        case TOSCA_SMEM:  return "SMEM";
         case TOSCA_CSR:   return "TCSR";
         case TOSCA_IO:    return "TIO";
         case TOSCA_SRAM:  return "SRAM";
@@ -325,7 +325,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
             return NULL;
         }
     }
-    else /* USER, SHM, VME, VME_SLAVE */
+    else /* USER, SMEM, VME, VME_SLAVE */
     {
         /* Tosca requires mapping windows aligned to 1 MiB
            Thus round down address to the full MiB and adjust size.

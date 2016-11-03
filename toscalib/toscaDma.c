@@ -79,8 +79,8 @@ const char* toscaDmaTypeToStr(int type)
             return "MEM";
         case TOSCA_USER:
             return "USER";
-        case TOSCA_SHM:
-            return "SHM";
+        case TOSCA_SMEM:
+            return "SMEM";
         case VME_SCT:
             return "VME_SCT";
         case VME_BLT:
@@ -116,8 +116,10 @@ int toscaDmaStrToType(const char* str)
         return 0;
     if (strcmp(str, "USER") == 0)
         return TOSCA_USER;
+    if (strcmp(str, "SMEM") == 0)
+        return TOSCA_SMEM;
     if (strcmp(str, "SHM") == 0)
-        return TOSCA_SHM;
+        return TOSCA_SMEM;
     if (strcmp(str, "VME") == 0)
         return VME_SCT;
     if (strncmp(str, "VME_", 4) == 0) str += 4;
@@ -378,7 +380,7 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
         case TOSCA_USER:
             r->req.src_type = VME_DMA_USER;
             break;
-        case TOSCA_SHM:
+        case TOSCA_SMEM:
             r->req.src_type = VME_DMA_SHM;
             break;
         case VME_SCT:
@@ -427,7 +429,7 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
                     break;
             }
             break;
-        case TOSCA_SHM:
+        case TOSCA_SMEM:
             r->req.dst_type = VME_DMA_SHM;
             switch (r->req.src_type)
             {

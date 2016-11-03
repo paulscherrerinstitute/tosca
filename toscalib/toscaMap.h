@@ -17,7 +17,7 @@
 #define TOSCA_USER  VME_USER1
 #define TOSCA_USER1 VME_USER1
 #define TOSCA_USER2 VME_USER2
-#define TOSCA_SHM   VME_USER3
+#define TOSCA_SMEM  VME_USER3
 #define TOSCA_CSR   VME_USER4
 #define TOSCA_IO        0x200
 #define TOSCA_SRAM      0x400
@@ -46,11 +46,11 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
    * for VME address spaces A16, A24, A32: VME_A16, VME_A24, VME_A32 ( | VME_SUPER, VME_PROG)
    * for VME CR/CSR addres space: VME_CRCSR
    * for Tosca FPGA USR: TOSCA_USER
-   * for Tosca shared memory: TOSCA_SHM
+   * for Tosca shared memory: TOSCA_SMEM
    * for Tosca configuration space registers: TOSCA_CSR
    * for Tosca IO space registers: TOSCA_IO
    * for Tosca PON SRAM on ELB: TOSCA_SRAM
-   * for VME A32 slave windows: VME_SLAVE|{TOSCA_USER1|TOSCA_USER2|TOSCA_SHM} and pass res_address
+   * for VME A32 slave windows: VME_SLAVE|{TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM} and pass res_address
    * if using more than one Tosca use aspace|(tosca<<16).
    At the moment Tosca does not support A64.
 */

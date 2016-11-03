@@ -223,7 +223,7 @@ static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, unsig
         }
     }
     else
-    if (device->aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM))
+    if (device->aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM))
     {
         if (ivec > 15)
         {
@@ -298,7 +298,7 @@ int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, 
 
     device->aspace = aspace;
     if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_CSR)) device->swap = 4;
-    if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SHM)) device->dmaSpace = aspace;
+    if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM)) device->dmaSpace = aspace;
     if (aspace & VME_A32) device->dmaSpace  = VME_SCT;
 
     if (flags)
@@ -422,7 +422,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
     if (!args[0].sval)
     {
         iocshCmd("help toscaRegDevConfigure");
-        printf("addrspace: USER1 (or USER), USER2, SHM, TCSR, CRCSR, A16, A24, A32\n"
+        printf("addrspace: USER1 (or USER), USER2, SMEM, TCSR, CRCSR, A16, A24, A32\n"
                "   add * for 'supervisory' and # for 'program' access to Axx modes\n"
                "   address and size can use k,M,G suffix for powers of 1024\n"
                "flags:\n"

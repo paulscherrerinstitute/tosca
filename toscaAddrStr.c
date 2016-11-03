@@ -63,8 +63,9 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
     else
     if ((strncmp(s, "SH_MEM", 6) == 0 && (s+=6)) ||
         (strncmp(s, "SHMEM", 5) == 0 && (s+=5)) ||
-        (strncmp(s, "SHM", 3) == 0  && (s+=3)))
-        result.aspace |= TOSCA_SHM;
+        (strncmp(s, "SMEM", 4) == 0 && (s+=4)) ||
+        (strncmp(s, "SHM", 3) == 0 && (s+=3)))
+        result.aspace |= TOSCA_SMEM;
     else
     if (strncmp(s, "TCSR", 4) == 0 && (s+=4))
         result.aspace |= TOSCA_CSR;
