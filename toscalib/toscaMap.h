@@ -68,9 +68,9 @@ const char* toscaAddrSpaceToStr(unsigned int aspace);
 /* Several map lookup functions. aspace will be 0 if map is not found. */
 typedef struct {
     unsigned int aspace;
-    vmeaddr_t address;
+    vmeaddr_t baseaddress;
     size_t size;
-    volatile void* ptr;
+    volatile void* baseptr;
 } toscaMapInfo_t;
 
 /* Get map info from a user space pointer. */

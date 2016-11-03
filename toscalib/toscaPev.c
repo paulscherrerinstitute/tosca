@@ -271,8 +271,8 @@ int pevx_map_alloc(uint crate, struct pev_ioctl_map_pg *map_p)
     if (!ptr) return -1;
     mapInfo = toscaMapFind(ptr);
     map_p->win_size = mapInfo.size;
-    map_p->rem_base = mapInfo.address;
-    map_p->loc_base = (size_t) mapInfo.ptr;
+    map_p->rem_base = mapInfo.baseaddress;
+    map_p->loc_base = (size_t) mapInfo.baseptr;
     map_p->usr_addr = (void*) ptr;
     return 0;
 }
