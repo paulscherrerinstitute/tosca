@@ -1,2 +1,0 @@
-variable(toscaElbDebug, int)
-registrar(toscaElbRegistrar)

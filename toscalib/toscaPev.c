@@ -9,7 +9,7 @@
 
 #include "toscaMap.h"
 #include "toscaIntr.h"
-#include "toscaElb.h"
+#include "toscaPon.h"
 #include "i2c.h"
 
 #define TOSCA_DEBUG_NAME pev
@@ -101,7 +101,7 @@ int pevx_elb_rd(uint crate, int address)
     }
     else
     {
-        return toscaElbRead(address);
+        return toscaPonRead(address);
     }
 }
 
@@ -121,7 +121,7 @@ int pevx_elb_wr(uint crate, int address, int value)
     }
     else
     {
-        return toscaElbWrite(address, value);
+        return toscaPonWrite(address, value);
     }
 }
 

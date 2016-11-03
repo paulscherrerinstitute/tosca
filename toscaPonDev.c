@@ -8,24 +8,24 @@
 #include <iocsh.h>
 #include <epicsExport.h>
 
-#include "toscaElb.h"
+#include "toscaPon.h"
 
 #define TOSCA_EXTERN_DEBUG
-#define TOSCA_DEBUG_NAME toscaElb
+#define TOSCA_DEBUG_NAME toscaPon
 #include "toscaDebug.h"
-epicsExportAddress(int, toscaElbDebug);
+epicsExportAddress(int, toscaPonDebug);
 
 struct regDevice
 {
     int dummy;
 };
 
-void toscaElbDevReport(regDevice *device, int level)
+void toscaPonDevReport(regDevice *device, int level)
 {
-    printf("Tosca ELB ( local bus)\n");
+    printf("Tosca PON\n");
 }
 
-int toscaElbDevRead(
+int toscaPonDevRead(
     regDevice *device,
     size_t offset,
     unsigned int dlen,
@@ -50,12 +50,12 @@ int toscaElbDevRead(
     }
     for (i = 0; i < nelem; i++)
     {
-        ((epicsUInt32*)pdata)[i] = toscaElbRead(offset+(i<<2));
+        ((epicsUInt32*)pdata)[i] = toscaPonRead(offset+(i<<2));
     }
     return 0;
 }
 
-int toscaElbDevWrite(
+int toscaPonDevWrite(
     regDevice *device,
     size_t offset,
     unsigned int dlen,
@@ -80,24 +80,24 @@ int toscaElbDevWrite(
     }
     for (i = 0; i < nelem; i++)
     {
-        toscaElbWrite(offset+(i<<2), ((epicsUInt32*)pdata)[i]);
+        toscaPonWrite(offset+(i<<2), ((epicsUInt32*)pdata)[i]);
     }
     return 0;
 }
 
-struct regDevSupport toscaElbDevRegDev = {
-    .report = toscaElbDevReport,
-    .read = toscaElbDevRead,
-    .write = toscaElbDevWrite,
+struct regDevSupport toscaPonDevRegDev = {
+    .report = toscaPonDevReport,
+    .read = toscaPonDevRead,
+    .write = toscaPonDevWrite,
 };
 
-int toscaElbDevConfigure(const char* name)
+int toscaPonDevConfigure(const char* name)
 {
     regDevice *device = NULL;
     
     if (!name || !name[0])
     {
-        printf("usage: toscaElbDevConfigure name\n");
+        printf("usage: toscaPonDevConfigure name\n");
         return -1;
     }
     device = malloc(sizeof(regDevice));
@@ -107,7 +107,7 @@ int toscaElbDevConfigure(const char* name)
         return -1;
     }
     errno = 0;
-    if (regDevRegisterDevice(name, &toscaElbDevRegDev, device, 0x44) != SUCCESS)
+    if (regDevRegisterDevice(name, &toscaPonDevRegDev, device, 0x44) != SUCCESS)
     {
         if (errno) perror("regDevRegisterDevice failed");
         free(device);
@@ -121,52 +121,52 @@ int toscaElbDevConfigure(const char* name)
     return 0;
 }
 
-static const iocshFuncDef toscaElbReadDef =
-    { "toscaElbRead", 1, (const iocshArg *[]) {
+static const iocshFuncDef toscaPonReadDef =
+    { "toscaPonRead", 1, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
 }};
 
-static void toscaElbReadFunc(const iocshArgBuf *args)
+static void toscaPonReadFunc(const iocshArgBuf *args)
 {
     int address = args[0].ival;
     int value;
     errno = 0;
-    value = toscaElbRead(address);
+    value = toscaPonRead(address);
     if (value == -1 && errno != 0)
-        error("toscaElbRead %s: %m", toscaElbAddrToRegname(address));
+        error("toscaPonRead %s: %m", toscaPonAddrToRegname(address));
     else
         printf("0x%08x\n", value);
 }
 
-static const iocshFuncDef toscaElbWriteDef =
-    { "toscaElbWrite", 2, (const iocshArg *[]) {
+static const iocshFuncDef toscaPonWriteDef =
+    { "toscaPonWrite", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
     &(iocshArg) { "value", iocshArgInt },
 }};
 
-static void toscaElbWriteFunc(const iocshArgBuf *args)
+static void toscaPonWriteFunc(const iocshArgBuf *args)
 {
     int address = args[0].ival;
     int value = args[1].ival;
-    if (toscaElbWrite(address, value) == -1)
-        error("toscaElbWrite %s: %m", toscaElbAddrToRegname(address));
+    if (toscaPonWrite(address, value) == -1)
+        error("toscaPonWrite %s: %m", toscaPonAddrToRegname(address));
 }
 
-static const iocshFuncDef toscaElbDevConfigureDef =
-    { "toscaElbDevConfigure", 1, (const iocshArg *[]) {
+static const iocshFuncDef toscaPonDevConfigureDef =
+    { "toscaPonDevConfigure", 1, (const iocshArg *[]) {
     &(iocshArg) { "name", iocshArgString },
 }};
 
-static void toscaElbDevConfigureFunc(const iocshArgBuf *args)
+static void toscaPonDevConfigureFunc(const iocshArgBuf *args)
 {
-    toscaElbDevConfigure(args[0].sval);
+    toscaPonDevConfigure(args[0].sval);
 }
 
-static void toscaElbRegistrar(void)
+static void toscaPonRegistrar(void)
 {
-    iocshRegister(&toscaElbDevConfigureDef, toscaElbDevConfigureFunc);
-    iocshRegister(&toscaElbReadDef, toscaElbReadFunc);
-    iocshRegister(&toscaElbWriteDef, toscaElbWriteFunc);
+    iocshRegister(&toscaPonDevConfigureDef, toscaPonDevConfigureFunc);
+    iocshRegister(&toscaPonReadDef, toscaPonReadFunc);
+    iocshRegister(&toscaPonWriteDef, toscaPonWriteFunc);
 }
 
-epicsExportRegistrar(toscaElbRegistrar);
+epicsExportRegistrar(toscaPonRegistrar);

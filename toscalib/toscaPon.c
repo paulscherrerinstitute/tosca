@@ -3,12 +3,12 @@
 
 #include <sysfs.h>
 
-#include "toscaElb.h"
+#include "toscaPon.h"
 
-#define TOSCA_DEBUG_NAME toscaElb
+#define TOSCA_DEBUG_NAME toscaPon
 #include "toscaDebug.h"
 
-const char* toscaElbAddrToRegname(int address)
+const char* toscaPonAddrToRegname(int address)
 {
     switch (address)
     {
@@ -27,7 +27,7 @@ const char* toscaElbAddrToRegname(int address)
     }
 };
 
-int toscaElbFd(unsigned int address)
+int toscaPonFd(unsigned int address)
 {
     static int fd[11] = {0};
     int reg;
@@ -41,28 +41,28 @@ int toscaElbFd(unsigned int address)
     }
     if (address == 40) reg = 10;
     else reg = address>>2;
-    debug("address=0x%02x regname=%s", address, toscaElbAddrToRegname(address));
+    debug("address=0x%02x regname=%s", address, toscaPonAddrToRegname(address));
     if (!fd[reg])
     {
         char filename[50];
-        sprintf(filename, "/sys/devices/*localbus/*.pon/%s", toscaElbAddrToRegname(address));
+        sprintf(filename, "/sys/devices/*localbus/*.pon/%s", toscaPonAddrToRegname(address));
         fd[reg] = sysfsOpen(filename);
     }
     return fd[reg];
 }
 
-int toscaElbRead(int address)
+int toscaPonRead(int address)
 {
     debug("address=0x%02x", address);
-    int fd = toscaElbFd(address);
+    int fd = toscaPonFd(address);
     if (fd < 0) return -1;
     return sysfsReadULong(fd);
 }
 
-int toscaElbWrite(int address, int value)
+int toscaPonWrite(int address, int value)
 {
     debug("address=0x%02x value=0x%x", address, value);
-    int fd = toscaElbFd(address);
+    int fd = toscaPonFd(address);
     if (fd < 0) return -1;
     return sysfsWrite(fd, "%x", value);
 }
