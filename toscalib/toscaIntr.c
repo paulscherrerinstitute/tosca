@@ -113,7 +113,6 @@ const char* toscaIntrBitToStr(intrmask_t intrmaskbit)
 
 int toscaIntrMonitorFile(int index, const char* filename)
 {
-    char dummy = 0;
     intrFd[index] = open(filename, O_RDWR);
     debug ("open %s fd=%d", filename, intrFd[index]);
     if (intrFd[index] < 0)
@@ -128,8 +127,6 @@ int toscaIntrMonitorFile(int index, const char* filename)
     }
     FD_SET(intrFd[index], &intrFdSet);
     if (intrFd[index] > intrFdMax) intrFdMax = intrFd[index];
-    if (write(newIntrFd[1], &dummy, 1) != 1)
-        debugErrno("write newIntrFd[1]=%d", newIntrFd[1]);
     return 0;
 }
 
@@ -140,6 +137,7 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
     char filename[30];
     int status = 0;
     static int count = 0;
+    char dummy = 0;
 
     debug("intrmask=0x%016llx vec=0x%x function=%s, parameter=%p intrFdMax=%d count=%d",
         (unsigned long long)intrmask, vec, fname=symbolName(function,0), parameter, intrFdMax, count++), free(fname);
@@ -198,6 +196,8 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
     
     FOREACH_MASKBIT(intrmask, vec, INSTALL_HANDLER);
     UNLOCK;
+    if (write(newIntrFd[1], &dummy, 1) != 1)
+        debugErrno("write newIntrFd[1]=%d", newIntrFd[1]);
     return status;
 }
 
@@ -223,6 +223,46 @@ int toscaIntrDisconnectHandler(intrmask_t intrmask, unsigned int vec, void (*fun
     FOREACH_MASKBIT(intrmask, vec, REMOVE_HANDLER);
     UNLOCK;
     return n;
+}
+
+int toscaIntrDisable(intrmask_t intrmask)
+{
+    char dummy = 0;
+    #define DISABLE_INTR(index, bit)           \
+    {                                          \
+        if (intrFd[index] > 0)                 \
+            FD_CLR(intrFd[index], &intrFdSet); \
+    }
+    if (intrmask & TOSCA_VME_INTR_ANY)
+    {
+        int vec;
+        for(vec = 0; vec < 256; vec++)
+            FOREACH_MASKBIT(intrmask & TOSCA_VME_INTR_ANY, vec, DISABLE_INTR);
+    }
+    FOREACH_MASKBIT(intrmask & ~TOSCA_VME_INTR_ANY, 0, DISABLE_INTR);
+    if (write(newIntrFd[1], &dummy, 1) != 1)
+        debugErrno("write newIntrFd[1]=%d", newIntrFd[1]);
+    return 0;
+}
+
+int toscaIntrEnable(intrmask_t intrmask)
+{
+    char dummy = 0;
+    #define ENABLE_INTR(index, bit)           \
+    {                                          \
+        if (intrFd[index] > 0)                 \
+            FD_SET(intrFd[index], &intrFdSet); \
+    }
+    if (intrmask & TOSCA_VME_INTR_ANY)
+    {
+        int vec;
+        for(vec = 0; vec < 256; vec++)
+            FOREACH_MASKBIT(intrmask & TOSCA_VME_INTR_ANY, vec, ENABLE_INTR);
+    }
+    FOREACH_MASKBIT(intrmask & ~TOSCA_VME_INTR_ANY, 0, ENABLE_INTR);
+    if (write(newIntrFd[1], &dummy, 1) != 1)
+        debugErrno("write newIntrFd[1]=%d", newIntrFd[1]);
+    return 0;
 }
 
 int toscaIntrForeachHandler(intrmask_t intrmask, unsigned int vec, int (*callback)(toscaIntrHandlerInfo_t))

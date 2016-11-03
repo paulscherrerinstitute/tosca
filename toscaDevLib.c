@@ -263,13 +263,15 @@ long toscaDevLibWriteProbe(
 
 long toscaDevLibDisableInterruptLevelVME(unsigned int level)
 {
-    /* We can't disable the interrupts. */
-    return S_dev_intDissFail;
+    if (level < 1 || level > 7) return S_dev_intEnFail;
+    toscaIntrDisable(TOSCA_VME_INTR(level));
+    return S_dev_success;
 }
 
 long toscaDevLibEnableInterruptLevelVME(unsigned int level)
 {
-    /* Interrupts are always enabled. */
+    if (level < 1 || level > 7) return S_dev_intDissFail;
+    toscaIntrEnable(TOSCA_VME_INTR(level));
     return S_dev_success;
 }
 

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/select.h>
 
 #include <pevulib.h>
@@ -331,14 +332,14 @@ int pev_map_modify(struct pev_ioctl_map_pg *map_p)
 
 typedef struct {
     int fd[2];
-    uint32_t mask_vme;
-    uint32_t mask_usr;
     int enabled;
+    intrmask_t mask;
 } my_pev_evt_queue;
 
 struct pev_ioctl_evt *pevx_evt_queue_alloc(uint crate, int sig)
 {
     struct pev_ioctl_evt *evt;
+    if (crate > 0) return NULL;
     evt = calloc(1, sizeof(struct pev_ioctl_evt) + sizeof(my_pev_evt_queue));
     evt->sig = sig;
     evt->evt_queue = evt + 1;
@@ -351,23 +352,11 @@ struct pev_ioctl_evt *pev_evt_queue_alloc(int sig)
     return pevx_evt_queue_alloc(defaultCrate, sig);
 }
 
-int pevx_evt_queue_free(uint crate, struct pev_ioctl_evt *evt)
-{
-    return 0;
-}
-
-int pev_evt_queue_free(struct pev_ioctl_evt *evt)
-{
-    return 0;
-}
-
 static void pev_intr_vme(struct pev_ioctl_evt *evt, int inum, int vec)
 {
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
-    debug("inum=%i vec=%i enabled=%i mask=0x%x masked=%i",
-        inum, vec, q->enabled, q->mask_vme, q->mask_vme & (1 << inum));
+    debug("inum=%i vec=%i enabled=%i", inum, vec, q->enabled);
     if (!q->enabled) return;
-    if (q->mask_vme & (1 << inum)) return;
     uint16_t ev = (EVT_SRC_VME | inum) << 8 | vec;
     debug("ev=0x%04x sig=%i", ev, evt->sig);
     write(q->fd[1], &ev, 2);
@@ -377,10 +366,8 @@ static void pev_intr_vme(struct pev_ioctl_evt *evt, int inum, int vec)
 static void pev_intr_usr(struct pev_ioctl_evt *evt, int inum)
 {
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
-    debug("inum=%i enabled=%i mask=0x%x masked=%i",
-        inum, q->enabled, q->mask_vme, q->mask_vme & (1 << inum));
+    debug("inum=%i enabled=%i", inum, q->enabled);
     if (!q->enabled) return;
-    if (q->mask_usr & (1 << inum)) return;
     uint16_t ev = (EVT_SRC_USR1 | inum) << 8;
     debug("ev=0x%04x sig=%i", ev, evt->sig);
     write(q->fd[1], &ev, 2);
@@ -389,28 +376,54 @@ static void pev_intr_usr(struct pev_ioctl_evt *evt, int inum)
 
 int pevx_evt_register(uint crate, struct pev_ioctl_evt *evt, int src_id)
 {
+    my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
     intrmask_t mask;
     int vec;
     switch (src_id & 0xf0)
     {
         case EVT_SRC_VME:
             mask = TOSCA_VME_INTR(src_id & 0xf);
+            if (q->mask & mask) return -1;
             for (vec = 0; vec < 256; vec++)
                 toscaIntrConnectHandler(mask, vec, pev_intr_vme, evt);
             break;
         case EVT_SRC_USR1:
         case EVT_SRC_USR2:
             mask = TOSCA_USER1_INTR(src_id & 0x1f);
+            if (q->mask & mask) return -1;
             toscaIntrConnectHandler(mask, 0, pev_intr_usr, evt);
             break;
         default: return -1;
     }
+    q->mask |= mask;
     return 0;
 }
 
 int pev_evt_register(struct pev_ioctl_evt *evt, int src_id)
 {
     return pevx_evt_register(defaultCrate, evt, src_id);
+}
+
+int pevx_evt_queue_free(uint crate, struct pev_ioctl_evt *evt)
+{
+    my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
+    int vec;
+    q->enabled = 0;
+    if (q->mask & TOSCA_VME_INTR_ANY)
+    {
+        for (vec = 0; vec < 256; vec++)
+            toscaIntrDisconnectHandler(q->mask & TOSCA_VME_INTR_ANY, vec, pev_intr_vme, evt);
+    }
+    toscaIntrDisconnectHandler(q->mask & (TOSCA_USER1_INTR_ANY | TOSCA_USER2_INTR_ANY), 0, pev_intr_usr, evt);
+    close(q->fd[0]);
+    close(q->fd[1]);
+    free(evt);
+    return 0;
+}
+
+int pev_evt_queue_free(struct pev_ioctl_evt *evt)
+{
+    return pevx_evt_queue_free(defaultCrate, evt);
 }
 
 int pevx_evt_read(uint crate, struct pev_ioctl_evt *evt, int timeout)
@@ -471,17 +484,20 @@ int pev_evt_queue_disable(struct pev_ioctl_evt *evt)
 int pevx_evt_mask(uint crate, struct pev_ioctl_evt *evt, int src_id)
 {
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
+    intrmask_t mask;
     switch (src_id & 0xf0)
     {
         case EVT_SRC_VME:
-            q->mask_vme |= 1U << (src_id & 0xf);
+            mask = TOSCA_VME_INTR(src_id & 0xf);
             break;
         case EVT_SRC_USR1:
         case EVT_SRC_USR2:
-            q->mask_usr |= 1U << (src_id & 0x1f);
+            mask = TOSCA_USER1_INTR(src_id & 0x1f);
             break;
         default: return -1;
     }
+    if (!(q->mask & mask)) return -1;
+    toscaIntrDisable(mask);
     return 0;
 }
 
@@ -493,17 +509,20 @@ int pev_evt_mask(struct pev_ioctl_evt *evt, int src_id)
 int pevx_evt_unmask(uint crate, struct pev_ioctl_evt *evt, int src_id)
 {
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
+    intrmask_t mask;
     switch (src_id & 0xf0)
     {
         case EVT_SRC_VME:
-            q->mask_vme &= ~(1U << (src_id & 0xf));
+            mask = TOSCA_VME_INTR(src_id & 0xf);
             break;
         case EVT_SRC_USR1:
         case EVT_SRC_USR2:
-            q->mask_usr &= ~(1U << (src_id & 0x1f));
+            mask = TOSCA_USER1_INTR(src_id & 0x1f);
             break;
         default: return -1;
     }
+    if (!(q->mask & mask)) return -1;
+    toscaIntrEnable(mask);
     return 0;
 }
 

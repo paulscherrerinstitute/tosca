@@ -93,6 +93,10 @@ int toscaIntrDisconnectHandler(intrmask_t intrmask, unsigned int vec, void (*fun
 /* check parameter only if it is not NULL */
 /* returns number of disconnected handlers */
 
+int toscaIntrDisable(intrmask_t intrmask);
+int toscaIntrEnable(intrmask_t intrmask);
+/* Temporarily suspends interrupt handling but keeps interrupts in queue */
+
 void toscaIntrLoop();
 /* handles the interrupts and calls installed handlers */
 /* Start it in a worker thread. */
