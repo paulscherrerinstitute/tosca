@@ -13,7 +13,6 @@
 #include <regDev.h>
 
 #include "symbolname.h"
-#include "toscaDevLib.h"
 #include "toscaMap.h"
 #include "toscaDma.h"
 #include "toscaIntr.h"
@@ -231,7 +230,8 @@ static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, unsig
                 user, toscaAddrSpaceToStr(device->aspace), ivec);
             return NULL;
         }
-        ivec += (device->aspace & TOSCA_USER2) ? 0x110 : 0x100;
+        if (device->aspace & TOSCA_USER2)
+            ivec += 16;
     }
     else
     {
@@ -240,19 +240,22 @@ static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, unsig
         return NULL;
     }
 
-    if (device->ioscanpvt[ivec&0xff] == NULL)
+    if (device->ioscanpvt[ivec] == NULL)
     {
-        debug("%s: init %s interrupt %d handling", user, toscaAddrSpaceToStr(device->aspace), ivec&0xff);
-        scanIoInit(&device->ioscanpvt[ivec&0xff]);
-        if (toscaDevLibConnectInterrupt(ivec, toscaScanIoRequest, device->ioscanpvt[ivec&0xff]) != 0)
+        debug("%s: init %s interrupt %d handling", user, toscaAddrSpaceToStr(device->aspace), ivec);
+        scanIoInit(&device->ioscanpvt[ivec]);
+        
+        if (toscaIntrConnectHandler(
+            device->aspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? TOSCA_VME_INTR_ANY : TOSCA_USER1_INTR(ivec),
+            ivec, toscaScanIoRequest, device->ioscanpvt[ivec]) != 0)
         {
-            error("%s: toscaDevLibConnectInterrupt(0x%x,...) failed", user, ivec);
+            error("%s: toscaIntrConnectHandler(0x%x,...) failed", user, ivec);
             return NULL;
         }
     }
     else
-        debug("%s: %s interrupt %d handling already active", user, toscaAddrSpaceToStr(device->aspace), ivec&0xff);
-    return device->ioscanpvt[ivec&0xff];
+        debug("%s: %s interrupt %d handling already active", user, toscaAddrSpaceToStr(device->aspace), ivec);
+    return device->ioscanpvt[ivec];
 }
 
 void* toscaRegDevDmaAlloc(regDevice *device, void* ptr, size_t size)

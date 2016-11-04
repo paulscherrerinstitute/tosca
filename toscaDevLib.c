@@ -7,8 +7,12 @@
 #include <epicsMutex.h>
 #include <epicsTypes.h>
 #include <epicsExit.h>
-#include "toscaDevLib.h"
+#include <epicsThread.h>
+
+#include "toscaMap.h"
+#include "toscaIntr.h"
 #include "toscaDma.h"
+
 #include <epicsExport.h>
 
 #ifndef S_dev_badCRCSR
