@@ -530,3 +530,33 @@ int pev_evt_unmask(struct pev_ioctl_evt *evt, int src_id)
 {
     return pevx_evt_unmask(defaultCrate, evt, src_id);
 }
+
+void *pevx_buf_alloc(uint crate, struct pev_ioctl_buf *buf)
+{
+    buf->u_addr = valloc(buf->size);
+    if (buf->u_addr)
+    {
+        int i;
+        buf->k_addr = buf->u_addr;
+        buf->b_addr = buf->u_addr;
+        for (i = 0; i < buf->size-3; i += 4)
+            ((uint32_t *) buf->u_addr)[i] = 0xdeadface;
+    }
+    return buf->u_addr;
+}
+
+void *pev_buf_alloc(struct pev_ioctl_buf *buf)
+{
+    return pevx_buf_alloc(defaultCrate, buf);
+}
+
+int pevx_buf_free(uint crate, struct pev_ioctl_buf *buf)
+{
+    free(buf->u_addr);
+    return 0;
+}
+
+int pev_buf_free(struct pev_ioctl_buf *buf)
+{
+    return pevx_buf_free(defaultCrate, buf);
+}
