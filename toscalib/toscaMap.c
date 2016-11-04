@@ -108,10 +108,6 @@ int toscaOpen(unsigned int card, const char* resource)
         resource);
     fd = open(filename, O_RDWR);
     if (fd < 0)
-        fd = open(filename, O_RDONLY);
-    if (fd < 0)
-        fd = open(filename, O_WRONLY);
-    if (fd < 0)
         debugErrno("open %s", filename);
     return fd;
 }
