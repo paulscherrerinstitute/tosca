@@ -8,7 +8,7 @@
 #include <iocsh.h>
 #include <epicsExport.h>
 
-#include "toscaPon.h"
+#include "toscaReg.h"
 
 #define TOSCA_EXTERN_DEBUG
 #define TOSCA_DEBUG_NAME toscaPon

@@ -9,8 +9,8 @@
 #include <pevxulib.h>
 
 #include "toscaMap.h"
+#include "toscaReg.h"
 #include "toscaIntr.h"
-#include "toscaPon.h"
 #include "i2c.h"
 
 #define TOSCA_DEBUG_NAME pev

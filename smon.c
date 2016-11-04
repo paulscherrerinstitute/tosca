@@ -4,7 +4,7 @@
 #include <epicsTypes.h>
 #include <iocsh.h>
 #include <regDev.h>
-#include "toscaMap.h"
+#include "toscaReg.h"
 #include <epicsExport.h>
 
 #define TOSCA_DEBUG_NAME smon

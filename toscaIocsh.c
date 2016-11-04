@@ -10,6 +10,7 @@
 
 #include "toscaAddrStr.h"
 #include "toscaMap.h"
+#include "toscaReg.h"
 #include "toscaIntr.h"
 #include "toscaDma.h"
 #include "i2cDev.h"
