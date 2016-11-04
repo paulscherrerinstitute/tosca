@@ -616,9 +616,9 @@ int toscaIoClear(unsigned int address, uint32_t value)
 pthread_mutex_t smon_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define CSR_SMON 0x40
 
-uint16_t toscaSmonRead(unsigned int address)
+unsigned int toscaSmonRead(unsigned int address)
 {
-    uint16_t value;
+    unsigned int value;
     volatile uint32_t* smon = toscaMap((address & 0xffff0000)|TOSCA_CSR, CSR_SMON, 12, 0);
     if (!smon) return -1;
     address &= 0xffff;
@@ -632,7 +632,7 @@ uint16_t toscaSmonRead(unsigned int address)
     return value;
 }
 
-int toscaSmonWrite(unsigned int address, uint16_t value)
+int toscaSmonWrite(unsigned int address, unsigned int value)
 {
     volatile uint32_t* smon = toscaMap((address & 0xffff0000)|TOSCA_CSR, CSR_SMON, 12, 0);
     if (!smon) return -1;

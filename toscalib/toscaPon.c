@@ -8,7 +8,7 @@
 #define TOSCA_DEBUG_NAME toscaPon
 #include "toscaDebug.h"
 
-const char* toscaPonAddrToRegname(int address)
+const char* toscaPonAddrToRegname(unsigned int address)
 {
     switch (address)
     {
@@ -51,7 +51,7 @@ int toscaPonFd(unsigned int address)
     return fd[reg];
 }
 
-int toscaPonRead(int address)
+unsigned int toscaPonRead(unsigned int address)
 {
     debug("address=0x%02x", address);
     int fd = toscaPonFd(address);
@@ -59,7 +59,7 @@ int toscaPonRead(int address)
     return sysfsReadULong(fd);
 }
 
-int toscaPonWrite(int address, int value)
+int toscaPonWrite(unsigned int address, unsigned int value)
 {
     debug("address=0x%02x value=0x%x", address, value);
     int fd = toscaPonFd(address);

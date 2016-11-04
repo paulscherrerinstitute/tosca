@@ -114,21 +114,21 @@ toscaMapVmeErr_t toscaGetVmeErr(unsigned int tosca);
    Be aware that 0xffffffff can be a valid result of toscaCsrRead. First clear and then check errno.
    If using more than one Tosca, use address|(tosca<<16).
 */
-uint32_t toscaCsrRead(unsigned int address);
-int toscaCsrWrite(unsigned int address, uint32_t value);  /* Write new value. */
-int toscaCsrSet(unsigned int address, uint32_t value);    /* Set bits in value, leave others unchanged. */
-int toscaCsrClear(unsigned int address, uint32_t value);  /* Clear bits in value, leave others unchanged. */
+unsigned int toscaCsrRead(unsigned int address);
+int toscaCsrWrite(unsigned int address, unsigned int value);  /* Write new value. */
+int toscaCsrSet(unsigned int address, unsigned int value);    /* Set bits in value, leave others unchanged. */
+int toscaCsrClear(unsigned int address, unsigned int value);  /* Clear bits in value, leave others unchanged. */
 
 /* The same for TOSCA IO Registers */
-uint32_t toscaIoRead(unsigned int address);
-int toscaIoWrite(unsigned int address, uint32_t value);   /* Write new value. */
-int toscaIoSet(unsigned int address, uint32_t value);     /* Set bits in value, leave others unchanged. */
-int toscaIoClear(unsigned int address, uint32_t value);   /* Clear bits in value, leave others unchanged. */
+unsigned int toscaIoRead(unsigned int address);
+int toscaIoWrite(unsigned int address, unsigned int value);   /* Write new value. */
+int toscaIoSet(unsigned int address, unsigned int value);     /* Set bits in value, leave others unchanged. */
+int toscaIoClear(unsigned int address, unsigned int value);   /* Clear bits in value, leave others unchanged. */
 
 /* Access to Virtex-6 System Monitor via toscaCsr */
-uint16_t toscaSmonRead(unsigned int address);
-int toscaSmonWrite(unsigned int address, uint16_t value);
-uint32_t toscaSmonStatus();
+unsigned int toscaSmonRead(unsigned int address);
+int toscaSmonWrite(unsigned int address, unsigned int value);
+unsigned int toscaSmonStatus();
 
 /* If you prefer to access Tosca CSR or IO directly using
    toscaMap instead of using functions above,

@@ -6,9 +6,9 @@ extern "C" {
 #endif
 extern int toscaPonDebug;
 
-const char* toscaPonAddrToRegname(int address);
-int toscaPonRead(int address);
-int toscaPonWrite(int address, int value);
+const char* toscaPonAddrToRegname(unsigned int address);
+unsigned int toscaPonRead(unsigned int address);
+int toscaPonWrite(unsigned int address, unsigned int value);
 
 #ifdef __cplusplus
 }
