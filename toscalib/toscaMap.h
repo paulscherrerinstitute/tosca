@@ -43,24 +43,17 @@ typedef uint64_t vmeaddr_t;
 volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vmeaddr_t res_address);
 
 /* For aspace use
-   * for VME address spaces A16, A24, A32: VME_A16, VME_A24, VME_A32 ( | VME_SUPER, VME_PROG)
+   * for VME address spaces A16, A24, A32, A64: VME_A16, VME_A24, VME_A32, VME_A64 ( | VME_SUPER, VME_PROG)
    * for VME CR/CSR addres space: VME_CRCSR
-   * for Tosca FPGA USR: TOSCA_USER
+   * for Tosca FPGA USER1, USER2: TOSCA_USER1 (or TOSCA_USER), TOSCA_USER2
    * for Tosca shared memory: TOSCA_SMEM
    * for Tosca configuration space registers: TOSCA_CSR
    * for Tosca IO space registers: TOSCA_IO
    * for Tosca PON SRAM on ELB: TOSCA_SRAM
-   * for VME A32 slave windows: VME_SLAVE|{TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM} and pass res_address
-   * if using more than one Tosca use aspace|(tosca<<16).
+   * for VME A32 slave windows: VME_SLAVE|{TOSCA_USER1, TOSCA_USER2, TOSCA_SMEM} ( | VME_SWAP) and pass res_address
+   * if using more than one Tosca, use aspace|(tosca<<16).
    At the moment Tosca does not support A64.
 */
-
-/* Convert string to aspace, address */
-typedef struct {
-    unsigned int aspace;
-    vmeaddr_t address;
-} toscaMapAddr_t;
-toscaMapAddr_t toscaStrToAddr(const char* str);
 
 /* Convert aspace code to string. */
 const char* toscaAddrSpaceToStr(unsigned int aspace);
@@ -73,17 +66,22 @@ typedef struct {
     volatile void* baseptr;
 } toscaMapInfo_t;
 
-/* Get map info from a user space pointer. */
-toscaMapInfo_t toscaMapFind(const volatile void* ptr);
+typedef struct {
+    unsigned int aspace;
+    vmeaddr_t address;
+} toscaMapAddr_t;
 
 /* Iterate over all maps (while func returns 0). */
 /* Returns info of map for which func returned not 0 */
 toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void *usr), void *usr);
 
+/* Get map info from a user space pointer. */
+toscaMapInfo_t toscaMapFind(const volatile void* ptr);
+
 /* Find a VME address from a user space pointer. */
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);
 
-/* show all maps to out or stdout */
+/* Show all maps to out or stdout */
 int toscaMapPrintInfo(toscaMapInfo_t info, FILE* file);
 void toscaMapShow(FILE* out);
 
@@ -114,7 +112,7 @@ toscaMapVmeErr_t toscaGetVmeErr(unsigned int tosca);
    On error these functions set errno and return -1 or 0xffffffff, respectively.
    An invalid address sets errno to EINVAL. Other errors may come from open() and mmap() on first use.
    Be aware that 0xffffffff can be a valid result of toscaCsrRead. First clear and then check errno.
-   If using more than one Tosca use address|(tosca<<16).
+   If using more than one Tosca, use address|(tosca<<16).
 */
 uint32_t toscaCsrRead(unsigned int address);
 int toscaCsrWrite(unsigned int address, uint32_t value);  /* Write new value. */

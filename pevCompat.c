@@ -4,6 +4,7 @@
 #include "i2cDev.h"
 
 #include "toscaMap.h"
+#include "toscaAddrStr.h"
 
 #include <iocsh.h>
 #include <epicsExport.h>

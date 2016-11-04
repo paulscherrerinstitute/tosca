@@ -95,6 +95,8 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
                     result.aspace |= VME_A24; break;
                 case 32:
                     result.aspace |= VME_A32; break;
+                case 64:
+                    result.aspace |= VME_A64; break;
                 default:
                     return (toscaMapAddr_t){0};
             }
