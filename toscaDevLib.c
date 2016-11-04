@@ -1,8 +1,3 @@
-#define _GNU_SOURCE /* for vasprintf */
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-
 #include <devLibVME.h>
 #include <epicsMutex.h>
 #include <epicsTypes.h>

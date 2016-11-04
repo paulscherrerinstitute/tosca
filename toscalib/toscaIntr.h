@@ -2,7 +2,6 @@
 #define toscaIntr_h
 
 #include <stdint.h>
-#include <signal.h>
 
 #ifdef __cplusplus
 extern "C" {

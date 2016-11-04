@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <sys/select.h>
 
 #include <pevulib.h>

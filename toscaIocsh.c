@@ -4,16 +4,17 @@
 
 #include <epicsTypes.h>
 #include <iocsh.h>
-#include <epicsExport.h>
 
 #include "memDisplay.h"
+#include "i2cDev.h"
 
 #include "toscaAddrStr.h"
 #include "toscaMap.h"
 #include "toscaReg.h"
 #include "toscaIntr.h"
 #include "toscaDma.h"
-#include "i2cDev.h"
+
+#include <epicsExport.h>
 
 #define TOSCA_DEBUG_NAME toscaIocsh
 #include "toscaDebug.h"

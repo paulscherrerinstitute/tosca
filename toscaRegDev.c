@@ -1,12 +1,10 @@
-#define __STDC_VERSION__ 199901L
-
 #include <stdlib.h>
 #include <string.h>
-#include <endian.h>
 #include <ctype.h>
 
-#include <epicsTypes.h>
 #include <epicsExit.h>
+#include <epicsMutex.h>
+#include <ellLib.h>
 #include <dbAccess.h>
 #include <iocsh.h>
 
