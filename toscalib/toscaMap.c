@@ -166,7 +166,8 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         errno = ENODEV;
         return NULL;
     }
-    /* quick access to TCSR, CIO and SRAM */
+
+    /* Quick access to TCSR, CIO and SRAM */
     if (((aspace & TOSCA_CSR) && (map = toscaDevices[card].csr) != NULL) ||
         ((aspace & TOSCA_IO) && (map = toscaDevices[card].io) != NULL) ||
         ((aspace & TOSCA_SRAM) && (map = toscaDevices[card].sram) != NULL))
@@ -180,8 +181,11 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         }
         return map->info.baseptr + address;
     }
-    pthread_mutex_lock(&toscaDevices[card].maplist_mutex);
-    for (pmap = &toscaDevices[card].maps; (map = *pmap) != NULL; pmap = &map->next)
+
+    /* Lookup can be lock free because we only ever append to list. */
+    pmap = &toscaDevices[card].maps;
+check_existing_maps:
+    for (; (map = *pmap) != NULL; pmap = &(*pmap)->next)
     {
         debug("%u:%s:0x%llx[0x%zx] check aspace=0x%x(%s), address=0x%llx, size=0x%zx",
             card, toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
@@ -193,10 +197,9 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
             address >= map->info.baseaddress &&
             address + size <= map->info.baseaddress + map->info.size)
         {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             if ((aspace & 0xfff) > VME_SLAVE)
             {
-                /* existing VME slave to Tosca resource: check resource address */
+                /* Existing VME slave to Tosca resource: Check resource address. */
                 if (res_address != (vmeaddr_t)(size_t) map->info.baseptr + (address - map->info.baseaddress))
                 {
                     errno = EADDRINUSE;
@@ -210,20 +213,26 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
             return map->info.baseptr + (address - map->info.baseaddress);
         }
     }
+
+    /* No matching map found. Serialize creating new maps. */
+    pthread_mutex_lock(&toscaDevices[card].maplist_mutex);
+    if (*pmap)
+    {
+        /* New maps were added while we were sleeping, maybe the one we need? */
+        pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
+        goto check_existing_maps;
+    }
+
     if (aspace & (TOSCA_CSR | TOSCA_IO))
     {
         struct stat filestat;
         
         debug("creating new %s mapping", aspace & TOSCA_CSR ? "TCSR" : "TIO");
         fd = toscaOpen(card, aspace & TOSCA_CSR ? "resource3" : "resource4");
-        if (fd < 0)
-        {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
-            return NULL;
-        }
+        if (fd < 0) goto fail;
         fstat(fd, &filestat);
-        mapsize = filestat.st_size;  /* Map whole address space */
-        offset = address;            /* Location within fd that maps to requested address */
+        mapsize = filestat.st_size;  /* Map whole address space. */
+        offset = address;            /* Location within fd that maps to requested address. */
         address = 0;                 /* This is the start address of the fd. */
         if (toscaMapDebug)
         {
@@ -245,26 +254,24 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         debug("creating new SRAM mapping");        
         if (card != 0)
         {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             debug("access to SRAM only on local card");
             errno = EINVAL;
-            return NULL;
+            goto fail;
         }
 
         sprintf(filename, "/sys/bus/platform/devices/*.sram/uio/uio*/maps/map0/size");
         debug("glob(%s)", filename);
         if (glob(filename, GLOB_ONLYDIR, NULL, &globresults) != 0)
         {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             debug("cannot find SRAM device");
             errno = ENODEV;
-            return NULL;
+            goto fail;
         }
         fd = open(globresults.gl_pathv[0], O_RDONLY);
         n = read(fd, buffer, sizeof(buffer)-1);
         close(fd);
         if (n >= 0) buffer[n] = 0;
-        mapsize = strtoul(buffer, NULL, 0); /* Map whole sram */
+        mapsize = strtoul(buffer, NULL, 0); /* Map whole SRAM. */
         offset = address;
         address = 0;
         uiodev = strstr(globresults.gl_pathv[0], "/uio/") + 5;
@@ -275,47 +282,39 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         globfree(&globresults);
         if (fd < 0)
         {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             debugErrno("open %s", filename);
-            return NULL;
+            goto fail;
         }
     }
     else /* USER, SMEM, VME, VME_SLAVE */
     {
-        /* Tosca requires mapping windows aligned to 1 MiB
+        /* Tosca requires mapping windows aligned to 1 MiB.
            Thus round down address to the full MiB and adjust size.
            Do not round up size to the the next full MiB! This makes A16 fail.
         */
         struct vme_slave vme_window = {0};
         
-        if (size == -1)
-        {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
-            return NULL;
-        }
-        
+        if (size == -1) goto fail;
         if ((address + size) & 0xffffffff00000000ull)
         {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             error("address out of 32 bit range");
             errno = EFAULT;
-            return NULL;
+            goto fail;
         }
         if (((aspace & VME_A16) && address + size > 0x10000) ||
             ((aspace & (VME_A24|VME_CRCSR)) && address + size > 0x1000000))
         {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             error("address 0x%llx + size 0x%zx exceeds %s address space",
                 (unsigned long long) address, size,
                 toscaAddrSpaceToStr(aspace));
             errno = EFAULT;
-            return NULL;
+            goto fail;
         }
         debug("creating new %s mapping", toscaAddrSpaceToStr(aspace));        
         if (size == 0) size = 1;
         vme_window.enable   = 1;
-        vme_window.vme_addr = address & ~0xffffful; /* round down to 1 MB alignment */
-        vme_window.size     = size + (address & 0xffffful); /* and adjust size */
+        vme_window.vme_addr = address & ~0xffffful; /* Round down to 1 MB alignment */
+        vme_window.size     = size + (address & 0xffffful); /* and adjust size. */
         vme_window.aspace   = aspace & 0x0fff;
         vme_window.cycle    = aspace & (0xf000 & ~VME_SWAP);
 
@@ -323,12 +322,12 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         {
             sprintf(filename, "/dev/bus/vme/s%u", card);
             setcmd = VME_SET_SLAVE;
-            getcmd = 0; /* reading back slave windows is buggy */
+            getcmd = 0; /* Reading back slave windows is buggy. */
             vme_window.resource_offset = res_address - (address & 0xffffful);
             vme_window.aspace = aspace & (0x0fff & ~VME_SLAVE);
             if (!vme_window.aspace) vme_window.aspace = VME_A32;
             if (aspace & VME_SWAP) vme_window.cycle |= VME_LE_TO_BE;
-            vme_window.size += 0xffffful; /* expand slave maps to MB boundary */
+            vme_window.size += 0xffffful; /* Expand slave maps to MB boundary. */
             vme_window.size &= ~0xffffful;
         }
         else
@@ -342,9 +341,8 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         fd = open(filename, O_RDWR);
         if (fd < 0)
         {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             debugErrno("open %s", filename);
-            return NULL;
+            goto fail;
         }
 
         debug("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, resource_offset=0x%x})",
@@ -357,7 +355,6 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
             vme_window.resource_offset);
         if (ioctl(fd, setcmd, &vme_window) != 0)
         {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             debugErrno("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, resource_offset=0x%x})",
                 fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
                 vme_window.enable,
@@ -367,22 +364,21 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
                 vme_window.cycle,
                 vme_window.resource_offset);
             close(fd);
-            return NULL;
+            goto fail;
         }
 
         if (getcmd)
         {
             /* If the request fits into an existing window,
-               we may get that one instead of the requested one.
-               That window may have a different start adddress.
+               we may get that one instead of the requested one
+               which may have a different base adddress.
             */
             if (ioctl(fd, getcmd, &vme_window) != 0)
             {
-                pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
                 debugErrno("ioctl(%d, VME_GET_%s)",
                     fd, getcmd == VME_GET_MASTER ? "MASTER" : "SLAVE");
                 close(fd);
-                return NULL;
+                goto fail;
             }
             debug("got window address=0x%llx size=0x%llx",
                 (unsigned long long) vme_window.vme_addr,
@@ -390,7 +386,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         }
         res_address = vme_window.resource_offset;
         
-        /* Find the MMU pages in the window we need to map */
+        /* Find the MMU pages in the window we need to map. */
         offset = address - vme_window.vme_addr;   /* Location within window that maps to requested address */
         address = vme_window.vme_addr;            /* Start address of the fd. */
         if (aspace & VME_A16)
@@ -401,7 +397,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
 
     if ((aspace & 0xfff) > VME_SLAVE)
     {
-        /* VME_SLAVE windows to Tosca resources do not use mmap */
+        /* VME_SLAVE windows to Tosca resources do not use mmap. */
         baseptr = (void*)(size_t) res_address;
     }
     else
@@ -411,31 +407,31 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
             (void*)(size_t) res_address, mapsize, res_address ? "MAP_PRIVATE | MAP_FIXED" : "MAP_SHARED", filename, baseptr);
         if (baseptr == MAP_FAILED || baseptr == NULL)
         {
-            pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
             debugErrno("mmap");
             close(fd);
-            return NULL;
+            goto fail;
         }
     }
 
+    /* Fill in map info and append to list. */
     map = malloc(sizeof(struct map));
     if (!map)
     {
-        pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
         debugErrno("malloc");
-        return NULL;
+        goto fail;
     }
     map->info.aspace = aspace;
     map->info.baseaddress = address;
     map->info.size = mapsize;
     map->info.baseptr = baseptr;
     map->next = NULL;
-    *pmap = map;
+    *pmap = map; /* Pointer assignment is atomic. */
+
+    pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
     
     if (aspace & TOSCA_CSR) toscaDevices[card].csr = map;
     else if (aspace & TOSCA_IO) toscaDevices[card].io = map;
     else if (aspace & TOSCA_SRAM) toscaDevices[card].sram = map;
-    pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
     
     if (offset + size > mapsize)
     {
@@ -446,6 +442,10 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         return NULL;
     }
     return baseptr + offset;
+
+fail:
+    pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
+    return NULL;
 }
 
 toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void* usr), void* usr)
@@ -455,12 +455,10 @@ toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void* usr), void*
 
     for (card = 0; card < toscaNumDevices; card++)
     {
-        pthread_mutex_lock(&toscaDevices[card].maplist_mutex);
         for (map = toscaDevices[card].maps; map; map = map->next)
         {
             if (func(map->info, usr) != 0) break; /* loop until user func returns non 0 */
         }
-        pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
         if (map) return map->info;           /* info of map where user func returned non 0 */
     }
     return (toscaMapInfo_t) {0};
