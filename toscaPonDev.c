@@ -10,7 +10,6 @@
 
 #include "toscaReg.h"
 
-#define TOSCA_EXTERN_DEBUG
 #define TOSCA_DEBUG_NAME toscaPon
 #include "toscaDebug.h"
 epicsExportAddress(int, toscaPonDebug);
