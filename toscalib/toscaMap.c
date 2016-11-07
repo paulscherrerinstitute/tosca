@@ -144,35 +144,6 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
     }
 }
 
-char* toscaSizeToStr(vmeaddr_t size, char* str)
-{
-    unsigned long long val = size;
-    int l = 0;
-    l = sprintf(str, "0x%llx", val);
-    l += sprintf(str+l, "=");
-    if (val >= 1ULL<<60)
-        l += sprintf(str+l, "%lluE", val>>50);
-    val &= (1ULL<<60)-1;
-    if (val >= 1ULL<<50)
-        l += sprintf(str+l, "%lluP", val>>40);
-    val &= (1ULL<<50)-1;
-    if (val >= 1ULL<<40)
-        l += sprintf(str+l, "%lluT", val>>30);
-    val &= (1ULL<<40)-1;
-    if (val >= 1UL<<30)
-        l += sprintf(str+l, "%lluG", val>>30);
-    val &= (1UL<<30)-1;
-    if (val >= 1UL<<20)
-        l += sprintf(str+l, "%lluM", val>>20);
-    val &= (1UL<<20)-1;
-    if (val >= 1UL<<10)
-        l += sprintf(str+l, "%lluK", val>>10);
-    val &= (1UL<<10)-1;
-    if (val > 0)
-        l += sprintf(str+l, "%llu", val);
-    return str;
-}
-
 volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vmeaddr_t res_address)
 {
     struct map **pmap, *map;

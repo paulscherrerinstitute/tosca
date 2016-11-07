@@ -94,13 +94,13 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
 int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
 {
     unsigned int card = info.aspace >> 16;
-    char buf[SIZE_STRING_BUFFER_SIZE];
+    char buf[60];
     if (card) printf("%u:", card);
     if ((info.aspace & 0xfff) > VME_SLAVE)
     printf("%5s:0x%-8llx [%s]\t%s:0x%llx%s\n",
         toscaAddrSpaceToStr(VME_SLAVE),
         (unsigned long long)info.baseaddress,
-        toscaSizeToStr(info.size, buf),
+        sizeToStr(info.size, buf),
         toscaAddrSpaceToStr(info.aspace & ~(VME_SLAVE|VME_SWAP)),
         (unsigned long long)(size_t) info.baseptr,
         info.aspace & VME_SWAP ? " SWAP" : "");
@@ -108,7 +108,7 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
     printf("%5s:0x%-8llx [%s]\t%p\n",
         toscaAddrSpaceToStr(info.aspace),
         (unsigned long long)info.baseaddress,
-        toscaSizeToStr(info.size, buf),
+        sizeToStr(info.size, buf),
         info.baseptr);
     return 0;
 }
