@@ -44,18 +44,18 @@ unsigned int toscaPonWrite(unsigned int address, unsigned int value);
 
 /* Read (and clear) VME error status. Error is latched and not overwritten until read. */
 typedef struct {
-    unsigned int address:32;  /* Lower 2 bits are swap control (whatever that is). */
+    unsigned int address:32;  /* Lowest two bits are always 0. */
     union {
      unsigned int status:32;
      struct {
       unsigned int err:1;     /* Error has happened since last readout. */
-      unsigned int over:1;    /* [not implemented] */
+      unsigned int over:1;    /* [overflow, not implemented] */
       unsigned int write:1;   /* Error was on write access. */
       unsigned int timeout:1; /* Error was a bus timeout */
       unsigned int source:2;  /* 0=PCIe 2=IDMA 3=USER */
       unsigned int id:17;     /* [What is this?] */
-      unsigned int length:5;  /* [In words? For block transfer modes?] */
-      unsigned int mode:4;    /* 0=CRCSR 1=A16 2=A24 3=A32 4=BLT 5=MBLT 6=2eVME 7=2eSST 15=IACK */
+      unsigned int length:5;  /* [In words, for block transfer modes ?] */
+      unsigned int mode:4;    /* 0=CRCSR 1=A16 2=A24 3=A32 4=BLT 5=MBLT 6=2eVME 8=2eSST160 9=2eSST267 10=2eSST320 15=IACK */
      };
    };
 } toscaMapVmeErr_t;
