@@ -129,7 +129,7 @@ toscaMapVmeErr_t toscaGetVmeErr(unsigned int card)
 {
     volatile uint32_t* vmeerr = toscaMap((card<<16)|TOSCA_CSR, CSR_VMEERR, 8, 0);
     if (!vmeerr) return (toscaMapVmeErr_t) { .address = -1 };
-    return (toscaMapVmeErr_t) { .address = vmeerr[0], {.status = vmeerr[1]} };
+    return (toscaMapVmeErr_t) { .address = le32toh(vmeerr[0]), {.status = le32toh(vmeerr[1])} };
 }
 
 const char* toscaPonAddrToRegname(unsigned int address)
