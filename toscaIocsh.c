@@ -3,6 +3,7 @@
 #include <errno.h>
 
 #include <epicsTypes.h>
+#include <epicsStdio.h>
 #include <iocsh.h>
 
 #include "memDisplay.h"
@@ -90,13 +91,35 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
             (unsigned long long)vme_addr.address);
 }
 
+int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
+{
+    unsigned int card = info.aspace >> 16;
+    char buf[SIZE_STRING_BUFFER_SIZE];
+    if (card) printf("%u:", card);
+    if ((info.aspace & 0xfff) > VME_SLAVE)
+    printf("%5s:0x%-8llx [%s]\t%s:0x%llx%s\n",
+        toscaAddrSpaceToStr(VME_SLAVE),
+        (unsigned long long)info.baseaddress,
+        toscaSizeToStr(info.size, buf),
+        toscaAddrSpaceToStr(info.aspace & ~(VME_SLAVE|VME_SWAP)),
+        (unsigned long long)(size_t) info.baseptr,
+        info.aspace & VME_SWAP ? " SWAP" : "");
+    else
+    printf("%5s:0x%-8llx [%s]\t%p\n",
+        toscaAddrSpaceToStr(info.aspace),
+        (unsigned long long)info.baseaddress,
+        toscaSizeToStr(info.size, buf),
+        info.baseptr);
+    return 0;
+}
+
 static const iocshFuncDef toscaMapShowDef =
     { "toscaMapShow", 0, (const iocshArg *[]) {
 }};
 
 static void toscaMapShowFunc(const iocshArgBuf *args)
 {
-    toscaMapShow(NULL);
+    toscaMapForeach(toscaMapPrintInfo, NULL);
 }
 
 static const iocshFuncDef toscaMapFindDef =

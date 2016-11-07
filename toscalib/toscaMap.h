@@ -81,10 +81,6 @@ toscaMapInfo_t toscaMapFind(const volatile void* ptr);
 /* Find a VME address from a user space pointer. */
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);
 
-/* Show all maps to out or stdout */
-int toscaMapPrintInfo(toscaMapInfo_t info, FILE* file);
-void toscaMapShow(FILE* out);
-
 /* Some utilities */
 char* toscaSizeToStr(vmeaddr_t size, char* str);
 #define SIZE_STRING_BUFFER_SIZE 60

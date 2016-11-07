@@ -510,31 +510,3 @@ toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr)
     toscaMapInfo_t info = toscaMapFind(ptr);
     return (toscaMapAddr_t) { info.aspace, info.baseaddress + (ptr - info.baseptr) };
 }
-
-int toscaMapPrintInfo(toscaMapInfo_t info, FILE* file)
-{
-    if (!file) file = stdout;
-    unsigned int card = info.aspace >> 16;
-    char buf[SIZE_STRING_BUFFER_SIZE];
-    if (card) fprintf(file, "%u:", card);
-    if ((info.aspace & 0xfff) > VME_SLAVE)
-    fprintf(file, "%5s:0x%-8llx [%s]\t%s:0x%llx%s\n",
-        toscaAddrSpaceToStr(VME_SLAVE),
-        (unsigned long long)info.baseaddress,
-        toscaSizeToStr(info.size, buf),
-        toscaAddrSpaceToStr(info.aspace & ~(VME_SLAVE|VME_SWAP)),
-        (unsigned long long)(size_t) info.baseptr,
-        info.aspace & VME_SWAP ? " SWAP" : "");
-    else
-    fprintf(file, "%5s:0x%-8llx [%s]\t%p\n",
-        toscaAddrSpaceToStr(info.aspace),
-        (unsigned long long)info.baseaddress,
-        toscaSizeToStr(info.size, buf),
-        info.baseptr);
-    return 0;
-}
-
-void toscaMapShow(FILE* file)
-{
-    toscaMapForeach((int(*)(toscaMapInfo_t, void*)) toscaMapPrintInfo, file);
-}
