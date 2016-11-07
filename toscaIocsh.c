@@ -161,7 +161,7 @@ static void toscaGetVmeErrFunc(const iocshArgBuf *args)
         (const char*[]){"PCIe","???","IDMA","USER"}[err.source],
         err.id,
         err.length,
-        (const char*[]){"CRCSR","A16","A24","A32","BLT","MBLT","2eVME","2eSST","?8?","?9?","?A?","?B?","?C?","?D?","?E?","IACK"}[err.mode],
+        (const char*[]){"CRCSR","A16","A24","A32","BLT","MBLT","2eVME","?7?","2eSST160","2eSST267","2eSST320","?B?","?C?","?D?","?E?","IACK"}[err.mode],
         err.address & (err.mode == 1 ? 0xfffc : err.mode == 2 || err.mode == 0 ? 0xfffffc : 0xfffffffc)
         );
 }
