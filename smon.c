@@ -11,7 +11,7 @@
 #include "toscaDebug.h"
 epicsExportAddress(int, smonDebug);
 
-static const char* smonAddrToStr(int addr)
+static const char* smonAddrToStr(unsigned int addr)
 {
     switch (addr)
     {
@@ -74,11 +74,8 @@ static const char* smonAddrToStr(int addr)
     }
 }
 
-static void smonShow(int addr)
+static void smonShow(unsigned int addr, unsigned int val)
 {
-    epicsUInt32 val;
-    errno = 0;
-    val = toscaSmonRead(addr);
     if (val == 0xffffffff && errno != 0)
     {
         perror(NULL);
@@ -143,9 +140,9 @@ static const iocshFuncDef toscaSmonReadDef =
 
 static void toscaSmonReadFunc(const iocshArgBuf *args)
 {
+    unsigned int addr;
     if (!args[0].sval)
     {
-        int addr;
         for (addr = 0; addr < 0x43; addr++)
         {
             if (addr == 0x06) addr = 0x08;
@@ -153,11 +150,14 @@ static void toscaSmonReadFunc(const iocshArgBuf *args)
             if (addr == 0x23) addr = 0x24;
             if (addr == 0x27) addr = 0x3f;
             printf("0x%02x ", addr);
-            smonShow(addr);
+            errno = 0;
+            smonShow(addr, toscaSmonRead(addr));
         }
         return;
     }
-    smonShow(strtol(args[0].sval, NULL, 0));
+    addr = strtol(args[0].sval, NULL, 0);
+    errno = 0;
+    smonShow(addr, toscaSmonRead(addr));
 }
 
 static const iocshFuncDef toscaSmonWriteDef =
@@ -168,9 +168,10 @@ static const iocshFuncDef toscaSmonWriteDef =
 
 static void toscaSmonWriteFunc(const iocshArgBuf *args)
 {
-    int addr= args[0].ival;
-    epicsUInt32 val= args[1].ival;
-    if (toscaSmonWrite(addr, val) == -1) perror(NULL);
+    unsigned int addr = args[0].ival;
+    unsigned int val = args[1].ival;
+    errno = 0;
+    smonShow(addr, toscaSmonWrite(addr, val));
 }
 
 static const iocshFuncDef toscaSmonStatusDef =

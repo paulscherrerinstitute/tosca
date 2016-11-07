@@ -128,14 +128,11 @@ static const iocshFuncDef toscaPonReadDef =
 
 static void toscaPonReadFunc(const iocshArgBuf *args)
 {
-    int address = args[0].ival;
-    int value;
+    epicsUInt32 val;
     errno = 0;
-    value = toscaPonRead(address);
-    if (value == -1 && errno != 0)
-        error("toscaPonRead %s: %m", toscaPonAddrToRegname(address));
-    else
-        printf("0x%08x\n", value);
+    val = toscaPonRead(args[0].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaPonWriteDef =
@@ -146,10 +143,11 @@ static const iocshFuncDef toscaPonWriteDef =
 
 static void toscaPonWriteFunc(const iocshArgBuf *args)
 {
-    int address = args[0].ival;
-    int value = args[1].ival;
-    if (toscaPonWrite(address, value) == -1)
-        error("toscaPonWrite %s: %m", toscaPonAddrToRegname(address));
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaPonWrite(args[0].ival, args[1].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaPonDevConfigureDef =

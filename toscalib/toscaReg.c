@@ -20,66 +20,65 @@
 #define TOSCA_DEBUG_NAME toscaReg
 #include "toscaDebug.h"
 
-uint32_t toscaCsrRead(unsigned int address)
+unsigned int toscaCsrRead(unsigned int address)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     return le32toh(*ptr);
 }
 
-int toscaCsrWrite(unsigned int address, uint32_t value)
+unsigned int toscaCsrWrite(unsigned int address, unsigned int value)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     *ptr = htole32(value);
-    return 0;
+    return le32toh(*ptr);
 }
 
-int toscaCsrSet(unsigned int address, uint32_t value)
+unsigned int toscaCsrSet(unsigned int address, unsigned int value)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
-    *ptr |= htole32(value);
-    return 0;
+    __sync_fetch_and_or(ptr, htole32(value));
+    return le32toh(*ptr);
 }
 
-int toscaCsrClear(unsigned int address, uint32_t value)
+unsigned int toscaCsrClear(unsigned int address, unsigned int value)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
-    *ptr &= ~htole32(value);
-    return 0;
+    return __sync_fetch_and_and(ptr, ~htole32(value));
 }
 
-uint32_t toscaIoRead(unsigned int address)
+unsigned int toscaIoRead(unsigned int address)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     return le32toh(*ptr);
 }
 
-int toscaIoWrite(unsigned int address, uint32_t value)
+unsigned int toscaIoWrite(unsigned int address, unsigned int value)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
     *ptr = htole32(value);
-    return 0;
+    return le32toh(*ptr);
 }
 
-int toscaIoSet(unsigned int address, uint32_t value)
+unsigned int toscaIoSet(unsigned int address, unsigned int value)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
-    *ptr |= htole32(value);
-    return 0;
+    __sync_fetch_and_or(ptr, htole32(value));
+    return le32toh(*ptr);
 }
 
-int toscaIoClear(unsigned int address, uint32_t value)
+unsigned int toscaIoClear(unsigned int address, unsigned int value)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
     if (!ptr) return -1;
-    *ptr &= ~htole32(value);
-    return 0;
+    __sync_fetch_and_and(ptr, ~htole32(value));
+    return le32toh(*ptr);
 }
 
 pthread_mutex_t smon_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -101,7 +100,7 @@ unsigned int toscaSmonRead(unsigned int address)
     return value;
 }
 
-int toscaSmonWrite(unsigned int address, unsigned int value)
+unsigned int toscaSmonWrite(unsigned int address, unsigned int value)
 {
     volatile uint32_t* smon = toscaMap((address & 0xffff0000)|TOSCA_CSR, CSR_SMON, 12, 0);
     if (!smon) return -1;
@@ -113,11 +112,12 @@ int toscaSmonWrite(unsigned int address, unsigned int value)
     (void) smon[0]; /* read back to flush write */
     /* check status 0x48 here ? */
     smon[1] = htole32(value);
+    value = le32toh(smon[1]);
     pthread_mutex_unlock(&smon_mutex);
-    return 0;
+    return value;
 }
 
-uint32_t toscaSmonStatus()
+unsigned int toscaSmonStatus()
 {
     volatile uint32_t* smon = toscaMap(TOSCA_IO, CSR_SMON, 12, 0);
     return le32toh(smon[3]);
@@ -183,10 +183,11 @@ unsigned int toscaPonRead(unsigned int address)
     return sysfsReadULong(fd);
 }
 
-int toscaPonWrite(unsigned int address, unsigned int value)
+unsigned int toscaPonWrite(unsigned int address, unsigned int value)
 {
     debug("address=0x%02x value=0x%x", address, value);
     int fd = toscaPonFd(address);
     if (fd < 0) return -1;
-    return sysfsWrite(fd, "%x", value);
+    sysfsWrite(fd, "%x", value);
+    return sysfsReadULong(fd);
 }

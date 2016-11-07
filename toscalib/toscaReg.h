@@ -16,19 +16,19 @@ extern "C" {
    If using more than one Tosca, use address|(tosca<<16).
 */
 unsigned int toscaCsrRead(unsigned int address);
-int toscaCsrWrite(unsigned int address, unsigned int value);  /* Write new value. */
-int toscaCsrSet(unsigned int address, unsigned int value);    /* Set bits in value, leave others unchanged. */
-int toscaCsrClear(unsigned int address, unsigned int value);  /* Clear bits in value, leave others unchanged. */
+unsigned int toscaCsrWrite(unsigned int address, unsigned int value);  /* Write new value. */
+unsigned int toscaCsrSet(unsigned int address, unsigned int value);    /* Set bits in value, leave others unchanged. */
+unsigned int toscaCsrClear(unsigned int address, unsigned int value);  /* Clear bits in value, leave others unchanged. */
 
 /* The same for TOSCA IO Registers */
 unsigned int toscaIoRead(unsigned int address);
-int toscaIoWrite(unsigned int address, unsigned int value);   /* Write new value. */
-int toscaIoSet(unsigned int address, unsigned int value);     /* Set bits in value, leave others unchanged. */
-int toscaIoClear(unsigned int address, unsigned int value);   /* Clear bits in value, leave others unchanged. */
+unsigned int toscaIoWrite(unsigned int address, unsigned int value);   /* Write new value. */
+unsigned int toscaIoSet(unsigned int address, unsigned int value);     /* Set bits in value, leave others unchanged. */
+unsigned int toscaIoClear(unsigned int address, unsigned int value);   /* Clear bits in value, leave others unchanged. */
 
 /* Access to Virtex-6 System Monitor via toscaCsr */
 unsigned int toscaSmonRead(unsigned int address);
-int toscaSmonWrite(unsigned int address, unsigned int value);
+unsigned int toscaSmonWrite(unsigned int address, unsigned int value);
 unsigned int toscaSmonStatus();
 
 /* If you prefer to access Tosca CSR or IO directly using
@@ -40,7 +40,7 @@ unsigned int toscaSmonStatus();
 /* Access to PON registers via ELB */
 const char* toscaPonAddrToRegname(unsigned int address);
 unsigned int toscaPonRead(unsigned int address);
-int toscaPonWrite(unsigned int address, unsigned int value);
+unsigned int toscaPonWrite(unsigned int address, unsigned int value);
 
 /* Read (and clear) VME error status. Error is latched and not overwritten until read. */
 typedef struct {

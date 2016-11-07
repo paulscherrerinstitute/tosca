@@ -154,7 +154,7 @@ static void toscaCsrReadFunc(const iocshArgBuf *args)
     errno = 0;
     val = toscaCsrRead(args[0].ival);
     if (val == 0xffffffff && errno != 0) perror(NULL);
-    else printf("0x%x\n", val);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaCsrWriteDef =
@@ -165,7 +165,11 @@ static const iocshFuncDef toscaCsrWriteDef =
 
 static void toscaCsrWriteFunc(const iocshArgBuf *args)
 {
-    if (toscaCsrWrite(args[0].ival, args[1].ival) == -1) perror(NULL);
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaCsrWrite(args[0].ival, args[1].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaCsrSetDef =
@@ -176,7 +180,11 @@ static const iocshFuncDef toscaCsrSetDef =
 
 static void toscaCsrSetFunc(const iocshArgBuf *args)
 {
-    if (toscaCsrSet(args[0].ival, args[1].ival) == -1) perror(NULL);
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaCsrSet(args[0].ival, args[1].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaCsrClearDef =
@@ -187,7 +195,11 @@ static const iocshFuncDef toscaCsrClearDef =
 
 static void toscaCsrClearFunc(const iocshArgBuf *args)
 {
-    if (toscaCsrClear(args[0].ival, args[1].ival) == -1) perror(NULL);
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaCsrClear(args[0].ival, args[1].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaIoReadDef =
@@ -201,7 +213,7 @@ static void toscaIoReadFunc(const iocshArgBuf *args)
     errno = 0;
     val = toscaIoRead(args[0].ival);
     if (val == 0xffffffff && errno != 0) perror(NULL);
-    else printf("0x%x\n", val);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaIoWriteDef =
@@ -212,7 +224,11 @@ static const iocshFuncDef toscaIoWriteDef =
 
 static void toscaIoWriteFunc(const iocshArgBuf *args)
 {
-    if (toscaIoWrite(args[0].ival, args[1].ival) == -1) perror(NULL);
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaIoWrite(args[0].ival, args[1].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaIoSetDef =
@@ -223,7 +239,11 @@ static const iocshFuncDef toscaIoSetDef =
 
 static void toscaIoSetFunc(const iocshArgBuf *args)
 {
-    if (toscaIoSet(args[0].ival, args[1].ival) == -1) perror(NULL);
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaIoSet(args[0].ival, args[1].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaIoClearDef =
@@ -234,7 +254,11 @@ static const iocshFuncDef toscaIoClearDef =
 
 static void toscaIoClearFunc(const iocshArgBuf *args)
 {
-    if (toscaIoClear(args[0].ival, args[1].ival) == -1) perror(NULL);
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaIoClear(args[0].ival, args[1].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
 }
 
 static const iocshFuncDef toscaIntrShowDef =
