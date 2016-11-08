@@ -98,7 +98,8 @@ long toscaDevLibMapAddr(
                 debug("CRCSR address %#zx out of range", vmeAddress + size);
                 return S_dev_badCRCSR;
             }
-            mapAddress = toscaMap(VME_CRCSR, vmeAddress, size, 0);
+            /* Map full CRCSR space because it needs to be scanned completely anyway. */
+            mapAddress = toscaMap(VME_CRCSR, 0, 0x1000000, 0) + vmeAddress;
             break;
         default:
             return S_dev_uknAddrType;
