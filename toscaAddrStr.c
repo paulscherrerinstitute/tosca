@@ -18,6 +18,7 @@ size_t toscaStrToSize(const char* str)
     vmeaddr_t size = strToSize(str, &q);
     if (*q)
     {
+        error("%s is not a size", str);
         errno = EINVAL;
         return -1;
     }
@@ -98,6 +99,7 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
                 case 64:
                     result.aspace |= VME_A64; break;
                 default:
+                    errno = EINVAL;
                     return (toscaMapAddr_t){0};
             }
             do
@@ -110,9 +112,17 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
             } while (s++);
         }
     }
-    if (s > str && *s != 0 && *s != ':') return (toscaMapAddr_t){0};
+    if (s > str && *s != 0 && *s != ':') 
+    {
+        errno = EINVAL;
+        return (toscaMapAddr_t){0};
+    }
     if (*s == ':') s++;
     result.address = strToSize(s, &s);
-    if (*s) return (toscaMapAddr_t){0};
+    if (*s)
+    {
+        errno = EINVAL;
+        return (toscaMapAddr_t){0};
+    }
     return result;
 }

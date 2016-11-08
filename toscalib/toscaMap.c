@@ -102,6 +102,7 @@ int toscaOpen(unsigned int card, const char* resource)
 
 const char* toscaAddrSpaceToStr(unsigned int aspace)
 {
+    if (aspace & VME_SLAVE) return "SLAVE";
     switch (aspace & (0xffff & ~VME_SWAP))
     {
         case VME_A16:   return "A16";
@@ -132,9 +133,7 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
         case TOSCA_IO:    return "TIO";
         case TOSCA_SRAM:  return "SRAM";
 
-        case VME_SLAVE:   return "SLAVE";
-
-        case 0: return "none";
+        case 0: return "RAM";
         default:
         {
             static char buf[20];
@@ -202,6 +201,9 @@ check_existing_maps:
                 /* Existing VME slave to Tosca resource: Check resource address. */
                 if (res_address != (vmeaddr_t)(size_t) map->info.baseptr + (address - map->info.baseaddress))
                 {
+                    debug("overlap with existing SLAVE map to %s:0x%llx",
+                        toscaAddrSpaceToStr(map->info.aspace & ~VME_SLAVE),
+                            (unsigned long long) map->info.baseaddress);
                     errno = EADDRINUSE;
                     return NULL;
                 }
@@ -223,11 +225,11 @@ check_existing_maps:
         goto check_existing_maps;
     }
 
+    debug("creating new %s mapping", toscaAddrSpaceToStr(aspace));
     if (aspace & (TOSCA_CSR | TOSCA_IO))
     {
         struct stat filestat;
         
-        debug("creating new %s mapping", aspace & TOSCA_CSR ? "TCSR" : "TIO");
         fd = toscaOpen(card, aspace & TOSCA_CSR ? "resource3" : "resource4");
         if (fd < 0) goto fail;
         fstat(fd, &filestat);
@@ -251,7 +253,6 @@ check_existing_maps:
         char* uiodev;
         char buffer[24];
 
-        debug("creating new SRAM mapping");        
         if (card != 0)
         {
             debug("access to SRAM only on local card");
@@ -294,7 +295,12 @@ check_existing_maps:
         */
         struct vme_slave vme_window = {0};
         
-        if (size == -1) goto fail;
+        if (size == -1)
+        {
+            error("invalid size");
+            errno = EINVAL;
+            goto fail;
+        }
         if ((address + size) & 0xffffffff00000000ull)
         {
             error("address out of 32 bit range");
@@ -310,7 +316,6 @@ check_existing_maps:
             errno = EFAULT;
             goto fail;
         }
-        debug("creating new %s mapping", toscaAddrSpaceToStr(aspace));        
         if (size == 0) size = 1;
         vme_window.enable   = 1;
         vme_window.vme_addr = address & ~0xffffful; /* Round down to 1 MB alignment */
@@ -320,6 +325,7 @@ check_existing_maps:
 
         if (aspace & VME_SLAVE)
         {
+            debug("Slave map to %s", toscaAddrSpaceToStr(aspace & ~VME_SLAVE));
             sprintf(filename, "/dev/bus/vme/s%u", card);
             setcmd = VME_SET_SLAVE;
             getcmd = 0; /* Reading back slave windows is buggy. */
@@ -364,6 +370,11 @@ check_existing_maps:
                 vme_window.cycle,
                 vme_window.resource_offset);
             close(fd);
+            if (setcmd == VME_SET_SLAVE && errno == ENODEV)
+            {
+                debug("overlap with existing SLAVE map");
+                errno = EADDRINUSE;
+            }
             goto fail;
         }
 

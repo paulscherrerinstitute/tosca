@@ -22,7 +22,7 @@ TOSCA_DEBUG_VARS(TOSCA_DEBUG_NAME)
 #define debugErrno(fmt,...) debugLvl(-1, fmt" failed: %m",##__VA_ARGS__)
 #define debugLvl(l,fmt,...) debug_internal(TOSCA_DEBUG_NAME,l,fmt,##__VA_ARGS__)
 #define debug(fmt,...) debugLvl(1,fmt,##__VA_ARGS__)
-#define error(fmt,...) fprintf(stderr,"%s: "fmt"\n",__FUNCTION__,##__VA_ARGS__)
+#define error(fmt,...) debugLvl(0,fmt,##__VA_ARGS__)
 
 #include <time.h>
 

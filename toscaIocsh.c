@@ -42,19 +42,38 @@ static void toscaMapFunc(const iocshArgBuf *args)
     addr = toscaStrToAddr(args[0].sval);
     if (!addr.aspace)
     {
-        error("invalid Tosca address %s", args[0].sval);
+        fprintf(stderr, "invalid Tosca address %s\n",
+            args[0].sval);
         return;
     }
     size = toscaStrToSize(args[1].sval);
+    if (size == -1)
+    {
+        perror("toscaStrToSize failed");
+        return;
+    }
     if (args[2].sval)
     {
         if (!(addr.aspace & VME_SLAVE))
         {
-            error("no VME SLAVE map: resource address %s ignored", args[2].sval);
+            fprintf(stderr, "no VME SLAVE map: resource address %s ignored\n",
+                args[2].sval);
         }
         else
         {
             res_addr = toscaStrToAddr(args[2].sval);
+            if (!res_addr.aspace)
+            {
+                fprintf(stderr, "invalid Tosca address %s\n",
+                    args[2].sval);
+                return;
+            }
+            if (res_addr.aspace >> 16)
+            {
+                fprintf(stderr, "invalid use of card number in %s\n",
+                    args[2].sval);
+                return;
+            }
             addr.aspace |= res_addr.aspace;
             if (args[3].sval)
             {
@@ -64,11 +83,10 @@ static void toscaMapFunc(const iocshArgBuf *args)
             }
         }
     }
-    errno = 0;
     ptr = toscaMap(addr.aspace, addr.address, size, res_addr.address);
     if (!ptr && errno)
     {
-        error("mapping failed: %m");
+        perror("toscaMap failed");
         return;
     }
     printf("0x%zx\n", (size_t) ptr);
@@ -346,7 +364,8 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
         source = toscaDmaStrToType(s);
         if (source == -1)
         {
-            error("invalid DMA source %s", args[0].sval);
+            fprintf(stderr, "invalid DMA source %s\n",
+                args[0].sval);
             return;
         }
         source |= card << 16;
@@ -364,7 +383,8 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
         dest = toscaDmaStrToType(s);
         if (dest == -1)
         {
-            error("invalid DMA dest %s", args[1].sval);
+            fprintf(stderr, "invalid DMA dest %s\n",
+                args[1].sval);
             return;
         }
         dest |= card << 16;
@@ -387,7 +407,8 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
             swap = 8;
         else
         {
-            error("invalid swap %s, must be WS, DS, or QS", args[3].sval);
+            fprintf(stderr, "invalid swap %s, must be WS, DS, or QS\n",
+                args[3].sval);
             return;
         }
     }
@@ -395,7 +416,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     int status = toscaDmaTransfer(source, source_addr, dest, dest_addr, size, swap, args[4].ival, NULL, NULL);
     if (status)
     {
-        error("toscaDmaTransfer failed: %m");
+        perror("toscaDmaTransfer failed");
     }
 }
 

@@ -141,6 +141,7 @@ int toscaDmaStrToType(const char* str)
         return VME_2eSST267;
     if (strcmp(str, "2eSST320") == 0)
         return VME_2eSST320;
+    errno = EINVAL;
     return -1;
 }
 
