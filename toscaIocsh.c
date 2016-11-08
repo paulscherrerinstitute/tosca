@@ -97,7 +97,7 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
     char buf[60];
     if (card) printf("%u:", card);
     if ((info.aspace & 0xfff) > VME_SLAVE)
-    printf("%5s:0x%-8llx [%s]\t%s:0x%llx%s\n",
+    printf("%5s:0x%-8llx %-16s %s:0x%llx%s\n",
         toscaAddrSpaceToStr(VME_SLAVE),
         (unsigned long long)info.baseaddress,
         sizeToStr(info.size, buf),
@@ -105,7 +105,7 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
         (unsigned long long)(size_t) info.baseptr,
         info.aspace & VME_SWAP ? " SWAP" : "");
     else
-    printf("%5s:0x%-8llx [%s]\t%p\n",
+    printf("%5s:0x%-8llx %-16s %p\n",
         toscaAddrSpaceToStr(info.aspace),
         (unsigned long long)info.baseaddress,
         sizeToStr(info.size, buf),
@@ -429,9 +429,9 @@ static void toscaRegistrar(void)
 {
     /* register with 'md' command */
 
-    memDisplayInstallAddrHandler("A16-",  toscaAddrHandler, VME_A16);
-    memDisplayInstallAddrHandler("A24-",  toscaAddrHandler, VME_A24);
-    memDisplayInstallAddrHandler("A32-",  toscaAddrHandler, VME_A32);
+    memDisplayInstallAddrHandler("A16",  toscaAddrHandler, VME_A16);
+    memDisplayInstallAddrHandler("A24",  toscaAddrHandler, VME_A24);
+    memDisplayInstallAddrHandler("A32",  toscaAddrHandler, VME_A32);
     memDisplayInstallAddrHandler("A16*",  toscaAddrHandler, VME_A16 | VME_SUPER);
     memDisplayInstallAddrHandler("A24*",  toscaAddrHandler, VME_A24 | VME_SUPER);
     memDisplayInstallAddrHandler("A32*",  toscaAddrHandler, VME_A32 | VME_SUPER);
@@ -452,6 +452,7 @@ static void toscaRegistrar(void)
     memDisplayInstallAddrHandler("USER1", toscaAddrHandler, TOSCA_USER1);
     memDisplayInstallAddrHandler("USER2", toscaAddrHandler, TOSCA_USER2);
     memDisplayInstallAddrHandler("SMEM",  toscaAddrHandler, TOSCA_SMEM);
+    memDisplayInstallAddrHandler("SHM",   toscaAddrHandler, TOSCA_SMEM);
     memDisplayInstallAddrHandler("TCSR",  toscaAddrHandler, TOSCA_CSR);
     memDisplayInstallAddrHandler("TIO",   toscaAddrHandler, TOSCA_IO);
 
