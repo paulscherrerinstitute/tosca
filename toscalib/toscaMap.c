@@ -289,10 +289,6 @@ check_existing_maps:
     }
     else /* USER, SMEM, VME, VME_SLAVE */
     {
-        /* Tosca requires mapping windows aligned to 1 MiB.
-           Thus round down address to the full MiB and adjust size.
-           Do not round up size to the the next full MiB! This makes A16 fail.
-        */
         struct vme_slave vme_window = {0};
         
         if (size == -1)
@@ -317,6 +313,11 @@ check_existing_maps:
             goto fail;
         }
         if (size == 0) size = 1;
+
+        /* Tosca requires mapping windows aligned to 1 MiB.
+           Thus round down address to the full MiB and adjust size.
+           Do not round up size to the the next full MiB! This makes A16 fail.
+        */
         vme_window.enable   = 1;
         vme_window.vme_addr = address & ~0xffffful; /* Round down to 1 MB alignment */
         vme_window.size     = size + (address & 0xffffful); /* and adjust size. */
@@ -325,11 +326,18 @@ check_existing_maps:
 
         if (aspace & VME_SLAVE)
         {
-            debug("Slave map to %s", toscaAddrSpaceToStr(aspace & ~VME_SLAVE));
             sprintf(filename, "/dev/bus/vme/s%u", card);
             setcmd = VME_SET_SLAVE;
             getcmd = 0; /* Reading back slave windows is buggy. */
-            vme_window.resource_offset = res_address - (address & 0xffffful);
+            
+            if (aspace > VME_SLAVE && (res_address ^ address) & 0xffffful)
+            {
+                error("slave address 0x%llx not aligned with resource address 0x%llx",
+                    address, res_address);
+                errno = EFAULT;
+                goto fail;
+            }
+            vme_window.resource_offset = res_address & ~0xffffful;
             vme_window.aspace = aspace & (0x0fff & ~VME_SLAVE);
             if (!vme_window.aspace) vme_window.aspace = VME_A32;
             if (aspace & VME_SWAP) vme_window.cycle |= VME_LE_TO_BE;
