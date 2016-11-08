@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include <devLibVME.h>
 #include <epicsMutex.h>
 #include <epicsTypes.h>
