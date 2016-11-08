@@ -352,7 +352,7 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
     if (size >= 0x100000000ULL)
     {
         errno = EINVAL;
-        debug("size too long (man 32 bit)");
+        debug("size too long (max 32 bit)");
         return  NULL;
     }
 #endif
