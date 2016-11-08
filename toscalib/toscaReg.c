@@ -8,8 +8,8 @@
 #define htole32(x) (x)
 #else
 #include <byteswap.h>
-#define le32toh(x) __bswap_32 (x)
-#define htole32(x) __bswap_32 (x)
+#define le32toh(x) __bswap_32(x)
+#define htole32(x) __bswap_32(x)
 #endif
 #endif
 
@@ -19,6 +19,13 @@
 
 #define TOSCA_DEBUG_NAME toscaReg
 #include "toscaDebug.h"
+
+#if __GNUC__ * 100 + __GNUC_MINOR__ < 401
+/* We have no atomic read-modify-write commands before GCC 4.1 */
+pthread_mutex_t csr_mutex = PTHREAD_MUTEX_INITIALIZER;
+#define __sync_fetch_and_or(p,v)  pthread_mutex_lock(&csr_mutex); *p |= v; pthread_mutex_unlock(&csr_mutex)
+#define __sync_fetch_and_and(p,v) pthread_mutex_lock(&csr_mutex); *p &= v; pthread_mutex_unlock(&csr_mutex)
+#endif
 
 unsigned int toscaCsrRead(unsigned int address)
 {
