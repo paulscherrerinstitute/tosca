@@ -23,9 +23,7 @@ extern FILE* toscaDmaDebugFile;
 const char* toscaDmaTypeToStr(int type);
 int toscaDmaStrToType(const char* str);
 
-/* callbacks (i.e. non-blocking DMA) not yet implemented */
 typedef void (*toscaDmaCallback)(void* usr, int status);
-
 
 /* You can set up a DMA once and use the handle for multiple transfers.
    Release the handle after it is no longer in use (after callback returned).

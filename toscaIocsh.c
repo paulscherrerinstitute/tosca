@@ -327,7 +327,8 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
 {
     int source = 0, dest = 0, swap = 0;
     size_t source_addr, dest_addr, size;
-    char* p;
+    int card;
+    char *s, *p;
     
     if (!args[0].sval || !args[1].sval) 
     {
@@ -336,31 +337,37 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
         return;
     }
 
-    p = strchr(args[0].sval, ':');
+    card = strtoul(args[0].sval, &s, 0);
+    if (*s == ':') s++;
+    p = strchr(s, ':');
     if (p)
     {
         *p++ = 0;
-        source = toscaDmaStrToType(args[0].sval);
+        source = toscaDmaStrToType(s);
         if (source == -1)
         {
             error("invalid DMA source %s", args[0].sval);
             return;
         }
+        source |= card << 16;
     }
     else
         p = args[0].sval;
     source_addr = toscaStrToSize(p);
 
-    p = strchr(args[1].sval, ':');
+    card = strtoul(args[1].sval, &s, 0);
+    if (*s == ':') s++;
+    p = strchr(s, ':');
     if (p)
     {
         *p++ = 0;
-        dest = toscaDmaStrToType(args[1].sval);
+        dest = toscaDmaStrToType(s);
         if (dest == -1)
         {
             error("invalid DMA dest %s", args[1].sval);
             return;
         }
+        dest |= card << 16;
     }
     else
         p = args[1].sval;
