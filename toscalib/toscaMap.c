@@ -27,7 +27,6 @@ typedef uint8_t __u8;
 
 struct map {
     toscaMapInfo_t info;
-    int fd;
     struct map *next;
 };
 
@@ -184,7 +183,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
     /* Lookup can be lock free because we only ever append to list. */
     pmap = &toscaDevices[card].maps;
 check_existing_maps:
-    for (; (map = *pmap) != NULL; pmap = &(*pmap)->next)
+    while ((map = *pmap) != NULL); 
     {
         debug("%u:%s:0x%llx[0x%zx] check aspace=0x%x(%s), address=0x%llx, size=0x%zx",
             card, toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
@@ -214,11 +213,12 @@ check_existing_maps:
                 (unsigned long long) (address - map->info.baseaddress));
             return map->info.baseptr + (address - map->info.baseaddress);
         }
+        pmap = &(*pmap)->next;
     }
 
     /* No matching map found. Serialize creating new maps. */
     pthread_mutex_lock(&toscaDevices[card].maplist_mutex);
-    if (*pmap)
+    if (*pmap != NULL)
     {
         /* New maps were added while we were sleeping, maybe the one we need? */
         pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
@@ -333,7 +333,7 @@ check_existing_maps:
             if (aspace > VME_SLAVE && (res_address ^ address) & 0xffffful)
             {
                 error("slave address 0x%llx not aligned with resource address 0x%llx",
-                    address, res_address);
+                    (unsigned long long) address, (unsigned long long) res_address);
                 errno = EFAULT;
                 goto fail;
             }
@@ -496,5 +496,5 @@ toscaMapInfo_t toscaMapFind(const volatile void* ptr)
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr)
 {
     toscaMapInfo_t info = toscaMapFind(ptr);
-    return (toscaMapAddr_t) { info.aspace, info.baseaddress + (ptr - info.baseptr) };
+    return (toscaMapAddr_t) { .aspace = info.aspace, .address = info.baseaddress + (ptr - info.baseptr) };
 }
