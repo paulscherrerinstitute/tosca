@@ -297,9 +297,10 @@ check_existing_maps:
             errno = EINVAL;
             goto fail;
         }
-        if ((address + size) & 0xffffffff00000000ull)
+        if ((address + size) & ~0xffffffffull)
         {
-            error("address out of 32 bit range");
+            error("address 0x%llx + size 0x%zx out of 32 bit range",
+                (unsigned long long) address, size);
             errno = EFAULT;
             goto fail;
         }
@@ -334,6 +335,13 @@ check_existing_maps:
             {
                 error("slave address 0x%llx not aligned with resource address 0x%llx",
                     (unsigned long long) address, (unsigned long long) res_address);
+                errno = EFAULT;
+                goto fail;
+            }
+            if ((address + size) & ~0x1fffffff)
+            {
+                error("slave address 0x%llx + size 0x%zx out of 512MB range",
+                    (unsigned long long) address, size);
                 errno = EFAULT;
                 goto fail;
             }
