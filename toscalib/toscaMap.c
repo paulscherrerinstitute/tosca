@@ -183,7 +183,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
     /* Lookup can be lock free because we only ever append to list. */
     pmap = &toscaDevices[card].maps;
 check_existing_maps:
-    while ((map = *pmap) != NULL); 
+    while ((map = *pmap) != NULL)
     {
         debug("%u:%s:0x%llx[0x%zx] check aspace=0x%x(%s), address=0x%llx, size=0x%zx",
             card, toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
