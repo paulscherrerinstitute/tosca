@@ -203,8 +203,8 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
             finished.tv_sec--;
         }
         sec = finished.tv_sec + finished.tv_nsec * 1e-9;
-        debug("%s %d %sB / %.3f msec (%.1f MiB/s = %.1f MB/s)",
-            toscaDmaRouteToStr(r->req.route), 
+        debug("%s 0x%"PRIx64"->0x%"PRIx64" %d %sB / %.3f msec (%.1f MiB/s = %.1f MB/s)",
+            toscaDmaRouteToStr(r->req.route), r->req.src_addr, r->req.dst_addr,
             r->req.size >= 0x00100000 ? (r->req.size >> 20) : r->req.size >= 0x00000400 ? (r->req.size >> 10) : r->req.size,
             r->req.size >= 0x00100000 ? "Mi" : r->req.size >= 0x00000400 ? "Ki" : "",
             sec * 1000, r->req.size/sec/0x00100000, r->req.size/sec/1000000);

@@ -18,7 +18,6 @@ size_t toscaStrToSize(const char* str)
     uint64_t size = strToSize(str, &q);
     if (*q)
     {
-        error("%s is not a size", str);
         errno = EINVAL;
         return -1;
     }
@@ -48,7 +47,8 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
     else
         s = (char*) str;
     if ((strncmp(s, "USR", 3) == 0 && (s+=3)) ||
-        (strncmp(s, "USER", 4) == 0 && (s+=4)))
+        (strncmp(s, "USER", 4) == 0 && (s+=4)) ||
+        (strncmp(s, "TOSCA_USER", 10) == 0 && (s+=10)))
     {
         if (*s == '2')
         {
@@ -65,16 +65,20 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
     if ((strncmp(s, "SH_MEM", 6) == 0 && (s+=6)) ||
         (strncmp(s, "SHMEM", 5) == 0 && (s+=5)) ||
         (strncmp(s, "SMEM", 4) == 0 && (s+=4)) ||
-        (strncmp(s, "SHM", 3) == 0 && (s+=3)))
+        (strncmp(s, "SHM", 3) == 0 && (s+=3)) ||
+        (strncmp(s, "TOSCA_SMEM", 10) == 0 && (s+=10)))
         result.addrspace |= TOSCA_SMEM;
     else
-    if (strncmp(s, "TCSR", 4) == 0 && (s+=4))
+    if ((strncmp(s, "TCSR", 4) == 0 && (s+=4)) ||
+        (strncmp(s, "TOSCA_CSR", 9) == 0 && (s+=9)))
         result.addrspace |= TOSCA_CSR;
     else
-    if (strncmp(s, "TIO", 3) == 0 && (s+=3))
+    if ((strncmp(s, "TIO", 3) == 0 && (s+=3)) ||
+        (strncmp(s, "TOSCA_IO", 8) == 0 && (s+=8)))
         result.addrspace |= TOSCA_IO;
     else
-    if (strncmp(s, "SRAM", 4) == 0 && (s+=4))
+    if ((strncmp(s, "SRAM", 4) == 0 && (s+=4)) ||
+        (strncmp(s, "TOSCA_SRAM", 10) == 0 && (s+=10)))
         result.addrspace |= TOSCA_SRAM;
     else
     {

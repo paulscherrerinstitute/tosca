@@ -50,7 +50,8 @@ static void toscaMapFunc(const iocshArgBuf *args)
     size = toscaStrToSize(args[1].sval);
     if (size == -1)
     {
-        perror("toscaStrToSize failed");
+        fprintf(stderr, "invalid size %s\n",
+            args[1].sval);
         return;
     }
     if (args[2].sval)
@@ -191,7 +192,7 @@ static void toscaGetVmeErrFunc(const iocshArgBuf *args)
         err.over ? "OVER " : "",
         err.write ? 'W' : 'R',
         err.timeout ? " TOUT" : "",
-        (const char*[]){"PCIe","???","IDMA","USER"}[err.source],
+        (const char*[]){"PCIe","???","DMA","USER"}[err.source],
         err.id,
         err.length,
         (const char*[]){"CRCSR","A16","A24","A32","BLT","MBLT","2eVME","?7?","2eSST160","2eSST267","2eSST320","?B?","?C?","?D?","?E?","IACK"}[err.mode],
@@ -373,40 +374,40 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     card = strtoul(args[0].sval, &s, 0);
     if (*s == ':') s++;
     p = strchr(s, ':');
-    if (p)
+    if (p) *p++ = 0;
+    else p = args[0].sval;
+    source = toscaDmaStrToType(s);
+    if (source == -1)
     {
-        *p++ = 0;
-        source = toscaDmaStrToType(s);
-        if (source == -1)
-        {
-            fprintf(stderr, "invalid DMA source %s\n",
-                args[0].sval);
-            return;
-        }
+        fprintf(stderr, "invalid DMA source %s\n",
+            args[0].sval);
+        return;
+    }
+    source_addr = toscaStrToSize(p);
+    if (source != 0)
+    {
+        if (source_addr == -1) source_addr = 0;
         source |= card << 16;
     }
-    else
-        p = args[0].sval;
-    source_addr = toscaStrToSize(p);
 
     card = strtoul(args[1].sval, &s, 0);
     if (*s == ':') s++;
     p = strchr(s, ':');
-    if (p)
+    if (p) *p++ = 0;
+    else p = args[1].sval;
+    dest = toscaDmaStrToType(s);
+    if (dest == -1)
     {
-        *p++ = 0;
-        dest = toscaDmaStrToType(s);
-        if (dest == -1)
-        {
-            fprintf(stderr, "invalid DMA dest %s\n",
-                args[1].sval);
-            return;
-        }
+        fprintf(stderr, "invalid DMA dest %s\n",
+            args[1].sval);
+        return;
+    }
+    dest_addr = toscaStrToSize(p);
+    if (dest != 0)
+    {
+        if (dest_addr == -1) dest_addr = 0;
         dest |= card << 16;
     }
-    else
-        p = args[1].sval;
-    dest_addr = toscaStrToSize(p);
     
     size = toscaStrToSize(args[2].sval);
 
