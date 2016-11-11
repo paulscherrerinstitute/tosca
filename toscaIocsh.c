@@ -56,33 +56,45 @@ static void toscaMapFunc(const iocshArgBuf *args)
     {
         if (!(addr.aspace & VME_SLAVE))
         {
-            fprintf(stderr, "no VME SLAVE map: resource address %s ignored\n",
+            fprintf(stderr, "invalid argument %s: no SLAVE address space\n",
                 args[2].sval);
+            return;
         }
         else
         {
-            res_addr = toscaStrToAddr(args[2].sval);
-            if (!res_addr.aspace)
+            if (strcasecmp(args[2].sval, "SWAP") == 0)
+                addr.aspace |= VME_SWAP;
+            else
             {
-                fprintf(stderr, "invalid Tosca address %s\n",
-                    args[2].sval);
-                return;
-            }
-            if (res_addr.aspace >> 16)
-            {
-                fprintf(stderr, "invalid use of card number in %s\n",
-                    args[2].sval);
-                return;
-            }
-            addr.aspace |= res_addr.aspace;
-            if (args[3].sval)
-            {
-                if (strtol(args[3].sval, NULL, 0) > 0 ||
-                    strcasecmp(args[3].sval, "SWAP") == 0)
-                    addr.aspace |= VME_SWAP;
+                res_addr = toscaStrToAddr(args[2].sval);
+                if (!res_addr.aspace)
+                {
+                    fprintf(stderr, "invalid Tosca address %s\n",
+                        args[2].sval);
+                    return;
+                }
+                if (res_addr.aspace >> 16)
+                {
+                    fprintf(stderr, "invalid use of card number in %s\n",
+                        args[2].sval);
+                    return;
+                }
+                addr.aspace |= res_addr.aspace;
+                if (args[3].sval)
+                {
+                    if (strcasecmp(args[3].sval, "SWAP") == 0)
+                        addr.aspace |= VME_SWAP;
+                    else
+                    {
+                        fprintf(stderr, "invalid argument %s: SWAP expected\n",
+                            args[3].sval);
+                        return;
+                    }
+                }
             }
         }
     }
+    errno = 0;
     ptr = toscaMap(addr.aspace, addr.address, size, res_addr.address);
     if (!ptr && errno)
     {
@@ -114,20 +126,21 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
     unsigned int card = info.aspace >> 16;
     char buf[60];
     if (card) printf("%u:", card);
-    if ((info.aspace & 0xfff) > VME_SLAVE)
-    printf("%5s:0x%-8llx %-16s %s:0x%llx%s\n",
-        toscaAddrSpaceToStr(VME_SLAVE),
-        (unsigned long long)info.baseaddress,
-        sizeToStr(info.size, buf),
-        toscaAddrSpaceToStr(info.aspace & ~(VME_SLAVE|VME_SWAP)),
-        (unsigned long long)(size_t) info.baseptr,
-        info.aspace & VME_SWAP ? " SWAP" : "");
-    else
-    printf("%5s:0x%-8llx %-16s %p\n",
+    if ((info.aspace & ~(VME_A16|VME_A24|VME_A32|VME_A64|VME_SWAP)) > VME_SLAVE)
+    printf("%7s:0x%-8llx %16s %7s:0x%llx%s\n",
         toscaAddrSpaceToStr(info.aspace),
         (unsigned long long)info.baseaddress,
         sizeToStr(info.size, buf),
-        info.baseptr);
+        toscaAddrSpaceToStr(info.aspace & ~(VME_SLAVE|VME_A16|VME_A24|VME_A32|VME_A64|VME_SWAP)),
+        (unsigned long long)(size_t) info.baseptr,
+        info.aspace & VME_SWAP ? " SWAP" : "");
+    else
+    printf("%7s:0x%-8llx %16s   %p%s\n",
+        toscaAddrSpaceToStr(info.aspace),
+        (unsigned long long)info.baseaddress,
+        sizeToStr(info.size, buf),
+        info.baseptr,
+        info.aspace & VME_SWAP ? " SWAP" : "");
     return 0;
 }
 
@@ -137,6 +150,7 @@ static const iocshFuncDef toscaMapShowDef =
 
 static void toscaMapShowFunc(const iocshArgBuf *args)
 {
+    printf("#aspace:baseaddr            size      pointer\n");
     toscaMapForeach(toscaMapPrintInfo, NULL);
 }
 

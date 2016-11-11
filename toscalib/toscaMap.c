@@ -80,7 +80,7 @@ int toscaOpen(unsigned int card, const char* resource)
     int fd;
     char filename[80];
 
-    debug("card=%u", card);
+    debug("card=%u resource=%s", card, resource);
     if (card >= toscaNumDevices)
     {
         debug("card=%u but only %u tosca devices found", card, toscaNumDevices);
@@ -101,7 +101,7 @@ int toscaOpen(unsigned int card, const char* resource)
 
 const char* toscaAddrSpaceToStr(unsigned int aspace)
 {
-    if (aspace & VME_SLAVE) return "SLAVE";
+    if (aspace & VME_SLAVE) aspace &= VME_SLAVE|VME_A16|VME_A24|VME_A32|VME_A64|VME_CRCSR;
     switch (aspace & (0xffff & ~VME_SWAP))
     {
         case VME_A16:   return "A16";
@@ -131,14 +131,16 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
         case TOSCA_CSR:   return "TCSR";
         case TOSCA_IO:    return "TIO";
         case TOSCA_SRAM:  return "SRAM";
+        
+        case VME_SLAVE:           return "SLAVE";
+        case VME_SLAVE|VME_A16:   return "SLAVE16";
+        case VME_SLAVE|VME_A24:   return "SLAVE24";
+        case VME_SLAVE|VME_A32:   return "SLAVE32";
+        case VME_SLAVE|VME_A64:   return "SLAVE64";
+        case VME_SLAVE|VME_CRCSR: return "SLAVECRCSR";
 
         case 0: return "RAM";
-        default:
-        {
-            static char buf[20];
-            sprintf(buf, "0x%x", aspace);
-            return buf;
-        }
+        default: return "invalid";
     }
 }
 
@@ -148,13 +150,18 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
     volatile void *baseptr;
     size_t offset, mapsize;
     int fd;
-    unsigned int card = aspace >> 16;
+    unsigned int card;
     unsigned int setcmd, getcmd;
     char filename[80];
 
-    debug("card=%u aspace=0x%x(%s), address=0x%llx, size=0x%zx",
-        card, aspace,
+    card = aspace >> 16;
+
+    debug("aspace=0x%x(%u:%s%s%s%s), address=0x%llx, size=0x%zx",
+        aspace, card,
         toscaAddrSpaceToStr(aspace),
+        aspace & VME_SLAVE ? "->" : "",
+        aspace & VME_SLAVE ? toscaAddrSpaceToStr(aspace & ~(VME_SLAVE|VME_A16|VME_A24|VME_A32|VME_A64|VME_CRCSR)) : "",
+        aspace & VME_SWAP ? " SWAP" : "",
         (unsigned long long) address,
         size);
 
@@ -165,10 +172,12 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
         return NULL;
     }
 
+    aspace &= 0xffff;
+
     /* Quick access to TCSR, CIO and SRAM */
-    if (((aspace & TOSCA_CSR) && (map = toscaDevices[card].csr) != NULL) ||
-        ((aspace & TOSCA_IO) && (map = toscaDevices[card].io) != NULL) ||
-        ((aspace & TOSCA_SRAM) && (map = toscaDevices[card].sram) != NULL))
+    if (((aspace == TOSCA_CSR) && (map = toscaDevices[card].csr) != NULL) ||
+        ((aspace == TOSCA_IO) && (map = toscaDevices[card].io) != NULL) ||
+        ((aspace == TOSCA_SRAM) && (map = toscaDevices[card].sram) != NULL))
     {
         if (address + size > map->info.size)
         {
@@ -226,68 +235,7 @@ check_existing_maps:
     }
 
     debug("creating new %s mapping", toscaAddrSpaceToStr(aspace));
-    if (aspace & (TOSCA_CSR | TOSCA_IO))
-    {
-        struct stat filestat;
-        
-        fd = toscaOpen(card, aspace & TOSCA_CSR ? "resource3" : "resource4");
-        if (fd < 0) goto fail;
-        fstat(fd, &filestat);
-        mapsize = filestat.st_size;  /* Map whole address space. */
-        offset = address;            /* Location within fd that maps to requested address. */
-        address = 0;                 /* This is the start address of the fd. */
-        if (toscaMapDebug)
-        {
-            sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/%s",
-                toscaDevices[card].dom,
-                toscaDevices[card].bus,
-                toscaDevices[card].dev,
-                toscaDevices[card].func,
-                aspace & TOSCA_CSR ? "resource3" : "resource4");
-        }
-    }
-    else if (aspace & TOSCA_SRAM)
-    {
-        glob_t globresults;
-        int n;
-        char* uiodev;
-        char buffer[24];
-
-        if (card != 0)
-        {
-            debug("access to SRAM only on local card");
-            errno = EINVAL;
-            goto fail;
-        }
-
-        sprintf(filename, "/sys/bus/platform/devices/*.sram/uio/uio*/maps/map0/size");
-        debug("glob(%s)", filename);
-        if (glob(filename, GLOB_ONLYDIR, NULL, &globresults) != 0)
-        {
-            debug("cannot find SRAM device");
-            errno = ENODEV;
-            goto fail;
-        }
-        fd = open(globresults.gl_pathv[0], O_RDONLY);
-        n = read(fd, buffer, sizeof(buffer)-1);
-        close(fd);
-        if (n >= 0) buffer[n] = 0;
-        mapsize = strtoul(buffer, NULL, 0); /* Map whole SRAM. */
-        offset = address;
-        address = 0;
-        uiodev = strstr(globresults.gl_pathv[0], "/uio/") + 5;
-        *strchr(uiodev, '/') = 0;
-        debug ("found SRAM device %s size %s", uiodev, buffer);
-        sprintf(filename, "/dev/%s", uiodev);
-        fd = open(filename, O_RDWR);
-        globfree(&globresults);
-        if (fd < 0)
-        {
-            debugErrno("open %s", filename);
-            goto fail;
-        }
-    }
-    else /* USER, SMEM, VME, VME_SLAVE */
+    if (aspace & (VME_A16|VME_A24|VME_A32|VME_A64|VME_CRCSR|VME_SLAVE|TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM))
     {
         struct vme_slave vme_window = {0};
         
@@ -297,6 +245,7 @@ check_existing_maps:
             errno = EINVAL;
             goto fail;
         }
+        if (size == 0) size = 1;
         if ((address + size) & ~0xffffffffull)
         {
             error("address 0x%llx + size 0x%zx out of 32 bit range",
@@ -304,17 +253,6 @@ check_existing_maps:
             errno = EFAULT;
             goto fail;
         }
-        if (((aspace & VME_A16) && address + size > 0x10000) ||
-            ((aspace & (VME_A24|VME_CRCSR)) && address + size > 0x1000000))
-        {
-            error("address 0x%llx + size 0x%zx exceeds %s address space",
-                (unsigned long long) address, size,
-                toscaAddrSpaceToStr(aspace));
-            errno = EFAULT;
-            goto fail;
-        }
-        if (size == 0) size = 1;
-
         /* Tosca requires mapping windows aligned to 1 MiB.
            Thus round down address to the full MiB and adjust size.
            Do not round up size to the the next full MiB! This makes A16 fail.
@@ -327,33 +265,57 @@ check_existing_maps:
 
         if (aspace & VME_SLAVE)
         {
-            sprintf(filename, "/dev/bus/vme/s%u", card);
-            setcmd = VME_SET_SLAVE;
-            getcmd = 0; /* Reading back slave windows is buggy. */
-            
-            if (aspace > VME_SLAVE && (res_address ^ address) & 0xffffful)
+            if ((aspace & 0xfe0) > VME_SLAVE && (res_address ^ address) & 0xffffful)
             {
                 error("slave address 0x%llx not aligned with resource address 0x%llx",
                     (unsigned long long) address, (unsigned long long) res_address);
                 errno = EFAULT;
                 goto fail;
             }
-            if ((address + size) & ~0x1fffffff)
+            if ((address + size) & ~0x1ffffffful)
             {
                 error("slave address 0x%llx + size 0x%zx out of 512MB range",
                     (unsigned long long) address, size);
                 errno = EFAULT;
                 goto fail;
             }
+            if (aspace & ~(VME_SLAVE|TOSCA_USER1/*|TOSCA_USER2*/|TOSCA_SMEM|VME_A32|VME_SWAP))
+            {
+                /* mapping to USER2 succeeds but crashes the kernel when accessing the VME range :-P */
+                error("slave map only possible on A32 to memory, USER1 or SMEM");
+                errno = EINVAL;
+                goto fail;
+            }
             vme_window.resource_offset = res_address & ~0xffffful;
-            vme_window.aspace = aspace & (0x0fff & ~VME_SLAVE);
+            vme_window.aspace = aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM);
             if (!vme_window.aspace) vme_window.aspace = VME_A32;
             if (aspace & VME_SWAP) vme_window.cycle |= VME_LE_TO_BE;
             vme_window.size += 0xffffful; /* Expand slave maps to MB boundary. */
             vme_window.size &= ~0xffffful;
+            if (vme_window.size > 0x400000ul) /* more than 4 MB */
+            {
+                error("slave windows size 0x%llx exceeds 4 MB",
+                    (unsigned long long) vme_window.size);
+                errno = ENOMEM;
+                goto fail;
+            }
+            
+            sprintf(filename, "/dev/bus/vme/s%u", card);
+            setcmd = VME_SET_SLAVE;
+            getcmd = 0; /* Reading back slave windows is buggy. */
         }
         else
         {
+            if (((aspace & VME_A16) && address + size > 0x10000) ||
+                ((aspace & (VME_A24|VME_CRCSR)) && address + size > 0x1000000))
+            {
+                error("address 0x%llx + size 0x%zx exceeds %s address space",
+                    (unsigned long long) address, size,
+                    toscaAddrSpaceToStr(aspace));
+                errno = EFAULT;
+                goto fail;
+            }
+
             sprintf(filename, "/dev/bus/vme/m%u", card);
             setcmd = VME_SET_MASTER;
             getcmd = VME_GET_MASTER;
@@ -421,8 +383,75 @@ check_existing_maps:
         else
             mapsize = vme_window.size ;           /* Map the whole window to user space. */
     }
+    else if (aspace & (TOSCA_CSR | TOSCA_IO))
+    {
+        struct stat filestat;
+        
+        fd = toscaOpen(card, aspace & TOSCA_CSR ? "resource3" : "resource4");
+        if (fd < 0) goto fail;
+        fstat(fd, &filestat);
+        mapsize = filestat.st_size;  /* Map whole address space. */
+        offset = address;            /* Location within fd that maps to requested address. */
+        address = 0;                 /* This is the start address of the fd. */
+        if (toscaMapDebug)
+        {
+            sprintf(filename, TOSCA_PCI_DIR "/%04x:%02x:%02x.%x/%s",
+                toscaDevices[card].dom,
+                toscaDevices[card].bus,
+                toscaDevices[card].dev,
+                toscaDevices[card].func,
+                aspace & TOSCA_CSR ? "resource3" : "resource4");
+        }
+    }
+    else if (aspace & TOSCA_SRAM)
+    {
+        glob_t globresults;
+        int n;
+        char* uiodev;
+        char buffer[24];
 
-    if ((aspace & 0xfff) > VME_SLAVE)
+        if (card != 0)
+        {
+            debug("access to SRAM only on local card");
+            errno = EINVAL;
+            goto fail;
+        }
+
+        sprintf(filename, "/sys/bus/platform/devices/*.sram/uio/uio*/maps/map0/size");
+        debug("glob(%s)", filename);
+        if (glob(filename, GLOB_ONLYDIR, NULL, &globresults) != 0)
+        {
+            debug("cannot find SRAM device");
+            errno = ENODEV;
+            goto fail;
+        }
+        fd = open(globresults.gl_pathv[0], O_RDONLY);
+        n = read(fd, buffer, sizeof(buffer)-1);
+        close(fd);
+        if (n >= 0) buffer[n] = 0;
+        mapsize = strtoul(buffer, NULL, 0); /* Map whole SRAM. */
+        offset = address;
+        address = 0;
+        uiodev = strstr(globresults.gl_pathv[0], "/uio/") + 5;
+        *strchr(uiodev, '/') = 0;
+        debug ("found SRAM device %s size %s", uiodev, buffer);
+        sprintf(filename, "/dev/%s", uiodev);
+        fd = open(filename, O_RDWR);
+        globfree(&globresults);
+        if (fd < 0)
+        {
+            debugErrno("open %s", filename);
+            goto fail;
+        }
+    }
+    else
+    {
+        error("invalid address space");
+        errno = EINVAL;
+        goto fail;
+    }
+
+    if ((aspace & 0xfe0) > VME_SLAVE)
     {
         /* VME_SLAVE windows to Tosca resources do not use mmap. */
         baseptr = (void*)(size_t) res_address;

@@ -84,7 +84,24 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
             result.aspace |= VME_CRCSR;
         else
         if (strncmp(s, "SLAVE", 5) == 0 && (s+=5))
+        {
             result.aspace |= VME_SLAVE;
+            switch (strtol(s, &s, 10))
+            {
+                case 16:
+                    result.aspace |= VME_A16; break;
+                case 24:
+                    result.aspace |= VME_A24; break;
+                case 0:
+                case 32:
+                    result.aspace |= VME_A32; break;
+                case 64:
+                    result.aspace |= VME_A64; break;
+                default:
+                    errno = EINVAL;
+                    return (toscaMapAddr_t){0};
+            }
+        }
         else
         if (*s == 'A')
         {
