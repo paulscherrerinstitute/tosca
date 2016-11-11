@@ -37,9 +37,9 @@ extern int toscaMapDebug;
 extern FILE* toscaMapDebugFile;
 
 /* Map a Tosca resource to user space. Re-use maps if possible. */
-volatile void* toscaMap(unsigned int aspace, uint64_t address, size_t size, uint64_t res_address);
+volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, uint64_t res_address);
 
-/* For aspace use
+/* For addrspace use
    * for VME address spaces A16, A24, A32, A64: VME_A16, VME_A24, VME_A32, VME_A64 ( | VME_SUPER, VME_PROG)
    * for VME CR/CSR addres space: VME_CRCSR
    * for Tosca FPGA USER1, USER2: TOSCA_USER1 (or TOSCA_USER), TOSCA_USER2
@@ -48,24 +48,24 @@ volatile void* toscaMap(unsigned int aspace, uint64_t address, size_t size, uint
    * for Tosca IO space registers: TOSCA_IO
    * for Tosca PON SRAM on ELB: TOSCA_SRAM
    * for VME A32 slave windows: VME_SLAVE|{TOSCA_USER1, TOSCA_USER2, TOSCA_SMEM} ( | VME_SWAP) and pass res_address
-   * if using more than one Tosca, use aspace|(tosca<<16).
+   * if using more than one Tosca, use addrspace|(tosca<<16).
    At the moment Tosca does not support A64 but one day?
 */
 
-/* Convert aspace code to string. */
-const char* toscaAddrSpaceToStr(unsigned int aspace);
+/* Convert addrspace code to string. */
+const char* toscaAddrSpaceToStr(unsigned int addrspace);
 
-/* Several map lookup functions. aspace will be 0 if map is not found. */
+/* Several map lookup functions. addrspace will be 0 if map is not found. */
 typedef struct {
     uint64_t baseaddress;
     volatile void* baseptr;
     size_t size;
-    unsigned int aspace;
+    unsigned int addrspace;
 } toscaMapInfo_t;
 
 typedef struct {
     uint64_t address;
-    unsigned int aspace;
+    unsigned int addrspace;
 } toscaMapAddr_t;
 
 /* Iterate over all maps (while func returns 0). */

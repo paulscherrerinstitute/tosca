@@ -43,7 +43,7 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
     if (*s == ':')
     {
         s++;
-        result.aspace = card << 16;
+        result.addrspace = card << 16;
     }
     else
         s = (char*) str;
@@ -52,12 +52,12 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
     {
         if (*s == '2')
         {
-            result.aspace |= TOSCA_USER2;
+            result.addrspace |= TOSCA_USER2;
             s++;
         }
         else
         {
-            result.aspace |= TOSCA_USER1;
+            result.addrspace |= TOSCA_USER1;
             if (*s == '1') s++;
         }
     }
@@ -66,37 +66,37 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
         (strncmp(s, "SHMEM", 5) == 0 && (s+=5)) ||
         (strncmp(s, "SMEM", 4) == 0 && (s+=4)) ||
         (strncmp(s, "SHM", 3) == 0 && (s+=3)))
-        result.aspace |= TOSCA_SMEM;
+        result.addrspace |= TOSCA_SMEM;
     else
     if (strncmp(s, "TCSR", 4) == 0 && (s+=4))
-        result.aspace |= TOSCA_CSR;
+        result.addrspace |= TOSCA_CSR;
     else
     if (strncmp(s, "TIO", 3) == 0 && (s+=3))
-        result.aspace |= TOSCA_IO;
+        result.addrspace |= TOSCA_IO;
     else
     if (strncmp(s, "SRAM", 4) == 0 && (s+=4))
-        result.aspace |= TOSCA_SRAM;
+        result.addrspace |= TOSCA_SRAM;
     else
     {
         if (strncmp(s, "VME_", 4) == 0) s+=4;
         if ((strncmp(s, "CRCSR", 5) == 0 && (s+=5)) || 
             (strncmp(s, "CSR", 3) == 0 && (s+=3)))
-            result.aspace |= VME_CRCSR;
+            result.addrspace |= VME_CRCSR;
         else
         if (strncmp(s, "SLAVE", 5) == 0 && (s+=5))
         {
-            result.aspace |= VME_SLAVE;
+            result.addrspace |= VME_SLAVE;
             switch (strtol(s, &s, 10))
             {
                 case 16:
-                    result.aspace |= VME_A16; break;
+                    result.addrspace |= VME_A16; break;
                 case 24:
-                    result.aspace |= VME_A24; break;
+                    result.addrspace |= VME_A24; break;
                 case 0:
                 case 32:
-                    result.aspace |= VME_A32; break;
+                    result.addrspace |= VME_A32; break;
                 case 64:
-                    result.aspace |= VME_A64; break;
+                    result.addrspace |= VME_A64; break;
                 default:
                     errno = EINVAL;
                     return (toscaMapAddr_t){0};
@@ -108,22 +108,22 @@ toscaMapAddr_t toscaStrToAddr(const char* str)
             switch (strtol(++s, &s, 10))
             {
                 case 16:
-                    result.aspace |= VME_A16; break;
+                    result.addrspace |= VME_A16; break;
                 case 24:
-                    result.aspace |= VME_A24; break;
+                    result.addrspace |= VME_A24; break;
                 case 32:
-                    result.aspace |= VME_A32; break;
+                    result.addrspace |= VME_A32; break;
                 case 64:
-                    result.aspace |= VME_A64; break;
+                    result.addrspace |= VME_A64; break;
                 default:
                     errno = EINVAL;
                     return (toscaMapAddr_t){0};
             }
             do
             {
-                if (*s == '*') result.aspace |= VME_SUPER;
+                if (*s == '*') result.addrspace |= VME_SUPER;
                 else
-                if (*s == '#') result.aspace |= VME_PROG;
+                if (*s == '#') result.addrspace |= VME_PROG;
                 else
                 break;
             } while (s++);

@@ -39,7 +39,7 @@ struct regDevice
     volatile void* baseptr;
     unsigned int dmaReadLimit;
     unsigned int dmaWriteLimit;
-    unsigned int aspace;
+    unsigned int addrspace;
     unsigned int dmaSpace;
     int swap;
     int ivec;
@@ -48,7 +48,7 @@ struct regDevice
 
 void toscaRegDevReport(regDevice *device, int level)
 {
-    printf("Tosca %s:0x%zx", toscaAddrSpaceToStr(device->aspace), device->baseaddr);
+    printf("Tosca %s:0x%zx", toscaAddrSpaceToStr(device->addrspace), device->baseaddr);
     if (device->swap)
         printf(", swap=%s",
             device->swap == 2 ? "WS" : device->swap == 4 ? "DS" : device->swap == 8 ? "QS" : "??");
@@ -210,41 +210,41 @@ static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, unsig
         }
         ivec = device->ivec;
     }
-    if (device->aspace & (VME_A16|VME_A24|VME_A32|VME_A64))
+    if (device->addrspace & (VME_A16|VME_A24|VME_A32|VME_A64))
     {
         if (ivec > 255)
         {
             error("%s: %s interrupt %d out of range 1-255\n",
-                user, toscaAddrSpaceToStr(device->aspace), ivec);
+                user, toscaAddrSpaceToStr(device->addrspace), ivec);
             return NULL;
         }
     }
     else
-    if (device->aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM))
+    if (device->addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM))
     {
         if (ivec > 15)
         {
             error("%s: %s interrupt %d out of range 0-15\n",
-                user, toscaAddrSpaceToStr(device->aspace), ivec);
+                user, toscaAddrSpaceToStr(device->addrspace), ivec);
             return NULL;
         }
-        if (device->aspace & TOSCA_USER2)
+        if (device->addrspace & TOSCA_USER2)
             ivec += 16;
     }
     else
     {
         error("%s: I/O Intr not supported on %s",
-            user, toscaAddrSpaceToStr(device->aspace));
+            user, toscaAddrSpaceToStr(device->addrspace));
         return NULL;
     }
 
     if (device->ioscanpvt[ivec] == NULL)
     {
-        debug("%s: init %s interrupt %d handling", user, toscaAddrSpaceToStr(device->aspace), ivec);
+        debug("%s: init %s interrupt %d handling", user, toscaAddrSpaceToStr(device->addrspace), ivec);
         scanIoInit(&device->ioscanpvt[ivec]);
         
         if (toscaIntrConnectHandler(
-            device->aspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? TOSCA_VME_INTR_ANY : TOSCA_USER1_INTR(ivec),
+            device->addrspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? TOSCA_VME_INTR_ANY : TOSCA_USER1_INTR(ivec),
             ivec, toscaScanIoRequest, device->ioscanpvt[ivec]) != 0)
         {
             error("%s: toscaIntrConnectHandler(0x%x,...) failed", user, ivec);
@@ -252,7 +252,7 @@ static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, unsig
         }
     }
     else
-        debug("%s: %s interrupt %d handling already active", user, toscaAddrSpaceToStr(device->aspace), ivec);
+        debug("%s: %s interrupt %d handling already active", user, toscaAddrSpaceToStr(device->addrspace), ivec);
     return device->ioscanpvt[ivec];
 }
 
@@ -271,13 +271,13 @@ struct regDevSupport toscaRegDev = {
     .getOutScanPvt = toscaRegDevGetIoScanPvt,
 };
 
-int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, size_t size, const char* flags)
+int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t address, size_t size, const char* flags)
 {
     regDevice* device;
     int blockmode = 0;
     
-    debug("toscaRegDevConfigure(name=%s, aspace=0x%x(%s), address=0x%zx size=0x%zx, flags=\"%s\")",
-        name, aspace, toscaAddrSpaceToStr(aspace), address, size, flags);
+    debug("toscaRegDevConfigure(name=%s, addrspace=0x%x(%s), address=0x%zx size=0x%zx, flags=\"%s\")",
+        name, addrspace, toscaAddrSpaceToStr(addrspace), address, size, flags);
     
     if (regDevFind(name))
     {
@@ -297,10 +297,10 @@ int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, 
     device->dmaWriteLimit = 2048;
     device->ivec = -1;
 
-    device->aspace = aspace;
-    if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_CSR)) device->swap = 4;
-    if (aspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM)) device->dmaSpace = aspace;
-    if (aspace & VME_A32) device->dmaSpace  = VME_SCT;
+    device->addrspace = addrspace;
+    if (addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_CSR)) device->swap = 4;
+    if (addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM)) device->dmaSpace = addrspace;
+    if (addrspace & VME_A32) device->dmaSpace  = VME_SCT;
 
     if (flags)
     {
@@ -356,7 +356,7 @@ int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, 
             if (strncasecmp(p, "intr=", 5) == 0) { device->ivec = strtol(p+5, NULL, 0); continue; } /* Better use V= in record */
         }
     }
-    if (device->dmaSpace & VME_BLOCKTRANSFER && !(aspace & VME_A32))
+    if (device->dmaSpace & VME_BLOCKTRANSFER && !(addrspace & VME_A32))
     {
         error("%s only possible on VME A32 address space",
             toscaDmaTypeToStr(device->dmaSpace));
@@ -376,9 +376,9 @@ int toscaRegDevConfigure(const char* name, unsigned int aspace, size_t address, 
 
     if (device->dmaReadLimit != 1 || device->dmaWriteLimit != 1) /* not DMA only */
     {
-        if ((device->baseptr = toscaMap(aspace, address, size, 0)) == NULL)
+        if ((device->baseptr = toscaMap(addrspace, address, size, 0)) == NULL)
         {
-            error("error mapping Tosca %s:0x%zx[0x%zx]: %m", toscaAddrSpaceToStr(aspace), address, size);
+            error("error mapping Tosca %s:0x%zx[0x%zx]: %m", toscaAddrSpaceToStr(addrspace), address, size);
             return -1;
         }
     }
@@ -445,7 +445,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
     }
     
     addr = toscaStrToAddr(args[1].sval);
-    if (!addr.aspace)
+    if (!addr.addrspace)
     {
         error("invalid address space %s", args[1].sval);
         return;
@@ -456,7 +456,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
         l += sprintf(flags+l, "%.*s ", (int)sizeof(flags)-l, args[3].aval.av[i]);
     if (l) flags[l-1] = 0;
 
-    if (toscaRegDevConfigure(args[0].sval, addr.aspace, addr.address, size, flags) != 0)
+    if (toscaRegDevConfigure(args[0].sval, addr.addrspace, addr.address, size, flags) != 0)
     {
         if (!interruptAccept) epicsExit(-1);
     }

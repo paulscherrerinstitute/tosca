@@ -211,7 +211,7 @@ float pev_bmr_conv_16bit_u(ushort value)
 
 /** MAPS **************************************************/
 
-static int pev_mode_to_tosca_aspace(int mode)
+static int pev_mode_to_tosca_addrspace(int mode)
 {
     switch (mode & 0xff00)
     {
@@ -245,7 +245,7 @@ int pevx_map_alloc(uint crate, struct pev_ioctl_map_pg *map_p)
         debug("VME slave sg_id=0x%x mode=0x%x size=0x%x rem_addr=0x%lx loc_addr=0x%lx",
             map_p->sg_id, map_p->mode, map_p->size, map_p->rem_addr, map_p->loc_addr);
 
-        toscaMap(crate<<16 | pev_mode_to_tosca_aspace(map_p->mode) | MAP_SLAVE_VME |
+        toscaMap(crate<<16 | pev_mode_to_tosca_addrspace(map_p->mode) | MAP_SLAVE_VME |
             (map_p->mode & MAP_SWAP_AUTO) ? VME_SWAP : 0,
             map_p->loc_addr, map_p->size, map_p->rem_addr);
 
@@ -266,7 +266,7 @@ int pevx_map_alloc(uint crate, struct pev_ioctl_map_pg *map_p)
 
     map_p->loc_addr = 0;
 
-    ptr = toscaMap(crate<<16 | pev_mode_to_tosca_aspace(map_p->mode),
+    ptr = toscaMap(crate<<16 | pev_mode_to_tosca_addrspace(map_p->mode),
         map_p->rem_addr, map_p->size, 0);
 
     if (!ptr) return -1;

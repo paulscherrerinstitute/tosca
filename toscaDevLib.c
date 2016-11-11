@@ -142,9 +142,9 @@ long toscaDevLibProbe(
 
     vme_addr = toscaMapLookupAddr(ptr);
 
-    if (!vme_addr.aspace) return S_dev_addressNotFound;
+    if (!vme_addr.addrspace) return S_dev_addressNotFound;
 
-    card = vme_addr.aspace>>16;
+    card = vme_addr.addrspace>>16;
 
     epicsMutexMustLock(probeMutex);
 
@@ -182,7 +182,7 @@ long toscaDevLibProbe(
 
         /* Now check if the error came from our access. */
         debug("Our access was %s 0x%"PRIx64,
-            toscaAddrSpaceToStr(vme_addr.aspace),
+            toscaAddrSpaceToStr(vme_addr.addrspace),
              vme_addr.address);
         if (vme_err.source == 0 && /* Error from PCIe, maybe our access. */
             isWrite == vme_err.write) /* Read/write access matches. */
@@ -190,7 +190,7 @@ long toscaDevLibProbe(
             {
                 case 0: /* CRCSR */
                     debug("VME bus error at CRCSR 0x%"PRIx64, vme_err.address & 0xfffffc);
-                    if ((vme_addr.aspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_CRCSR &&
+                    if ((vme_addr.addrspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_CRCSR &&
                         ((vme_err.address ^ vme_addr.address) & 0xfffffc) == 0)
                     {
                         epicsMutexUnlock(probeMutex);
@@ -199,7 +199,7 @@ long toscaDevLibProbe(
                     break;
                 case 1: /* A16 */
                     debug("VME bus error at A16 0x%"PRIx64, vme_err.address & 0xfffc);
-                    if ((vme_addr.aspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_A16 &&
+                    if ((vme_addr.addrspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_A16 &&
                         ((vme_err.address ^ vme_addr.address) & 0xfffc) == 0)
                     {
                         epicsMutexUnlock(probeMutex);
@@ -208,7 +208,7 @@ long toscaDevLibProbe(
                     break;
                 case 2: /* A24 */
                     debug("VME bus error at A24 0x%"PRIx64, vme_err.address & 0xfffffc);
-                    if ((vme_addr.aspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_A24 &&
+                    if ((vme_addr.addrspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_A24 &&
                         ((vme_err.address ^ vme_addr.address) & 0xfffffc) == 0)
                     {
                         epicsMutexUnlock(probeMutex);
@@ -217,7 +217,7 @@ long toscaDevLibProbe(
                     break;
                 case 3: /* A32 */
                     debug("VME bus error at A32 0x%"PRIx64, vme_err.address & 0xfffffffc);
-                    if ((vme_addr.aspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_A32 &&
+                    if ((vme_addr.addrspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_A32 &&
                         ((vme_err.address ^ vme_addr.address) & 0xfffffffc) == 0)
                     {
                         epicsMutexUnlock(probeMutex);

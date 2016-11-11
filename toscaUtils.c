@@ -105,8 +105,8 @@ static void memfillFunc(const iocshArgBuf *args)
 
 static const iocshFuncDef toscaCopyDef =
     { "toscaCopy", 4, (const iocshArg *[]) {
-    &(iocshArg) { "[aspace:]source", iocshArgString },
-    &(iocshArg) { "[aspace:]dest", iocshArgString },
+    &(iocshArg) { "[addrspace:]source", iocshArgString },
+    &(iocshArg) { "[addrspace:]dest", iocshArgString },
     &(iocshArg) { "size", iocshArgString },
     &(iocshArg) { "width", iocshArgInt },
 }};
@@ -128,8 +128,8 @@ void toscaCopyFunc(const iocshArgBuf *args)
     size = toscaStrToSize(args[2].sval);
     
     addr = toscaStrToAddr(args[0].sval);
-    if (addr.aspace)
-        sourceptr = toscaMap(addr.aspace, addr.address, size, 0);
+    if (addr.addrspace)
+        sourceptr = toscaMap(addr.addrspace, addr.address, size, 0);
     else
         sourceptr = (volatile void*)(size_t)addr.address;
     if (!sourceptr)
@@ -139,8 +139,8 @@ void toscaCopyFunc(const iocshArgBuf *args)
     }
 
     addr = toscaStrToAddr(args[1].sval);
-    if (addr.aspace)
-        destptr = toscaMap(addr.aspace, addr.address, size, 0);
+    if (addr.addrspace)
+        destptr = toscaMap(addr.addrspace, addr.address, size, 0);
     else
         destptr = (volatile void*)toscaStrToSize(args[1].sval);
     if (!destptr)
