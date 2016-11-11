@@ -184,7 +184,7 @@ static void toscaGetVmeErrFunc(const iocshArgBuf *args)
         perror("toscaGetVmeErr failed");
         return;
     }
-    printf("0x%08x,0x%08x (%s %s%c%s %s id=%d len=%d %s:0x%x)\n",
+    printf("0x%08"PRIx64",0x%"PRIx32" (%s %s%c%s %s id=%d len=%d %s:0x%"PRIx64")\n",
         err.address,
         err.status,
         err.err ? "ERR" : "OK",

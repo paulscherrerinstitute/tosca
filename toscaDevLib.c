@@ -130,9 +130,10 @@ long toscaDevLibProbe(
 {
     toscaMapAddr_t vme_addr;
     toscaMapVmeErr_t vme_err;
+    void* readptr;
+    int card;
     int i;
     int readval;
-    void* readptr;
 
     if (isWrite)
         readptr = &readval;
@@ -143,12 +144,12 @@ long toscaDevLibProbe(
 
     if (!vme_addr.aspace) return S_dev_addressNotFound;
 
-    /* I would really like to pause all other threads and processes here. */
-    /* At least make sure that we are alone here. */
+    card = vme_addr.aspace>>16;
+
     epicsMutexMustLock(probeMutex);
 
     /* Read once to clear BERR bit. */
-    toscaGetVmeErr(vme_addr.aspace>>16);
+    toscaGetVmeErr(card);
 
     for (i = 1; i < 1000; i++)  /* We don't want to loop forever. */
     {
@@ -176,10 +177,8 @@ long toscaDevLibProbe(
                 epicsMutexUnlock(probeMutex);
                 return S_dev_badArgument;
         }
-        vme_err = toscaGetVmeErr(vme_addr.aspace>>16);
-
-        if (!vme_err.err)
-            return S_dev_success;
+        vme_err = toscaGetVmeErr(card);
+        if (!vme_err.err) break; /* No error: success */
 
         /* Now check if the error came from our access. */
         debug("Our access was %s 0x%"PRIx64,
@@ -190,8 +189,8 @@ long toscaDevLibProbe(
             switch (vme_err.mode) /* Check address space of error. */
             {
                 case 0: /* CRCSR */
-                    debug("VME bus error at CRCSR %#x", vme_err.address & 0xfffffc);
-                    if ((vme_addr.aspace & 0xfff) == VME_CRCSR &&
+                    debug("VME bus error at CRCSR 0x%"PRIx64, vme_err.address & 0xfffffc);
+                    if ((vme_addr.aspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_CRCSR &&
                         ((vme_err.address ^ vme_addr.address) & 0xfffffc) == 0)
                     {
                         epicsMutexUnlock(probeMutex);
@@ -199,8 +198,8 @@ long toscaDevLibProbe(
                     }
                     break;
                 case 1: /* A16 */
-                    debug("VME bus error at A16 %#x", vme_err.address & 0xfffc);
-                    if ((vme_addr.aspace & 0xfff) == VME_A16 &&
+                    debug("VME bus error at A16 0x%"PRIx64, vme_err.address & 0xfffc);
+                    if ((vme_addr.aspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_A16 &&
                         ((vme_err.address ^ vme_addr.address) & 0xfffc) == 0)
                     {
                         epicsMutexUnlock(probeMutex);
@@ -208,8 +207,8 @@ long toscaDevLibProbe(
                     }
                     break;
                 case 2: /* A24 */
-                    debug("VME bus error at A24 %#x", vme_err.address & 0xfffffc);
-                    if ((vme_addr.aspace & 0xfff) == VME_A24 &&
+                    debug("VME bus error at A24 0x%"PRIx64, vme_err.address & 0xfffffc);
+                    if ((vme_addr.aspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_A24 &&
                         ((vme_err.address ^ vme_addr.address) & 0xfffffc) == 0)
                     {
                         epicsMutexUnlock(probeMutex);
@@ -217,8 +216,8 @@ long toscaDevLibProbe(
                     }
                     break;
                 case 3: /* A32 */
-                    debug("VME bus error at A32 %#x", vme_err.address & 0xfffffffc);
-                    if ((vme_addr.aspace & 0xfff) == VME_A32 &&
+                    debug("VME bus error at A32 0x%"PRIx64, vme_err.address & 0xfffffffc);
+                    if ((vme_addr.aspace & (VME_CRCSR|VME_A16|VME_A24|VME_A32)) == VME_A32 &&
                         ((vme_err.address ^ vme_addr.address) & 0xfffffffc) == 0)
                     {
                         epicsMutexUnlock(probeMutex);
@@ -226,19 +225,9 @@ long toscaDevLibProbe(
                     }
                     break;
             }
-#if 0
-        /* Does not work. TOSCA never sets bit 30. */
-        /* Error was not from us, do we have more than one error? */
-        if (!(vme_err.status & (1<<30) /* VME_Error_Over */))
-        {
-            /* No second error thus our access was OK. */
-            epicsMutexUnlock(probeMutex);
-            return S_dev_success;
-        }
-#endif
         debug("try again i=%d", i);
     } /* Repeat until success or error matches our address */
-    /* ...or give up. Errors have always been other addresses so far. */
+    /* ...or give up. All errors have always been on other addresses so far. */
     epicsMutexUnlock(probeMutex);
     return S_dev_success;
 }

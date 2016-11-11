@@ -1,6 +1,8 @@
 #ifndef toscaReg_h
 #define toscaReg_h
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -44,7 +46,7 @@ unsigned int toscaPonWrite(unsigned int address, unsigned int value);
 
 /* Read (and clear) VME error status. Error is latched and not overwritten until read. */
 typedef struct {
-    unsigned int address:32;  /* Lowest two bits are always 0. */
+    uint64_t address;         /* Lowest two bits are always 0. */
     union {
      unsigned int status:32;
      struct {
