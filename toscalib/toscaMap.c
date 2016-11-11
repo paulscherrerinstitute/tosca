@@ -7,15 +7,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <glob.h>
 
+#include "toscaMap.h"
 typedef uint64_t __u64;
 typedef uint32_t __u32;
 typedef uint8_t __u8;
 #include "vme_user.h"
-#include "toscaMap.h"
 
 #define TOSCA_DEBUG_NAME toscaMap
 #include "toscaDebug.h"
@@ -156,13 +155,13 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
 
     card = aspace >> 16;
 
-    debug("aspace=0x%x(%u:%s%s%s%s), address=0x%llx, size=0x%zx",
+    debug("aspace=0x%x(%u:%s%s%s%s), address=0x%"PRIx64", size=0x%zx",
         aspace, card,
         toscaAddrSpaceToStr(aspace),
         aspace & VME_SLAVE ? "->" : "",
         aspace & VME_SLAVE ? toscaAddrSpaceToStr(aspace & ~(VME_SLAVE|VME_A16|VME_A24|VME_A32|VME_A64|VME_CRCSR)) : "",
         aspace & VME_SWAP ? " SWAP" : "",
-        (unsigned long long) address,
+        address,
         size);
 
     if (card >= toscaNumDevices)
@@ -181,9 +180,9 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
     {
         if (address + size > map->info.size)
         {
-            debug("address 0x%llx + size 0x%zx exceeds %s size 0x%llx",
-                (unsigned long long) address, size,
-                toscaAddrSpaceToStr(aspace), (unsigned long long) map->info.size);
+            debug("address 0x%"PRIx64" + size 0x%zx exceeds %s size 0x%zx",
+                address, size,
+                toscaAddrSpaceToStr(aspace), map->info.size);
             return NULL;
         }
         return map->info.baseptr + address;
@@ -194,11 +193,11 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
 check_existing_maps:
     while ((map = *pmap) != NULL)
     {
-        debug("%u:%s:0x%llx[0x%zx] check aspace=0x%x(%s), address=0x%llx, size=0x%zx",
-            card, toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
+        debug("%u:%s:0x%"PRIx64"[0x%zx] check aspace=0x%x(%s), address=0x%"PRIx64", size=0x%zx",
+            card, toscaAddrSpaceToStr(aspace), address, size,
             map->info.aspace,
             toscaAddrSpaceToStr(map->info.aspace),
-            (unsigned long long) map->info.baseaddress,
+            map->info.baseaddress,
             map->info.size);
         if (aspace == map->info.aspace &&
             address >= map->info.baseaddress &&
@@ -209,17 +208,17 @@ check_existing_maps:
                 /* Existing VME slave to Tosca resource: Check resource address. */
                 if (res_address != (vmeaddr_t)(size_t) map->info.baseptr + (address - map->info.baseaddress))
                 {
-                    debug("overlap with existing SLAVE map to %s:0x%llx",
+                    debug("overlap with existing SLAVE map to %s:0x%"PRIx64,
                         toscaAddrSpaceToStr(map->info.aspace & ~VME_SLAVE),
-                            (unsigned long long) map->info.baseaddress);
+                            map->info.baseaddress);
                     errno = EADDRINUSE;
                     return NULL;
                 }
             }
-            debug("%u:%s:0x%llx[0x%zx] use existing window addr=0x%llx size=0x%zx offset=0x%llx",
-                card, toscaAddrSpaceToStr(aspace), (unsigned long long) address, size,
-                (unsigned long long) map->info.baseaddress, map->info.size,
-                (unsigned long long) (address - map->info.baseaddress));
+            debug("%u:%s:0x%"PRIx64"[0x%zx] use existing window addr=0x%"PRIx64" size=0x%zx offset=0x%"PRIx64,
+                card, toscaAddrSpaceToStr(aspace), address, size,
+                map->info.baseaddress, map->info.size,
+                (address - map->info.baseaddress));
             return map->info.baseptr + (address - map->info.baseaddress);
         }
         pmap = &(*pmap)->next;
@@ -248,8 +247,8 @@ check_existing_maps:
         if (size == 0) size = 1;
         if ((address + size) & ~0xffffffffull)
         {
-            error("address 0x%llx + size 0x%zx out of 32 bit range",
-                (unsigned long long) address, size);
+            error("address 0x%"PRIx64" + size 0x%zx out of 32 bit range",
+                address, size);
             errno = EFAULT;
             goto fail;
         }
@@ -267,15 +266,15 @@ check_existing_maps:
         {
             if ((aspace & 0xfe0) > VME_SLAVE && (res_address ^ address) & 0xffffful)
             {
-                error("slave address 0x%llx not aligned with resource address 0x%llx",
-                    (unsigned long long) address, (unsigned long long) res_address);
+                error("slave address 0x%"PRIx64" not aligned with resource address 0x%"PRIx64,
+                    address, res_address);
                 errno = EFAULT;
                 goto fail;
             }
             if ((address + size) & ~0x1ffffffful)
             {
-                error("slave address 0x%llx + size 0x%zx out of 512MB range",
-                    (unsigned long long) address, size);
+                error("slave address 0x%"PRIx64" + size 0x%zx out of 512MB range",
+                    address, size);
                 errno = EFAULT;
                 goto fail;
             }
@@ -294,8 +293,8 @@ check_existing_maps:
             vme_window.size &= ~0xffffful;
             if (vme_window.size > 0x400000ul) /* more than 4 MB */
             {
-                error("slave windows size 0x%llx exceeds 4 MB",
-                    (unsigned long long) vme_window.size);
+                error("slave windows size 0x%"PRIx64" exceeds 4 MB",
+                    vme_window.size);
                 errno = ENOMEM;
                 goto fail;
             }
@@ -309,8 +308,8 @@ check_existing_maps:
             if (((aspace & VME_A16) && address + size > 0x10000) ||
                 ((aspace & (VME_A24|VME_CRCSR)) && address + size > 0x1000000))
             {
-                error("address 0x%llx + size 0x%zx exceeds %s address space",
-                    (unsigned long long) address, size,
+                error("address 0x%"PRIx64" + size 0x%zx exceeds %s address space",
+                    address, size,
                     toscaAddrSpaceToStr(aspace));
                 errno = EFAULT;
                 goto fail;
@@ -329,21 +328,21 @@ check_existing_maps:
             goto fail;
         }
 
-        debug("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, resource_offset=0x%x})",
+        debug("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%"PRIx64" size=0x%"PRIx64" aspace=0x%x cycle=0x%x, resource_offset=0x%x})",
             fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
             vme_window.enable,
-            (unsigned long long) vme_window.vme_addr,
-            (unsigned long long) vme_window.size,
+            vme_window.vme_addr,
+            vme_window.size,
             vme_window.aspace,
             vme_window.cycle,
             vme_window.resource_offset);
         if (ioctl(fd, setcmd, &vme_window) != 0)
         {
-            debugErrno("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%llx size=0x%llx aspace=0x%x cycle=0x%x, resource_offset=0x%x})",
+            debugErrno("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%"PRIx64" size=0x%"PRIx64" aspace=0x%x cycle=0x%x, resource_offset=0x%x})",
                 fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
                 vme_window.enable,
-                (unsigned long long) vme_window.vme_addr,
-                (unsigned long long) vme_window.size,
+                vme_window.vme_addr,
+                vme_window.size,
                 vme_window.aspace,
                 vme_window.cycle,
                 vme_window.resource_offset);
@@ -369,9 +368,9 @@ check_existing_maps:
                 close(fd);
                 goto fail;
             }
-            debug("got window address=0x%llx size=0x%llx",
-                (unsigned long long) vme_window.vme_addr,
-                (unsigned long long) vme_window.size);
+            debug("got window address=0x%"PRIx64" size=0x%"PRIx64,
+                vme_window.vme_addr,
+                vme_window.size);
         }
         res_address = vme_window.resource_offset;
         
@@ -491,9 +490,9 @@ check_existing_maps:
     
     if (offset + size > mapsize)
     {
-        debug("address 0x%llx + size 0x%zx exceeds %s address space size 0x%llx",
-            (unsigned long long) address + offset, size,
-            toscaAddrSpaceToStr(aspace), (unsigned long long) mapsize);
+        debug("address 0x%"PRIx64" + size 0x%zx exceeds %s address space size 0x%zx",
+            address + offset, size,
+            toscaAddrSpaceToStr(aspace), mapsize);
         errno = EFAULT;
         return NULL;
     }

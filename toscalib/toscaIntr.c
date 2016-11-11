@@ -138,8 +138,8 @@ int toscaIntrConnectHandler(intrmask_t intrmask, unsigned int vec, void (*functi
     static int count = 0;
     char dummy = 0;
 
-    debug("intrmask=0x%016llx vec=0x%x function=%s, parameter=%p intrFdMax=%d count=%d",
-        (unsigned long long)intrmask, vec, fname=symbolName(function,0), parameter, intrFdMax, count++), free(fname);
+    debug("intrmask=0x%016"PRIx64" vec=0x%x function=%s, parameter=%p intrFdMax=%d count=%d",
+        intrmask, vec, fname=symbolName(function,0), parameter, intrFdMax, count++), free(fname);
     LOCK; /* only need to lock installation, not calling of handlers */
 
     #define ADD_FD(index, name, ...)                                      \
@@ -353,7 +353,7 @@ void toscaIntrLoop()
             debugLvl(1, "new fd notification on newIntrFd[0]=%d", newIntrFd[0]);
             /* we have a new fd in the intrFdSet and need to restart select */
             if (read(newIntrFd[0], &dummy, sizeof(dummy)) < 0)
-                debugErrno("read newIntrFd[0]=%d: %llx", newIntrFd[0], dummy);
+                debugErrno("read newIntrFd[0]=%d: 0x%"PRIx64, newIntrFd[0], dummy);
             if (dummy != 0) break; /* exit the loop (see toscaIntrLoopStop) */
             n--;
         }

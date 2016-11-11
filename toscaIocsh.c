@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -116,9 +117,9 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
     if (!vme_addr.aspace)
         printf("%p is not a TOSCA address\n", (void*)addr);
     else
-        printf("%s:0x%llx\n",
+        printf("%s:0x%"PRIx64"\n",
             toscaAddrSpaceToStr(vme_addr.aspace),
-            (unsigned long long)vme_addr.address);
+            vme_addr.address);
 }
 
 int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
@@ -127,17 +128,17 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
     char buf[60];
     if (card) printf("%u:", card);
     if ((info.aspace & ~(VME_A16|VME_A24|VME_A32|VME_A64|VME_SWAP)) > VME_SLAVE)
-    printf("%7s:0x%-8llx %16s %7s:0x%llx%s\n",
+    printf("%7s:0x%-8"PRIx64" %16s %7s:0x%zx%s\n",
         toscaAddrSpaceToStr(info.aspace),
-        (unsigned long long)info.baseaddress,
+        info.baseaddress,
         sizeToStr(info.size, buf),
         toscaAddrSpaceToStr(info.aspace & ~(VME_SLAVE|VME_A16|VME_A24|VME_A32|VME_A64|VME_SWAP)),
-        (unsigned long long)(size_t) info.baseptr,
+        (size_t) info.baseptr,
         info.aspace & VME_SWAP ? " SWAP" : "");
     else
-    printf("%7s:0x%-8llx %16s   %p%s\n",
+    printf("%7s:0x%-8"PRIx64" %16s   %p%s\n",
         toscaAddrSpaceToStr(info.aspace),
-        (unsigned long long)info.baseaddress,
+        info.baseaddress,
         sizeToStr(info.size, buf),
         info.baseptr,
         info.aspace & VME_SWAP ? " SWAP" : "");
@@ -442,7 +443,7 @@ static const iocshFuncDef toscaStrToAddrDef =
 static void toscaStrToAddrFunc(const iocshArgBuf *args)
 {
     toscaMapAddr_t addr = toscaStrToAddr(args[0].sval);
-    printf("0x%x:0x%llx\n", addr.aspace, (unsigned long long)addr.address);
+    printf("0x%x:0x%"PRIx64"\n", addr.aspace, addr.address);
 }
 
 static const iocshFuncDef toscaAddrSpaceToStrDef =

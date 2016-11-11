@@ -167,11 +167,11 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
 #endif
     if (toscaDmaDebug)
         clock_gettime(CLOCK, &start);
-    debugLvl(2, "ioctl(%d, VME_DMA_EXECUTE, {%s 0x%llx->0x%llx [0x%x] dw=0x%x %s cy=0x%x=%s})",
+    debugLvl(2, "ioctl(%d, VME_DMA_EXECUTE, {%s 0x%"PRIx64"->0x%"PRIx64" [0x%x] dw=0x%x %s cy=0x%x=%s})",
         r->fd,
         toscaDmaRouteToStr(r->req.route),
-        (unsigned long long) r->req.src_addr,
-        (unsigned long long) r->req.dst_addr,
+        r->req.src_addr,
+        r->req.dst_addr,
         r->req.size,
         r->req.dwidth,
         toscaDmaWidthToSwapStr(r->req.dwidth),
@@ -179,11 +179,11 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
         toscaDmaTypeToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_EXECUTE, &ex) != 0)
     {
-        debugErrno("ioctl(%d, VME_DMA_EXECUTE, {%s 0x%llx->0x%llx [0x%x] dw=0x%x %s cy=0x%x=%s})",
+        debugErrno("ioctl(%d, VME_DMA_EXECUTE, {%s 0x%"PRIx64"->0x%"PRIx64" [0x%x] dw=0x%x %s cy=0x%x=%s})",
             r->fd,
             toscaDmaRouteToStr(r->req.route),
-            (unsigned long long) r->req.src_addr,
-            (unsigned long long) r->req.dst_addr,
+            r->req.src_addr,
+            r->req.dst_addr,
             r->req.size,
             r->req.dwidth,
             toscaDmaWidthToSwapStr(r->req.dwidth),
@@ -488,11 +488,11 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
         toscaDmaRelease(r);
         return NULL;
     }
-    debugLvl(2, "ioctl(%d, VME_DMA_SET, {%s 0x%llx->0x%llx [0x%x] dw=0x%x %s cy=0x%x=%s})",
+    debugLvl(2, "ioctl(%d, VME_DMA_SET, {%s 0x%"PRIx64"->0x%"PRIx64" [0x%x] dw=0x%x %s cy=0x%x=%s})",
         r->fd,
         toscaDmaRouteToStr(r->req.route),
-        (unsigned long long) r->req.src_addr,
-        (unsigned long long) r->req.dst_addr,
+        r->req.src_addr,
+        r->req.dst_addr,
         r->req.size,
         r->req.dwidth,
         toscaDmaWidthToSwapStr(r->req.dwidth),
@@ -500,11 +500,11 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
         toscaDmaTypeToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_SET, &r->req) != 0)
     {
-        debugErrno("ioctl(%d, VME_DMA_SET, {%s 0x%llx->0x%llx [0x%x] dw=0x%x %s cy=0x%x=%s})",
+        debugErrno("ioctl(%d, VME_DMA_SET, {%s 0x%"PRIx64"->0x%"PRIx64" [0x%x] dw=0x%x %s cy=0x%x=%s})",
             r->fd,
             toscaDmaRouteToStr(r->req.route),
-            (unsigned long long) r->req.src_addr,
-            (unsigned long long) r->req.dst_addr,
+            r->req.src_addr,
+            r->req.dst_addr,
             r->req.size,
             r->req.dwidth,
             toscaDmaWidthToSwapStr(r->req.dwidth),

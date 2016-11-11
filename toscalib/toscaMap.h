@@ -1,7 +1,7 @@
 #ifndef toscaMap_h
 #define toscaMap_h
 
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 
 /* VME access modes from vme.h */
