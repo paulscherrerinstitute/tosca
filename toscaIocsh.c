@@ -128,20 +128,20 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
     char buf[60];
     if (card) printf("%u:", card);
     if ((info.aspace & ~(VME_A16|VME_A24|VME_A32|VME_A64|VME_SWAP)) > VME_SLAVE)
-    printf("%7s:0x%-8"PRIx64" %16s %7s:0x%zx%s\n",
+    printf("%7s:0x%-8"PRIx64" %16s %7s:0x%-8zx%s\n",
         toscaAddrSpaceToStr(info.aspace),
         info.baseaddress,
         sizeToStr(info.size, buf),
         toscaAddrSpaceToStr(info.aspace & ~(VME_SLAVE|VME_A16|VME_A24|VME_A32|VME_A64|VME_SWAP)),
         (size_t) info.baseptr,
-        info.aspace & VME_SWAP ? " SWAP" : "");
+        info.aspace & VME_SWAP ? "SWAP" : "");
     else
-    printf("%7s:0x%-8"PRIx64" %16s   %p%s\n",
+    printf("%7s:0x%-8"PRIx64" %16s   %-16p%s\n",
         toscaAddrSpaceToStr(info.aspace),
         info.baseaddress,
         sizeToStr(info.size, buf),
         info.baseptr,
-        info.aspace & VME_SWAP ? " SWAP" : "");
+        info.aspace & VME_SWAP ? "SWAP" : "");
     return 0;
 }
 
