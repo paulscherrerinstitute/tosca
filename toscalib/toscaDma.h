@@ -20,7 +20,7 @@ extern "C" {
 extern int toscaDmaDebug;
 extern FILE* toscaDmaDebugFile;
 
-const char* toscaDmaTypeToStr(int type);
+const char* toscaDmaTypeToStr(unsigned int type);
 int toscaDmaStrToType(const char* str);
 
 typedef void (*toscaDmaCallback)(void* usr, int status);
@@ -30,8 +30,8 @@ typedef void (*toscaDmaCallback)(void* usr, int status);
 */
    
 struct dmaRequest* toscaDmaSetup(
-    int source, size_t source_addr, int dest, size_t dest_addr,
-    size_t size, int swap, int timeout, toscaDmaCallback callback, void* user);
+    unsigned int source, uint64_t source_addr, unsigned int dest, uint64_t dest_addr,
+    size_t size, unsigned int swap, int timeout, toscaDmaCallback callback, void* user);
 
 /* source and/or dest are one of:
    0, TOSCA_USER, TOSCA_SMEM, VME_SCT, VME_BLT, VME_MBLT, VME_2eVME, VME_2eVMEFast, VME_2eSST160, VME_2eSST267, VME_2eSST320
@@ -52,19 +52,19 @@ void toscaDmaRelease(struct dmaRequest*);
 /* toscaDmaTransfer works like toscaDmaSetup, toscaDmaExecute, toscaDmaRelease */
 
 int toscaDmaTransfer(
-    int source, size_t source_addr, int dest, size_t dest_addr,
-    size_t size, int swap, int timeout, toscaDmaCallback callback, void* user);
+    unsigned int source, uint64_t source_addr, unsigned int dest, uint64_t dest_addr,
+    size_t size, unsigned int swap, int timeout, toscaDmaCallback callback, void* user);
 
-static inline int toscaDmaWrite(void* source_addr, int dest, size_t dest_addr,
-    size_t size, int swap, int timeout, toscaDmaCallback callback, void* user)
+static inline int toscaDmaWrite(void* source_addr, unsigned int dest, uint64_t dest_addr,
+    size_t size, unsigned int swap, int timeout, toscaDmaCallback callback, void* user)
 {
-    return toscaDmaTransfer(0, (size_t)source_addr, dest, dest_addr, size, swap, timeout, callback, user);
+    return toscaDmaTransfer(0, (uint64_t)(size_t) source_addr, dest, dest_addr, size, swap, timeout, callback, user);
 }
 
-static inline int toscaDmaRead(int source, size_t source_addr, void* dest_addr,
-    size_t size, int swap, int timeout, toscaDmaCallback callback, void* user)
+static inline int toscaDmaRead(unsigned int source, uint64_t source_addr, void* dest_addr,
+    size_t size, unsigned int swap, int timeout, toscaDmaCallback callback, void* user)
 {
-    return toscaDmaTransfer(source, source_addr, 0, (size_t)dest_addr, size, swap, timeout, callback, user);
+    return toscaDmaTransfer(source, source_addr, 0, (uint64_t)(size_t) dest_addr, size, swap, timeout, callback, user);
 }
 
 /* start this in a separate thread to handle requests with callback */

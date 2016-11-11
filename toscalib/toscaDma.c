@@ -71,7 +71,7 @@ const char* toscaDmaRouteToStr(int route)
     }
 }
 
-const char* toscaDmaTypeToStr(int type)
+const char* toscaDmaTypeToStr(unsigned int type)
 {
     switch (type)
     {
@@ -330,8 +330,8 @@ void toscaDmaRelease(struct dmaRequest* r)
     UNLOCK;
 }
 
-struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_t dest_addr,
-    size_t size, int swap, int timeout,
+struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsigned int dest, uint64_t dest_addr,
+    size_t size, unsigned int swap, int timeout,
     toscaDmaCallback callback, void* user)
 {
     struct dmaRequest* r;
@@ -339,7 +339,7 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
     unsigned int card = (source | dest) >> 16;
     char filename[20];
     
-    debugLvl(2, "0x%x=%s:0x%zx -> 0x%x=%s:0x%zx [0x%zx] swap=%d tout=%d cb=%s(%p)",
+    debugLvl(2, "0x%x=%s:0x%"PRIx64" -> 0x%x=%s:0x%"PRIx64" [0x%zx] swap=%d tout=%d cb=%s(%p)",
         source, toscaDmaTypeToStr(source), source_addr, dest, toscaDmaTypeToStr(dest), dest_addr,
         size, swap, timeout, fname=symbolName(callback,0), user), free(fname);
     r = toscaDmaRequestCreate();
@@ -517,9 +517,9 @@ struct dmaRequest* toscaDmaSetup(int source, size_t source_addr, int dest, size_
 }
 
 int toscaDmaTransfer(
-    int source, size_t source_addr,
-    int dest, size_t dest_addr,
-    size_t size, int swap, int timeout,
+    unsigned int source, uint64_t source_addr,
+    unsigned int dest, uint64_t dest_addr,
+    size_t size, unsigned int swap, int timeout,
     toscaDmaCallback callback, void* user)
 {
     struct dmaRequest* r = toscaDmaSetup(source, source_addr, dest, dest_addr, size, swap, timeout, callback, user);
