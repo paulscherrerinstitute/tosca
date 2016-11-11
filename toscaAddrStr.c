@@ -15,14 +15,14 @@ size_t toscaStrToSize(const char* str)
 {
     char *q;
     if (!str) return 0;
-    vmeaddr_t size = strToSize(str, &q);
+    uint64_t size = strToSize(str, &q);
     if (*q)
     {
         error("%s is not a size", str);
         errno = EINVAL;
         return -1;
     }
-    if (size & ~(vmeaddr_t)(size_t) -1)
+    if (size & ~(uint64_t)(size_t) -1)
     {
         error("%s too big for %u bit", str, (int)sizeof(size_t)*8);
         errno = EFAULT;

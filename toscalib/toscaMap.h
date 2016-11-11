@@ -36,11 +36,8 @@ extern int toscaMapDebug;
 /* set to redirect debug output  */
 extern FILE* toscaMapDebugFile;
 
-/* One day we may have A64 in Tosca */
-typedef uint64_t vmeaddr_t;
-
 /* Map a Tosca resource to user space. Re-use maps if possible. */
-volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vmeaddr_t res_address);
+volatile void* toscaMap(unsigned int aspace, uint64_t address, size_t size, uint64_t res_address);
 
 /* For aspace use
    * for VME address spaces A16, A24, A32, A64: VME_A16, VME_A24, VME_A32, VME_A64 ( | VME_SUPER, VME_PROG)
@@ -52,7 +49,7 @@ volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vme
    * for Tosca PON SRAM on ELB: TOSCA_SRAM
    * for VME A32 slave windows: VME_SLAVE|{TOSCA_USER1, TOSCA_USER2, TOSCA_SMEM} ( | VME_SWAP) and pass res_address
    * if using more than one Tosca, use aspace|(tosca<<16).
-   At the moment Tosca does not support A64.
+   At the moment Tosca does not support A64 but one day?
 */
 
 /* Convert aspace code to string. */
@@ -60,14 +57,14 @@ const char* toscaAddrSpaceToStr(unsigned int aspace);
 
 /* Several map lookup functions. aspace will be 0 if map is not found. */
 typedef struct {
-    vmeaddr_t baseaddress;
+    uint64_t baseaddress;
     volatile void* baseptr;
     size_t size;
     unsigned int aspace;
 } toscaMapInfo_t;
 
 typedef struct {
-    vmeaddr_t address;
+    uint64_t address;
     unsigned int aspace;
 } toscaMapAddr_t;
 

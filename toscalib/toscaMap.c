@@ -143,7 +143,7 @@ const char* toscaAddrSpaceToStr(unsigned int aspace)
     }
 }
 
-volatile void* toscaMap(unsigned int aspace, vmeaddr_t address, size_t size, vmeaddr_t res_address)
+volatile void* toscaMap(unsigned int aspace, uint64_t address, size_t size, uint64_t res_address)
 {
     struct map **pmap, *map;
     volatile void *baseptr;
@@ -206,7 +206,7 @@ check_existing_maps:
             if ((aspace & 0xfff) > VME_SLAVE)
             {
                 /* Existing VME slave to Tosca resource: Check resource address. */
-                if (res_address != (vmeaddr_t)(size_t) map->info.baseptr + (address - map->info.baseaddress))
+                if (res_address != (uint64_t)(size_t) map->info.baseptr + (address - map->info.baseaddress))
                 {
                     debug("overlap with existing SLAVE map to %s:0x%"PRIx64,
                         toscaAddrSpaceToStr(map->info.aspace & ~VME_SLAVE),
