@@ -122,16 +122,25 @@ int toscaPonDevConfigure(const char* name)
 
 static const iocshFuncDef toscaPonReadDef =
     { "toscaPonRead", 1, (const iocshArg *[]) {
-    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "address", iocshArgString },
 }};
 
 static void toscaPonReadFunc(const iocshArgBuf *args)
 {
-    epicsUInt32 val;
-    errno = 0;
-    val = toscaPonRead(args[0].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
-    else printf("0x%08x\n", val);
+    unsigned int addr;
+    if (!args[0].sval)
+    {
+        for (addr = 0; addr <= 0x40; addr+=4)
+        {
+            if (addr == 0x28) addr = 0x40;
+            printf("0x%02x %-14s 0x%08x\n",
+                addr, toscaPonAddrToRegname(addr), toscaPonRead(addr));
+        }
+        return;
+    }
+    addr = strtol(args[0].sval, NULL, 0) & ~3;
+    printf("%-14s 0x%08x\n",
+        toscaPonAddrToRegname(addr), toscaPonRead(addr));
 }
 
 static const iocshFuncDef toscaPonWriteDef =
