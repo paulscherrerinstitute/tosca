@@ -98,15 +98,12 @@ static void toscaMapFunc(const iocshArgBuf *args)
     }
     errno = 0;
     ptr = toscaMap(addr.addrspace, addr.address, size, res_addr.address);
-    if (!ptr && errno)
+    if (!ptr)
     {
-        perror("toscaMap failed");
+        perror(NULL);
         return;
     }
-    if ((addr.addrspace & 0xfe0) > VME_SLAVE)
-        printf("success\n");
-    else        
-        printf("%p\n", ptr);
+    printf("%p\n", ptr);
 }
 
 static const iocshFuncDef toscaMapLookupAddrDef =
@@ -185,7 +182,7 @@ static void toscaGetVmeErrFunc(const iocshArgBuf *args)
     toscaMapVmeErr_t err = toscaGetVmeErr(args[0].ival);
     if (errno)
     {
-        perror("toscaGetVmeErr failed");
+        perror(NULL);
         return;
     }
     printf("0x%08"PRIx64",0x%"PRIx32" (%s %s%c%s %s id=%d len=%d %s:0x%"PRIx64")\n",
