@@ -203,7 +203,7 @@ check_existing_maps:
             address >= map->info.baseaddress &&
             address + size <= map->info.baseaddress + map->info.size)
         {
-            if ((addrspace & 0xfff) > VME_SLAVE)
+            if ((addrspace & 0xfe0) > VME_SLAVE)
             {
                 /* Existing VME slave to Tosca resource: Check resource address. */
                 if (res_address != (uint64_t)(size_t) map->info.baseptr + (address - map->info.baseaddress))
@@ -338,14 +338,6 @@ check_existing_maps:
             vme_window.resource_offset);
         if (ioctl(fd, setcmd, &vme_window) != 0)
         {
-            debugErrno("ioctl(%d, VME_SET_%s, {enable=%d addr=0x%"PRIx64" size=0x%"PRIx64" addrspace=0x%x cycle=0x%x, resource_offset=0x%x})",
-                fd, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
-                vme_window.enable,
-                vme_window.vme_addr,
-                vme_window.size,
-                vme_window.aspace,
-                vme_window.cycle,
-                vme_window.resource_offset);
             close(fd);
             if (setcmd == VME_SET_SLAVE && errno == ENODEV)
             {
