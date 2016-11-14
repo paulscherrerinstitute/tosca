@@ -484,6 +484,7 @@ check_existing_maps:
 
     pthread_mutex_unlock(&toscaDevices[card].maplist_mutex);
     
+    if ((addrspace & 0xfe0) > VME_SLAVE) return NULL;
     if (addrspace & TOSCA_CSR) toscaDevices[card].csr = map;
     else if (addrspace & TOSCA_IO) toscaDevices[card].io = map;
     else if (addrspace & TOSCA_SRAM) toscaDevices[card].sram = map;

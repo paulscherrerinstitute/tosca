@@ -103,7 +103,10 @@ static void toscaMapFunc(const iocshArgBuf *args)
         perror("toscaMap failed");
         return;
     }
-    printf("0x%zx\n", (size_t) ptr);
+    if ((addr.addrspace & 0xfe0) > VME_SLAVE)
+        printf("success\n");
+    else        
+        printf("%p\n", ptr);
 }
 
 static const iocshFuncDef toscaMapLookupAddrDef =
