@@ -2,10 +2,17 @@
 #define toscaReg_h
 
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* set to 1 to see debug output */
+extern int toscaRegDebug;
+
+/* set to redirect debug output  */
+extern FILE* toscaRegDebugFile;
 
 /* TOSCA CSR ACCESS */
 

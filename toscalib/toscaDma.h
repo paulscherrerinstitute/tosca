@@ -2,6 +2,7 @@
 #define toscaDma_h
 
 #include "toscaMap.h"
+#include "stdio.h"
 
 /* VME block transfer access modes from vme.h */
 #define VME_SCT		0x1
@@ -17,7 +18,10 @@
 extern "C" {
 #endif
 
+/* set to 1 to see debug output */
 extern int toscaDmaDebug;
+
+/* set to redirect debug output  */
 extern FILE* toscaDmaDebugFile;
 
 const char* toscaDmaTypeToStr(unsigned int type);

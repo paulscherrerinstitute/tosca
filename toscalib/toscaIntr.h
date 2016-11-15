@@ -2,12 +2,17 @@
 #define toscaIntr_h
 
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* set to 1 to see debug output */
 extern int toscaIntrDebug;
+
+/* set to redirect debug output  */
+extern FILE* toscaIntrDebugFile;
 
 /* index for arrays of interrupts */
 #define TOSCA_NUM_INTR (16+16+7*256+3)
