@@ -5,6 +5,7 @@
 #include <epicsTypes.h>
 #include <epicsExit.h>
 #include <epicsThread.h>
+#include <initHooks.h>
 
 #include "toscaMap.h"
 #include "toscaReg.h"
@@ -267,9 +268,6 @@ long toscaDevLibEnableInterruptLevelVME(unsigned int level)
     return S_dev_success;
 }
 
-int toscaIntrPrio = 80;
-epicsExportAddress(int, toscaIntrPrio);
-
 long toscaDevLibConnectInterrupt(
     unsigned int vec,
     void (*function)(),
@@ -317,7 +315,6 @@ long toscaDevLibInit(void)
     return S_dev_success;
 }
 
-
 /* compatibility with older versions of EPICS */
 #if defined(pdevLibVirtualOS) && !defined(devLibVirtualOS)
 #define devLibVirtualOS devLibVME
@@ -339,10 +336,15 @@ devLibVirtualOS toscaVirtualOS = {
 #endif
 };
 
-static void toscaDevLibRegistrar ()
+int toscaIntrPrio = 80;
+epicsExportAddress(int, toscaIntrPrio);
+
+int toscaDmaPrio = 80;
+epicsExportAddress(int, toscaDmaPrio);
+
+void toscaInitHook(initHookState state)
 {
-    probeMutex = epicsMutexMustCreate();
-    pdevLibVirtualOS = &toscaVirtualOS;
+    if (state != initHookAfterInitDrvSup) return;
     epicsThreadId tid;
     
     toscaInstallSpuriousVMEInterruptHandler();
@@ -350,27 +352,29 @@ static void toscaDevLibRegistrar ()
     tid = epicsThreadCreate("irq-TOSCA", toscaIntrPrio,
         epicsThreadGetStackSize(epicsThreadStackMedium),
         toscaIntrLoop, NULL);
-    if (!tid)
-    {
-        debugErrno("starting interrupt handler thread");
-    }
-    debug("irq-TOSCA tid = %p", tid);
+    if (!tid) { debugErrno("starting interrupt handler thread"); }
+    else debug("irq-TOSCA tid = %p", tid);
     epicsAtExit(toscaIntrLoopStop,NULL);
 
     debug("starting dma handler threads");
-    tid = epicsThreadCreate("dma1-TOSCA", toscaIntrPrio,
+    tid = epicsThreadCreate("dma1-TOSCA", toscaDmaPrio,
         epicsThreadGetStackSize(epicsThreadStackMedium),
         toscaDmaLoop, NULL);
-    if (!tid)
-    {
-        debugErrno("starting dma handler thread");
-    }
-    debug("dma1-TOSCA tid = %p", tid);
-    tid = epicsThreadCreate("dma2-TOSCA", toscaIntrPrio,
+    if (!tid) { debugErrno("starting dma handler thread"); }
+    else debug("dma1-TOSCA tid = %p", tid);
+    tid = epicsThreadCreate("dma2-TOSCA", toscaDmaPrio,
         epicsThreadGetStackSize(epicsThreadStackMedium),
         toscaDmaLoop, NULL);
-    debug("dma2-TOSCA tid = %p", tid);
+    if (!tid) { debugErrno("starting dma handler thread"); }
+    else debug("dma2-TOSCA tid = %p", tid);
     epicsAtExit(toscaDmaLoopsStop,NULL);
+}
+
+static void toscaDevLibRegistrar ()
+{
+    probeMutex = epicsMutexMustCreate();
+    pdevLibVirtualOS = &toscaVirtualOS;
+    initHookRegister(toscaInitHook);
 }
 
 epicsExportRegistrar(toscaDevLibRegistrar);
