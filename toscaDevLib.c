@@ -354,19 +354,23 @@ static void toscaDevLibRegistrar ()
     {
         debugErrno("starting interrupt handler thread");
     }
-    debug("tid = %p", tid);
+    debug("irq-TOSCA tid = %p", tid);
     epicsAtExit(toscaIntrLoopStop,NULL);
 
-    debug("starting dma handler thread");
-    tid = epicsThreadCreate("dma-TOSCA", toscaIntrPrio,
+    debug("starting dma handler threads");
+    tid = epicsThreadCreate("dma1-TOSCA", toscaIntrPrio,
         epicsThreadGetStackSize(epicsThreadStackMedium),
         toscaDmaLoop, NULL);
     if (!tid)
     {
         debugErrno("starting dma handler thread");
     }
-    debug("tid = %p", tid);
-    epicsAtExit(toscaDmaLoopStop,NULL);
+    debug("dma1-TOSCA tid = %p", tid);
+    tid = epicsThreadCreate("dma2-TOSCA", toscaIntrPrio,
+        epicsThreadGetStackSize(epicsThreadStackMedium),
+        toscaDmaLoop, NULL);
+    debug("dma2-TOSCA tid = %p", tid);
+    epicsAtExit(toscaDmaLoopsStop,NULL);
 }
 
 epicsExportRegistrar(toscaDevLibRegistrar);

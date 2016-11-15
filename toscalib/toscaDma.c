@@ -213,7 +213,8 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
     return 0;
 }
 
-static int loopRunning = 0;
+static int loopsRunning = 0;
+static int stopLoops = 0;
 
 void toscaDmaLoop()
 {
@@ -223,12 +224,8 @@ void toscaDmaLoop()
     void* user;
     
     LOCK;
-    if (loopRunning)
-    {
-        UNLOCK;
-        return;
-    }
-    loopRunning = 1;
+    loopsRunning++;
+    debug("DMA loop started");
 
     while (1)
     {
@@ -252,23 +249,29 @@ void toscaDmaLoop()
             LOCK;
         }
         UNLOCK_AND_SLEEP;
-        if (loopRunning < 0) break;
+        if (stopLoops) break;
     }
-    loopRunning = 0;
+    debug("DMA loop stopped");
+    loopsRunning--;
     UNLOCK;
 }
 
-int toscaDmaLoopIsRunning(void)
+int toscaDmaLoopsRunning(void)
 {
-    return loopRunning;
+    return loopsRunning;
 }
 
-void toscaDmaLoopStop()
+void toscaDmaLoopsStop()
 {
-    struct timespec wait = { 0, 10000000 };
-    loopRunning = -1;
-    WAKEUP;
-    while (loopRunning) nanosleep(&wait, NULL);
+    stopLoops = 1;
+    debug("stopping DMA loops");
+    while (loopsRunning)
+    {
+        struct timespec wait = { 0, 0 };
+        WAKEUP;
+        nanosleep(&wait, NULL);
+    }
+    debug("DMA loops stopped");
 }
 
 int toscaDmaExecute(struct dmaRequest* r)
