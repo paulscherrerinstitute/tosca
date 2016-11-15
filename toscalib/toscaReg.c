@@ -124,12 +124,6 @@ unsigned int toscaSmonWrite(unsigned int address, unsigned int value)
     return value;
 }
 
-unsigned int toscaSmonStatus()
-{
-    volatile uint32_t* smon = toscaMap(TOSCA_IO, CSR_SMON, 12, 0);
-    return le32toh(smon[3]);
-}
-
 #define CSR_VMEERR 0x418
 
 toscaMapVmeErr_t toscaGetVmeErr(unsigned int card)

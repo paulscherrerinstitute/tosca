@@ -174,16 +174,6 @@ static void toscaSmonWriteFunc(const iocshArgBuf *args)
     smonShow(addr, toscaSmonWrite(addr, val));
 }
 
-static const iocshFuncDef toscaSmonStatusDef =
-    { "toscaSmonStatus", 0, (const iocshArg *[]) {
-}};
-
-static void toscaSmonStatusFunc(const iocshArgBuf *args)
-{
-    unsigned int status = toscaSmonStatus();
-    printf("0x%04x\n", status);
-}
-
 /* RegDev Interface */
 
 struct regDevice
@@ -288,7 +278,6 @@ static void smonRegistrar(void)
     iocshRegister(&smonConfigureDef, smonConfigureFunc);
     iocshRegister(&toscaSmonReadDef, toscaSmonReadFunc);
     iocshRegister(&toscaSmonWriteDef, toscaSmonWriteFunc);
-    iocshRegister(&toscaSmonStatusDef, toscaSmonStatusFunc);
 }
 
 epicsExportRegistrar(smonRegistrar);

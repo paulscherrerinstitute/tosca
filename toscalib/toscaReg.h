@@ -31,7 +31,6 @@ unsigned int toscaIoClear(unsigned int address, unsigned int value);   /* Clear 
 /* Access to Virtex-6 System Monitor via toscaCsr */
 unsigned int toscaSmonRead(unsigned int address);
 unsigned int toscaSmonWrite(unsigned int address, unsigned int value);
-unsigned int toscaSmonStatus();
 
 /* If you prefer to access Tosca CSR or IO directly using
    toscaMap instead of using functions above,
