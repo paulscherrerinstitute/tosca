@@ -10,9 +10,9 @@
 
 #include "toscaReg.h"
 
-#define TOSCA_DEBUG_NAME toscaPon
+#define TOSCA_EXTERN_DEBUG
+#define TOSCA_DEBUG_NAME toscaReg
 #include "toscaDebug.h"
-epicsExportAddress(int, toscaPonDebug);
 
 struct regDevice
 {
