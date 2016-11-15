@@ -172,13 +172,13 @@ int toscaPonFd(unsigned int address)
     }
     if (address == 40) reg = 10;
     else reg = address>>2;
-    debug("address=0x%02x regname=%s", address, toscaPonAddrToRegname(address));
     if (!fd[reg])
     {
         char filename[50];
         sprintf(filename, "/sys/devices/*localbus/*.pon/%s", toscaPonAddrToRegname(address));
         fd[reg] = sysfsOpen(filename);
     }
+    debug("address=0x%02x regname=%s fd=%d", address, toscaPonAddrToRegname(address), fd[reg]);
     return fd[reg];
 }
 
