@@ -67,7 +67,7 @@ typedef struct {
      };
    };
 } toscaMapVmeErr_t;
-toscaMapVmeErr_t toscaGetVmeErr(unsigned int tosca);
+toscaMapVmeErr_t toscaGetVmeErr(unsigned int device);
 
 #ifdef __cplusplus
 }

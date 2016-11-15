@@ -126,9 +126,9 @@ unsigned int toscaSmonWrite(unsigned int address, unsigned int value)
 
 #define CSR_VMEERR 0x418
 
-toscaMapVmeErr_t toscaGetVmeErr(unsigned int card)
+toscaMapVmeErr_t toscaGetVmeErr(unsigned int device)
 {
-    volatile uint32_t* vmeerr = toscaMap((card<<16)|TOSCA_CSR, CSR_VMEERR, 8, 0);
+    volatile uint32_t* vmeerr = toscaMap((device<<16)|TOSCA_CSR, CSR_VMEERR, 8, 0);
     if (!vmeerr) return (toscaMapVmeErr_t) { .address = -1 };
     return (toscaMapVmeErr_t) { .address = le32toh(vmeerr[0]), {.status = le32toh(vmeerr[1])} };
 }

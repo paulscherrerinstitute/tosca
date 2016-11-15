@@ -86,7 +86,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
                 }
                 if (res_addr.addrspace >> 16)
                 {
-                    fprintf(stderr, "invalid use of card number in %s\n",
+                    fprintf(stderr, "invalid use of device number in %s\n",
                         args[2].sval);
                     return;
                 }
@@ -134,9 +134,9 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
 
 int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
 {
-    unsigned int card = info.addrspace >> 16;
+    unsigned int device = info.addrspace >> 16;
     char buf[60];
-    if (card) printf("%u:", card);
+    if (device) printf("%u:", device);
     if ((info.addrspace & ~(VME_A16|VME_A24|VME_A32|VME_A64|VME_SWAP)) > VME_SLAVE)
     printf("%7s:0x%-8"PRIx64" %16s %7s:0x%-8zx%s\n",
         toscaAddrSpaceToStr(info.addrspace),
@@ -182,7 +182,7 @@ static void toscaMapFindFunc(const iocshArgBuf *args)
 
 static const iocshFuncDef toscaGetVmeErrDef =
     { "toscaGetVmeErr", 1, (const iocshArg *[]) {
-    &(iocshArg) { "card", iocshArgInt },
+    &(iocshArg) { "device", iocshArgInt },
 }};
 
 static void toscaGetVmeErrFunc(const iocshArgBuf *args)
@@ -370,7 +370,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
 {
     int source = 0, dest = 0, swap = 0;
     size_t source_addr, dest_addr, size;
-    int card;
+    int device;
     char *s, *p;
     
     if (!args[0].sval || !args[1].sval) 
@@ -380,7 +380,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
         return;
     }
 
-    card = strtoul(args[0].sval, &s, 0);
+    device = strtoul(args[0].sval, &s, 0);
     if (*s == ':') s++;
     p = strchr(s, ':');
     if (p) *p++ = 0;
@@ -396,10 +396,10 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     if (source != 0)
     {
         if (source_addr == -1) source_addr = 0;
-        source |= card << 16;
+        source |= device << 16;
     }
 
-    card = strtoul(args[1].sval, &s, 0);
+    device = strtoul(args[1].sval, &s, 0);
     if (*s == ':') s++;
     p = strchr(s, ':');
     if (p) *p++ = 0;
@@ -415,7 +415,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     if (dest != 0)
     {
         if (dest_addr == -1) dest_addr = 0;
-        dest |= card << 16;
+        dest |= device << 16;
     }
     
     size = toscaStrToSize(args[2].sval);

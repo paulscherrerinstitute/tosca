@@ -339,7 +339,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
 {
     struct dmaRequest* r;
     char* fname;
-    unsigned int card = (source | dest) >> 16;
+    unsigned int device = (source | dest) >> 16;
     char filename[20];
     
     debugLvl(2, "0x%x=%s:0x%"PRIx64" -> 0x%x=%s:0x%"PRIx64" [0x%zx] swap=%d tout=%d cb=%s(%p)",
@@ -483,7 +483,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         toscaDmaRelease(r);
         return NULL;
     }
-    sprintf(filename, "/dev/dmaproxy%u", card);
+    sprintf(filename, "/dev/dmaproxy%u", device);
     r->fd = open(filename, O_RDWR);
     if (r->fd < 0)
     {

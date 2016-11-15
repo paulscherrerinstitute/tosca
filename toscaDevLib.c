@@ -132,7 +132,7 @@ long toscaDevLibProbe(
     toscaMapAddr_t vme_addr;
     toscaMapVmeErr_t vme_err;
     void* readptr;
-    int card;
+    int device;
     int i;
     int readval;
 
@@ -145,12 +145,12 @@ long toscaDevLibProbe(
 
     if (!vme_addr.addrspace) return S_dev_addressNotFound;
 
-    card = vme_addr.addrspace>>16;
+    device = vme_addr.addrspace>>16;
 
     epicsMutexMustLock(probeMutex);
 
     /* Read once to clear BERR bit. */
-    toscaGetVmeErr(card);
+    toscaGetVmeErr(device);
 
     for (i = 1; i < 1000; i++)  /* We don't want to loop forever. */
     {
@@ -178,7 +178,7 @@ long toscaDevLibProbe(
                 epicsMutexUnlock(probeMutex);
                 return S_dev_badArgument;
         }
-        vme_err = toscaGetVmeErr(card);
+        vme_err = toscaGetVmeErr(device);
         if (!vme_err.err) break; /* No error: success */
 
         /* Now check if the error came from our access. */

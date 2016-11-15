@@ -33,16 +33,16 @@ size_t toscaStrToSize(const char* str)
 toscaMapAddr_t toscaStrToAddr(const char* str)
 {
     toscaMapAddr_t result = {0};
-    unsigned long card;
+    unsigned long device;
     char *s;
     
     if (!str) return (toscaMapAddr_t){0};
     
-    card = strtoul(str, &s, 0);
+    device = strtoul(str, &s, 0);
     if (*s == ':')
     {
         s++;
-        result.addrspace = card << 16;
+        result.addrspace = device << 16;
     }
     else
         s = (char*) str;
