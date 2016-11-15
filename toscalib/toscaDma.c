@@ -179,16 +179,6 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
         toscaDmaTypeToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_EXECUTE, &ex) != 0)
     {
-        debugErrno("ioctl(%d, VME_DMA_EXECUTE, {%s 0x%"PRIx64"->0x%"PRIx64" [0x%x] dw=0x%x %s cy=0x%x=%s})",
-            r->fd,
-            toscaDmaRouteToStr(r->req.route),
-            r->req.src_addr,
-            r->req.dst_addr,
-            r->req.size,
-            r->req.dwidth,
-            toscaDmaWidthToSwapStr(r->req.dwidth),
-            r->req.cycle,
-            toscaDmaTypeToStr(r->req.cycle));
         if (r->oneShot) toscaDmaRelease(r);
         return errno;
     }
@@ -503,16 +493,6 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         toscaDmaTypeToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_SET, &r->req) != 0)
     {
-        debugErrno("ioctl(%d, VME_DMA_SET, {%s 0x%"PRIx64"->0x%"PRIx64" [0x%x] dw=0x%x %s cy=0x%x=%s})",
-            r->fd,
-            toscaDmaRouteToStr(r->req.route),
-            r->req.src_addr,
-            r->req.dst_addr,
-            r->req.size,
-            r->req.dwidth,
-            toscaDmaWidthToSwapStr(r->req.dwidth),
-            r->req.cycle,
-            toscaDmaTypeToStr(r->req.cycle));
         toscaDmaRelease(r);
         return NULL;
     }

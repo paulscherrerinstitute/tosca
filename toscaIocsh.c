@@ -422,6 +422,9 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
 
     if (args[3].sval)
     {
+        if (strcmp(args[3].sval, "NS") == 0)
+            swap = 0;
+        else
         if (strcmp(args[3].sval, "WS") == 0)
             swap = 2;
         else
@@ -438,11 +441,9 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
         }
     }
     
-    int status = toscaDmaTransfer(source, source_addr, dest, dest_addr, size, swap, args[4].ival, NULL, NULL);
-    if (status)
-    {
-        perror("toscaDmaTransfer failed");
-    }
+    errno = 0;
+    toscaDmaTransfer(source, source_addr, dest, dest_addr, size, swap, args[4].ival, NULL, NULL);
+    perror(NULL);
 }
 
 static const iocshFuncDef toscaStrToAddrDef =
