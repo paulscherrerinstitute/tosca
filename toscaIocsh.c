@@ -21,6 +21,15 @@
 #define TOSCA_DEBUG_NAME toscaIocsh
 #include "toscaDebug.h"
 
+static const iocshFuncDef toscaNumDevicesDef =
+    { "toscaNumDevices", 0, (const iocshArg *[]) {
+}};
+
+static void toscaNumDevicesFunc(const iocshArgBuf *args)
+{
+    printf("%u\n", toscaNumDevices());
+}
+
 static const iocshFuncDef toscaMapDef =
     { "toscaMap", 4, (const iocshArg *[]) {
     &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SMEM|TCSR|TIO|SRAM|SLAVE):address", iocshArgString },
@@ -493,6 +502,7 @@ static void toscaRegistrar(void)
     memDisplayInstallAddrHandler("TCSR",  toscaAddrHandler, TOSCA_CSR);
     memDisplayInstallAddrHandler("TIO",   toscaAddrHandler, TOSCA_IO);
 
+    iocshRegister(&toscaNumDevicesDef, toscaNumDevicesFunc);
     iocshRegister(&toscaMapDef, toscaMapFunc);
     iocshRegister(&toscaMapLookupAddrDef, toscaMapLookupAddrFunc);
     iocshRegister(&toscaMapShowDef, toscaMapShowFunc);

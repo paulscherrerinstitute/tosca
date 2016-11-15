@@ -36,6 +36,9 @@ extern int toscaMapDebug;
 /* set to redirect debug output  */
 extern FILE* toscaMapDebugFile;
 
+/* report number of found Tosca devices */
+unsigned int toscaNumDevices();
+
 /* Map a Tosca resource to user space. Re-use maps if possible. */
 volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, uint64_t res_address);
 
@@ -48,7 +51,7 @@ volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, u
    * for Tosca IO space registers: TOSCA_IO
    * for Tosca PON SRAM on ELB: TOSCA_SRAM
    * for VME A32 slave windows: VME_SLAVE|{TOSCA_USER1, TOSCA_USER2, TOSCA_SMEM} ( | VME_SWAP) and pass res_address
-   * if using more than one Tosca, use addrspace|(tosca<<16).
+   * if using more than one Tosca device, use addrspace|(device<<16).
    At the moment Tosca does not support A64 but one day?
 */
 

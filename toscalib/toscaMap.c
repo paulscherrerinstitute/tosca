@@ -37,7 +37,13 @@ struct toscaDevice {
     struct map *maps, *csr, *io, *sram;
     pthread_mutex_t maplist_mutex;
 } static *toscaDevices;
- int toscaNumDevices = -1;
+
+int numCards = 0;
+
+unsigned int toscaNumDevices()
+{
+    return numCards;
+}
 
 #define TOSCA_PCI_DIR "/sys/bus/pci/drivers/tosca"
 
@@ -52,11 +58,11 @@ void toscaInit()
     status = glob(TOSCA_PCI_DIR "/*:*:*.*/", 0, NULL, &globresults);
     if (status != 0)
     {
-        toscaNumDevices = 0;
+        numCards = 0;
         error("no tosca devices found");
         return;
     }
-    toscaNumDevices = globresults.gl_pathc;
+    numCards = globresults.gl_pathc;
     toscaDevices = calloc(globresults.gl_pathc, sizeof(struct toscaDevice));
     debug ("found %zd tosca devices", globresults.gl_pathc);
     for (i = 0; i < globresults.gl_pathc; i++)
@@ -80,9 +86,9 @@ int toscaOpen(unsigned int card, const char* resource)
     char filename[80];
 
     debug("card=%u resource=%s", card, resource);
-    if (card >= toscaNumDevices)
+    if (card >= numCards)
     {
-        debug("card=%u but only %u tosca devices found", card, toscaNumDevices);
+        debug("card=%u but only %u tosca devices found", card, numCards);
         errno = ENODEV;
         return -1;
     }
@@ -164,7 +170,7 @@ volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, u
         address,
         size);
 
-    if (card >= toscaNumDevices)
+    if (card >= numCards)
     {
         debug("card %u does not exist", card);
         errno = ENODEV;
@@ -501,7 +507,7 @@ toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void* usr), void*
     struct map *map;
     int card;
 
-    for (card = 0; card < toscaNumDevices; card++)
+    for (card = 0; card < numCards; card++)
     {
         for (map = toscaDevices[card].maps; map; map = map->next)
         {
