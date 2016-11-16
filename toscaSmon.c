@@ -7,9 +7,9 @@
 #include "toscaReg.h"
 #include <epicsExport.h>
 
-#define TOSCA_DEBUG_NAME smon
+#define TOSCA_EXTERN_DEBUG
+#define TOSCA_DEBUG_NAME toscaReg
 #include "toscaDebug.h"
-epicsExportAddress(int, smonDebug);
 
 static const char* smonAddrToStr(unsigned int addr)
 {
