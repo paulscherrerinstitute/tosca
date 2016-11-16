@@ -279,11 +279,11 @@ static void toscaSmonDevConfigureFunc(const iocshArgBuf *args)
     toscaSmonDevConfigure(args[0].sval);
 }
 
-static void smonRegistrar(void)
+static void toscaSmonRegistrar(void)
 {
     iocshRegister(&toscaSmonDevConfigureDef, toscaSmonDevConfigureFunc);
     iocshRegister(&toscaSmonReadDef, toscaSmonReadFunc);
     iocshRegister(&toscaSmonWriteDef, toscaSmonWriteFunc);
 }
 
-epicsExportRegistrar(smonRegistrar);
+epicsExportRegistrar(toscaSmonRegistrar);
