@@ -181,6 +181,11 @@ struct regDevice
     void* nope;
 };
 
+void smonDevReport(regDevice *device, int level)
+{
+    printf("Tosca Virtex FPGA System Monitor\n");
+}
+
 int smonDevRead(
     regDevice *device,
     size_t offset,
@@ -227,17 +232,18 @@ int smonDevWrite(
 }
 
 struct regDevSupport smonDev = {
+    .report = smonDevReport,
     .read = smonDevRead,
     .write = smonDevWrite,
 };
 
-int smonConfigure(const char* name)
+int toscaSmonDevConfigure(const char* name)
 {
     regDevice *device = NULL;
     
     if (!name || !name[0])
     {
-        printf("usage: smonConfigure name\n");
+        printf("usage: toscaSmonDevConfigure name\n");
         return -1;
     }
     device = malloc(sizeof(regDevice));
@@ -263,19 +269,19 @@ fail:
     return -1;
 }
 
-static const iocshFuncDef smonConfigureDef =
-    { "smonConfigure", 1, (const iocshArg *[]) {
+static const iocshFuncDef toscaSmonDevConfigureDef =
+    { "toscaSmonDevConfigure", 1, (const iocshArg *[]) {
     &(iocshArg) { "name", iocshArgString },
 }};
 
-static void smonConfigureFunc(const iocshArgBuf *args)
+static void toscaSmonDevConfigureFunc(const iocshArgBuf *args)
 {
-    smonConfigure(args[0].sval);
+    toscaSmonDevConfigure(args[0].sval);
 }
 
 static void smonRegistrar(void)
 {
-    iocshRegister(&smonConfigureDef, smonConfigureFunc);
+    iocshRegister(&toscaSmonDevConfigureDef, toscaSmonDevConfigureFunc);
     iocshRegister(&toscaSmonReadDef, toscaSmonReadFunc);
     iocshRegister(&toscaSmonWriteDef, toscaSmonWriteFunc);
 }
