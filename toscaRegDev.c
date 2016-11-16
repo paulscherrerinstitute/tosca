@@ -436,7 +436,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
                "           (0=nodma, 1=dmaonly, default:2k)\n"
                "   - block mode: block, blockread, blockwrite\n"
                "           (records with PRIO=HIGH trigger transfer)\n"
-               "   - VME block transfer: SCT, BLT, MBLT, 2eVME, 2eSST[160|233|320]\n"
+               "   - VME block transfer: SCT, BLT, MBLT, 2eVME, 2eSST[160|267|320]\n"
                "   - VME default interrupt vector: intr=1...255\n"
                "   - USER[1|2] default interrupt line: intr=0...15\n"
                "           (better use V=... in record link)\n"
