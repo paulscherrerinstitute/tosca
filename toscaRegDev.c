@@ -298,7 +298,7 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
     device->ivec = -1;
 
     device->addrspace = addrspace;
-    if (addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_CSR)) device->swap = 4;
+    if (addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_CSR|TOSCA_IO)) device->swap = 4;
     if (addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM)) device->dmaSpace = addrspace;
     if (addrspace & VME_A32) device->dmaSpace  = VME_SCT;
 
@@ -423,23 +423,23 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
     if (!args[0].sval)
     {
         iocshCmd("help toscaRegDevConfigure");
-        printf("addrspace: USER1 (or USER), USER2, SMEM, TCSR, CRCSR, A16, A24, A32\n"
+        printf("addrspace: USER1 (or USER), USER2, SMEM, TCSR, TIO, A16, A24, A32, CRCSR\n"
                "   add * for 'supervisory' and # for 'program' access to Axx modes\n"
                "   address and size can use k,M,G suffix for powers of 1024\n"
                "flags:\n"
                "   - swap: NS (none), WS (word), DS (double word) QS (quad word)\n"
                "           WL, WB, DL, DB, QB, QB (convert to/from little/big endian)\n"
-               "           (Default for TCSR and USER* is DL, for others NS)\n"
-               "   - DMA read element minimum: dmaReadLimit= \n"
-               "           (0=nodma, 1=dmaonly, default:100)\n"
-               "   - DMA write element minimum: dmaWriteLimit= \n"
-               "           (0=nodma, 1=dmaonly, default:2k)\n"
-               "   - block mode: block, blockread, blockwrite\n"
-               "           (records with PRIO=HIGH trigger transfer)\n"
+               "           (Default for TCSR, TIO and USER* is DL, for others NS)\n"
+               "   - DMA:  dmaReadLimit= (default 100), dmaWriteLimit= (default 2k)\n"
+               "           (Minimum number of array elements to use DMA)\n"
+               "           nodma (same as 0 for both limits)\n"
+               "           dmaonly (same as 1 both both limits)\n"
+               "   - block mode: blockread, blockwrite, block (means both)\n"
+               "           (Records with PRIO=HIGH trigger transfer)\n"
                "   - VME block transfer: SCT, BLT, MBLT, 2eVME, 2eSST[160|267|320]\n"
                "   - VME default interrupt vector: intr=1...255\n"
                "   - USER[1|2] default interrupt line: intr=0...15\n"
-               "           (better use V=... in record link)\n"
+               "           (Better use V=... in record link)\n"
         );
         return;
     }
