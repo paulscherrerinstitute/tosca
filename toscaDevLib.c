@@ -257,14 +257,14 @@ long toscaDevLibWriteProbe(
 long toscaDevLibDisableInterruptLevelVME(unsigned int level)
 {
     if (level < 1 || level > 7) return S_dev_intEnFail;
-    toscaIntrDisable(TOSCA_VME_INTR(level));
+    toscaIntrDisable(TOSCA_VME_INTR_VECS(level, 0, 255));
     return S_dev_success;
 }
 
 long toscaDevLibEnableInterruptLevelVME(unsigned int level)
 {
     if (level < 1 || level > 7) return S_dev_intDissFail;
-    toscaIntrEnable(TOSCA_VME_INTR(level));
+    toscaIntrEnable(TOSCA_VME_INTR_VECS(level, 0, 255));
     return S_dev_success;
 }
 
@@ -274,8 +274,8 @@ long toscaDevLibConnectInterrupt(
     void *parameter)
 {
     return toscaIntrConnectHandler(
-        vec < 256 ? TOSCA_VME_INTR_ANY : TOSCA_USER1_INTR(vec&31),
-        vec, function, parameter);
+        vec < 256 ? TOSCA_VME_INTR_ANY_VEC(vec) : TOSCA_USER1_INTR(vec&31),
+        function, parameter);
 }
 
 long toscaDevLibDisconnectInterrupt(
@@ -283,8 +283,8 @@ long toscaDevLibDisconnectInterrupt(
     void (*function)())
 {
     return toscaIntrDisconnectHandler(
-        vec < 256 ? TOSCA_VME_INTR_ANY : TOSCA_USER1_INTR(vec&31),
-        vec, function, NULL) ? S_dev_success : S_dev_vectorNotInUse;
+        vec < 256 ? TOSCA_VME_INTR_ANY_VEC(vec) : TOSCA_USER1_INTR(vec&31),
+        function, NULL) ? S_dev_success : S_dev_vectorNotInUse;
 }
 
 int toscaDevLibInterruptInUseVME(unsigned int vec)

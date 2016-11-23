@@ -9,6 +9,8 @@
 
 #include "memDisplay.h"
 #include "i2cDev.h"
+#include "symbolname.h"
+#include "keypress.h"
 
 #include "toscaAddrStr.h"
 #include "toscaMap.h"
@@ -325,6 +327,55 @@ static void toscaIoClearFunc(const iocshArgBuf *args)
     val = toscaIoClear(args[0].ival, args[1].ival);
     if (val == 0xffffffff && errno != 0) perror(NULL);
     else printf("0x%08x\n", val);
+}
+
+int toscaIntrPrintInfo(toscaIntrHandlerInfo_t info, void* user)
+{
+    static unsigned long long prevIntrCount[TOSCA_NUM_INTR];
+    unsigned long long count, delta;
+    char* fname, *pname;
+    int level = *(int*) user;
+
+    debug("index=%d", info.index);
+    count = info.count;
+    delta = count - prevIntrCount[info.index];
+    if (delta == 0 && level < 0) return 0;
+    prevIntrCount[info.index] = count;
+    printf(" %s", toscaIntrBitToStr(info.intrmaskbit));
+    if (info.intrmaskbit & TOSCA_VME_INTR_ANY) printf(".%-3d ", info.vec);
+    printf(" count=%llu (+%llu)", count, delta);
+    if (level > 0)
+    {
+        printf(" %s (%s)",
+            fname=symbolName(info.function, (level - 1)| F_SYMBOL_NAME_DEMANGE_FULL),
+            pname=symbolName(info.parameter, (level - 1)| F_SYMBOL_NAME_DEMANGE_FULL)),
+            free(fname),
+            free(pname);
+    }
+    printf("\n");
+    return 0;
+}
+
+void toscaIntrShow(int level)
+{
+    static unsigned long long prevIntrTotalCount;
+    unsigned long long count, delta;
+    int rep = 0;
+
+    if (level < 0)
+    {
+        printf("\e[7mPress any key to stop periodic output\e[0m\n");
+    }
+    do
+    {
+        if (rep) printf("\n");
+        count = toscaIntrCount();
+        delta = count - prevIntrTotalCount;
+        prevIntrTotalCount = count;
+        printf("total number of interrupts: %lld (+%lld)\n", count, delta);
+        toscaIntrForeachHandler(TOSCA_INTR_ANY, toscaIntrPrintInfo, &level);
+        rep = 1;
+    } while (level < 0 && !waitForKeypress(-1000*level));
 }
 
 static const iocshFuncDef toscaIntrShowDef =

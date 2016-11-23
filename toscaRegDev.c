@@ -244,8 +244,8 @@ static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, unsig
         scanIoInit(&device->ioscanpvt[ivec]);
         
         if (toscaIntrConnectHandler(
-            device->addrspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? TOSCA_VME_INTR_ANY : TOSCA_USER1_INTR(ivec),
-            ivec, toscaScanIoRequest, device->ioscanpvt[ivec]) != 0)
+            device->addrspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? TOSCA_VME_INTR_ANY_VEC(ivec) : TOSCA_USER1_INTR(ivec),
+            toscaScanIoRequest, device->ioscanpvt[ivec]) != 0)
         {
             error("%s: toscaIntrConnectHandler(0x%x,...) failed", user, ivec);
             return NULL;
