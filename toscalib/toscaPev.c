@@ -12,6 +12,7 @@
 #include "toscaMap.h"
 #include "toscaReg.h"
 #include "toscaIntr.h"
+#include "toscaDma.h"
 #include "i2c.h"
 
 #define TOSCA_DEBUG_NAME pev
@@ -549,4 +550,70 @@ int pevx_buf_free(uint crate, struct pev_ioctl_buf *buf)
 int pev_buf_free(struct pev_ioctl_buf *buf)
 {
     return pevx_buf_free(defaultCrate, buf);
+}
+
+static int pev_dmaspace_to_tosca_addrspace(int dmaspace)
+{
+    switch (dmaspace)
+    {
+        case DMA_SPACE_PCIE:               return 0;
+        case DMA_SPACE_USR1:
+        case DMA_SPACE_USR1|DMA_SPACE_WS:
+        case DMA_SPACE_USR1|DMA_SPACE_DS:
+        case DMA_SPACE_USR1|DMA_SPACE_QS:  return TOSCA_USER1;
+        case DMA_SPACE_SHM:
+        case DMA_SPACE_SHM|DMA_SPACE_WS:
+        case DMA_SPACE_SHM|DMA_SPACE_DS:
+        case DMA_SPACE_SHM|DMA_SPACE_QS:   return TOSCA_SMEM;
+        case DMA_SPACE_VME|DMA_VME_A32:    return VME_SCT;
+        case DMA_SPACE_VME|DMA_VME_BLT:    return VME_BLT;
+        case DMA_SPACE_VME|DMA_VME_MBLT:   return VME_MBLT;
+        case DMA_SPACE_VME|DMA_VME_2eVME:  return VME_2eVME;
+        case DMA_SPACE_VME|DMA_VME_2eFAST: return VME_2eVMEFast;
+        case DMA_SPACE_VME|DMA_VME_2e160:  return VME_2eSST160;
+        case DMA_SPACE_VME|DMA_VME_2e233:  return VME_2eSST267;
+        case DMA_SPACE_VME|DMA_VME_2e320:  return VME_2eSST320;
+        default: return -1;
+    }
+}
+
+int pevx_dma_move(uint crate, struct pev_ioctl_dma_req *req)
+{
+    int source, dest, swap=0, timeout = -1, status;
+    
+    source = pev_dmaspace_to_tosca_addrspace(req->src_space);
+    dest = pev_dmaspace_to_tosca_addrspace(req->des_space);
+    if (source == -1 || dest == -1) return -1;
+    source |= crate << 16;
+    if (((req->src_space & DMA_SPACE_MASK) == DMA_SPACE_USR1 ||
+        (req->src_space & DMA_SPACE_MASK) == DMA_SPACE_SHM) && req->src_space & 0x30)
+        swap = 1 << (req->src_space >> 4 & 0x3);
+    if (((req->des_space & DMA_SPACE_MASK) == DMA_SPACE_USR1 ||
+        (req->des_space & DMA_SPACE_MASK) == DMA_SPACE_SHM) && req->des_space & 0x30)
+        swap = 1 << (req->des_space >> 4 & 0x3);
+    if (req->wait_mode)
+        timeout = (req->wait_mode >> 4) * (int[]){0,1,10,100,1000,10000,100000,0}[req->wait_mode >> 1 & 7];
+    req->dma_status = DMA_STATUS_WAITING;
+    status = toscaDmaTransfer(source, req->src_addr, dest, req->des_addr, req->size, swap, timeout, NULL, NULL);
+    req->dma_status = DMA_STATUS_DONE | DMA_STATUS_ENDED;
+    if (status != 0)
+        req->dma_status |= DMA_STATUS_ERR;
+    if (status == ETIMEDOUT)
+        req->dma_status |= DMA_STATUS_TMO;
+    return status ? -1 : 0;
+}
+int pev_dma_move(struct pev_ioctl_dma_req *req)
+{
+    return pevx_dma_move(defaultCrate, req);
+}
+
+int pevx_dma_status(uint crate, int channel, struct pev_ioctl_dma_sts *stat)
+{
+    memset(stat, 0, sizeof(struct pev_ioctl_dma_sts));
+    return 0;
+}
+
+int pev_dma_status(int channel, struct pev_ioctl_dma_sts *stat)
+{
+    return pevx_dma_status(defaultCrate, channel, stat);
 }
