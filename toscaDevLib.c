@@ -75,14 +75,8 @@ long toscaDevLibMapAddr(
                 debug("A24 address %#zx out of range", vmeAddress + size);
                 return S_dev_badA24;
             }
-            /* Map A24 (16MiB) in 4 MiB chunks as long as the request does not cross a 4 MiB boundary. */
-            if (((vmeAddress ^ (vmeAddress + size)) & 0xc00000) == 0) /* All is in one 4 MiB block. */
-            {
-                mapAddress = toscaMap(VME_A24 | VME_DEFAULT_MODE, vmeAddress & 0xc00000, 0x400000, 0);
-                if (mapAddress) mapAddress += (vmeAddress & 0x3fffff);
-            }
-            else
-                mapAddress = toscaMap(VME_A24 | VME_DEFAULT_MODE, vmeAddress, size, 0);
+            /* Map full A24 space because why not. */
+            mapAddress = toscaMap(VME_A24, 0, 0x1000000, 0) + vmeAddress;
             break;
         }
         case atVMEA32:
