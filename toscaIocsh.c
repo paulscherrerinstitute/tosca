@@ -139,12 +139,12 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
     unsigned int device = info.addrspace >> 16;
     char buf[60];
     if (device) printf("%u:", device);
-    if ((info.addrspace & ~(VME_A16|VME_A24|VME_A32|VME_A64|VME_SWAP)) > VME_SLAVE)
+    if ((info.addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM|VME_SLAVE)) > VME_SLAVE)
     printf("%7s:0x%-8"PRIx64" %16s %7s:0x%-8zx%s\n",
         toscaAddrSpaceToStr(info.addrspace),
         info.baseaddress,
         sizeToStr(info.size, buf),
-        toscaAddrSpaceToStr(info.addrspace & ~(VME_SLAVE|VME_A16|VME_A24|VME_A32|VME_A64|VME_SWAP)),
+        toscaAddrSpaceToStr(info.addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM)),
         (size_t) info.baseptr,
         info.addrspace & VME_SWAP ? "SWAP" : "");
     else
