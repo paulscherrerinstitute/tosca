@@ -74,8 +74,8 @@ typedef struct {
     unsigned long long count;  /* number of times the interrupt has been received */
 } toscaIntrHandlerInfo_t;
 
-int toscaIntrForeachHandler(intrmask_t intrmask, int (*callback)(toscaIntrHandlerInfo_t, void* user), void* user);
-/* calls callback for each installed handler that matches intrmask (and vec range for VME) until a callback returns not 0 */
+int toscaIntrForeachHandler(int (*callback)(toscaIntrHandlerInfo_t, void* user), void* user);
+/* calls callback for each installed handler until a callback returns not 0 */
 /* returns what the last callback had returned */
 
 unsigned long long toscaIntrCount();

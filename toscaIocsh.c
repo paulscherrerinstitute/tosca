@@ -373,7 +373,7 @@ void toscaIntrShow(int level)
         delta = count - prevIntrTotalCount;
         prevIntrTotalCount = count;
         printf("total number of interrupts: %lld (+%lld)\n", count, delta);
-        toscaIntrForeachHandler(TOSCA_INTR_ANY, toscaIntrPrintInfo, &level);
+        toscaIntrForeachHandler(toscaIntrPrintInfo, &level);
         rep = 1;
     } while (level < 0 && !waitForKeypress(-1000*level));
 }

@@ -276,9 +276,8 @@ int toscaIntrEnable(intrmask_t intrmask)
     return 0;
 }
 
-int toscaIntrForeachHandler(intrmask_t intrmask, int (*callback)(toscaIntrHandlerInfo_t, void* user), void* user)
+int toscaIntrForeachHandler(int (*callback)(toscaIntrHandlerInfo_t, void* user), void* user)
 {
-    debug("mask=%016llx", intrmask);
     #define REPORT_HANDLER(i, bit)                     \
     {                                                  \
         struct intr_handler* handler;                  \
@@ -298,7 +297,7 @@ int toscaIntrForeachHandler(intrmask_t intrmask, int (*callback)(toscaIntrHandle
             if (status != 0) return status;            \
         }                                              \
     }
-    FOREACH_MASKBIT(intrmask, REPORT_HANDLER);
+    FOREACH_MASKBIT(TOSCA_INTR_ANY, REPORT_HANDLER);
     return 0;
 }
 
