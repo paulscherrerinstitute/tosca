@@ -146,7 +146,7 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
         sizeToStr(info.size, buf),
         toscaAddrSpaceToStr(info.addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM)),
         (size_t) info.baseptr,
-        info.addrspace & VME_SWAP ? "SWAP" : "");
+        info.addrspace & VME_SWAP ? " SWAP" : "");
     else
     printf("%7s:0x%-8"PRIx64" %16s   %-16p%s\n",
         toscaAddrSpaceToStr(info.addrspace),
@@ -163,7 +163,7 @@ static const iocshFuncDef toscaMapShowDef =
 
 static void toscaMapShowFunc(const iocshArgBuf *args)
 {
-    printf("#addrspace:baseaddr            size      pointer\n");
+    printf("\e[4maddrspace:baseaddr         size         pointer \e[0m\n");
     toscaMapForeach(toscaMapPrintInfo, NULL);
 }
 
@@ -364,7 +364,7 @@ void toscaIntrShow(int level)
 
     if (level < 0)
     {
-        printf("\e[7mPress any key to stop periodic output\e[0m\n");
+        printf("\e[7mPress any key to stop periodic output \e[0m\n");
     }
     do
     {
