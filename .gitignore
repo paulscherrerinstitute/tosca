@@ -1,0 +1,7 @@
+O.*
+.cvsignore
+*.o
+*.a
+*.so
+toscaApi/*/
+toscaApi/tosca
