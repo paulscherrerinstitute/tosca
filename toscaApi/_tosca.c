@@ -7,7 +7,7 @@
 
 int main(int argc, char** argv)
 {
-    int wordsize = 1;
+    int wordsize = 0;
     size_t size = 0;
     size_t mapsize;
     size_t cur;
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
     if (!isatty(0))
     {
         cur = 0;
-        if (wordsize > 0)
+        if (wordsize >= 0)
         {
             while (cur < mapsize)
             {
@@ -152,7 +152,7 @@ int main(int argc, char** argv)
     if (!isatty(1))
     {
         cur = 0;
-        if (wordsize > 0)
+        if (wordsize >= 0)
         {
             while (cur < mapsize)
             {
@@ -207,6 +207,7 @@ int main(int argc, char** argv)
     if (isatty(0) && isatty(1))
     {
         if (!size) size = 0x100;
+        if (!wordsize) wordsize = 2;
         if (size > mapsize) size = mapsize;
         memDisplay(addr.address, map, wordsize, size);
     }
