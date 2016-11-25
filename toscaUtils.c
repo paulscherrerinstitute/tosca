@@ -6,7 +6,6 @@
 #include <byteswap.h>
 #include "toscaMap.h"
 #include "toscaDma.h"
-#include "toscaAddrStr.h"
 
 #include <iocsh.h>
 #include <epicsExport.h>

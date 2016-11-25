@@ -1,8 +1,10 @@
 #ifndef toscaMap_h
 #define toscaMap_h
 
-#include <inttypes.h>
 #include <stdio.h>
+#include <inttypes.h>
+
+#include "memDisplay.h"
 
 /* VME access modes from vme.h */
 #define VME_A16	          0x1
@@ -55,9 +57,6 @@ volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, u
    At the moment Tosca does not support A64 but one day?
 */
 
-/* Convert addrspace code to string. */
-const char* toscaAddrSpaceToStr(unsigned int addrspace);
-
 /* Several map lookup functions. addrspace will be 0 if map is not found. */
 typedef struct {
     uint64_t baseaddress;
@@ -80,6 +79,11 @@ toscaMapInfo_t toscaMapFind(const volatile void* ptr);
 
 /* Find a VME address from a user space pointer. */
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);
+
+/* Convert addrspace code to string and back. */
+size_t toscaStrToSize(const char* str);
+toscaMapAddr_t toscaStrToAddr(const char* str);
+const char* toscaAddrSpaceToStr(unsigned int addrspace);
 
 #ifdef __cplusplus
 }
