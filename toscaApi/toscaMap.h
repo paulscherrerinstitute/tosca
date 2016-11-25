@@ -32,13 +32,13 @@
 extern "C" {
 #endif
 
-/* set to 1 to see debug output */
+/* Set to 1 to see debug output */
 extern int toscaMapDebug;
 
-/* set to redirect debug output  */
+/* Set to redirect debug output  */
 extern FILE* toscaMapDebugFile;
 
-/* report number of found Tosca devices */
+/* Report number of found Tosca devices */
 unsigned int toscaNumDevices();
 
 /* Map a Tosca resource to user space. Re-use maps if possible. */
@@ -80,10 +80,22 @@ toscaMapInfo_t toscaMapFind(const volatile void* ptr);
 /* Find a VME address from a user space pointer. */
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);
 
-/* Convert addrspace code to string and back. */
-size_t toscaStrToSize(const char* str);
-toscaMapAddr_t toscaStrToAddr(const char* str);
+/* Convert addrspace code string and back. */
 const char* toscaAddrSpaceToStr(unsigned int addrspace);
+
+/* Convert string to addrspace code. */
+/* Returns 0 and sets errno on error */
+/* If end != NULL, passes first mismatch char, else mismatch is an error */
+unsigned int toscaStrToAddrSpace(const char* str, char** end);
+
+/* Convert (hex, dec, or 1M2k like) string to size. */
+/* returns (size_t)-1 and sets errno on error */
+size_t toscaStrToSize(const char* str);
+
+/* Convert addrspace:address string to address structure. */
+/* returns 0 addrspace and sets errno on error */
+/* If end != NULL, passes first mismatch char, else mismatch is an error */
+toscaMapAddr_t toscaStrToAddr(const char* str, char** end);
 
 #ifdef __cplusplus
 }

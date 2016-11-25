@@ -50,7 +50,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
         iocshCmd("help toscaMap");
         return;
     }
-    addr = toscaStrToAddr(args[0].sval);
+    addr = toscaStrToAddr(args[0].sval, NULL);
     if (!addr.addrspace)
     {
         fprintf(stderr, "invalid Tosca address %s\n",
@@ -78,7 +78,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
                 addr.addrspace |= VME_SWAP;
             else
             {
-                res_addr = toscaStrToAddr(args[2].sval);
+                res_addr = toscaStrToAddr(args[2].sval, NULL);
                 if (!res_addr.addrspace)
                 {
                     fprintf(stderr, "invalid Tosca address %s\n",
@@ -503,7 +503,9 @@ static const iocshFuncDef toscaStrToAddrDef =
 
 static void toscaStrToAddrFunc(const iocshArgBuf *args)
 {
-    toscaMapAddr_t addr = toscaStrToAddr(args[0].sval);
+    errno = 0;
+    toscaMapAddr_t addr = toscaStrToAddr(args[0].sval, NULL);
+    if (errno) perror(NULL);
     printf("0x%x:0x%"PRIx64"\n", addr.addrspace, addr.address);
 }
 

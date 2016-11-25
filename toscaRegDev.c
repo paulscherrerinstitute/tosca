@@ -443,7 +443,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
         return;
     }
     
-    addr = toscaStrToAddr(args[1].sval);
+    addr = toscaStrToAddr(args[1].sval, NULL);
     if (!addr.addrspace)
     {
         error("invalid address space %s", args[1].sval);
