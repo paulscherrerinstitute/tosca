@@ -1,8 +1,8 @@
 LIB=toscaApi
 PROGS=$(patsubst _%.c,%,$(wildcard _*.c))
 
-#LINKTYPE=STATIC
-LINKTYPE=SHARED
+LINKTYPE=STATIC
+#LINKTYPE=SHARED
 
 SOURCES+=$(wildcard *.c)
 SOURCES+=../../symbolname/symbolname_GNU.c
