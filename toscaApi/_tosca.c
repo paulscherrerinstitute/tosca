@@ -81,12 +81,10 @@ int main(int argc, char** argv)
         else
         {
             unsigned int i = 0;
-            fprintf(stderr, "mapsize %zu buffersize %zu\n", mapsize, buffersize);
             while (i < mapsize / -wordsize)
             {
                 unsigned int j = 0;
                 ssize_t n = read(0, buffer + cur, buffersize - cur);
-                fprintf(stderr, "read %d\n", n);
                 if (n < 0) perror(NULL);
                 if (n < 1) break;
                 switch (wordsize)
@@ -96,7 +94,6 @@ int main(int argc, char** argv)
                         {
                             uint16_t x = ((uint16_t*)buffer)[j++];
                             ((uint16_t*)map)[i++] = bswap_16(x);
-                            fprintf(stderr, "copy 2 byte %d n=%i\n", i, n);
                         }
                         break;
                     case -4:
@@ -104,7 +101,6 @@ int main(int argc, char** argv)
                         {
                             uint32_t x = ((uint32_t*)buffer)[j++];
                             ((uint32_t*)map)[i++] = bswap_32(x);
-                            fprintf(stderr, "copy 4 byte %d n=%i\n", i, n);
                         }
                         break;
                     case -8:
@@ -112,19 +108,16 @@ int main(int argc, char** argv)
                         {
                             uint64_t x = ((uint64_t*)buffer)[j++];
                             ((uint64_t*)map)[i++] = bswap_64(x);
-                            fprintf(stderr, "copy 8 byte %d n=%i\n", i, n);
                         }
                         break;
                 }
                 /* move incomplete words to buffer start for next turn */
                 cur = n - wordsize;
                 if (n < 0) memcpy(buffer, buffer + j * -wordsize, cur);
-                fprintf(stderr, "i=%d cur=%zu n=%d written=%zu mapsize=%zu\n", i, cur, n, i * -wordsize, mapsize);
             }
-            /* write last incomplete word */
+            /* write last incomplete word filled with 0 */
             if (cur > 0 && i * -wordsize < mapsize)
             {
-                fprintf(stderr, "write last word\n");
                 memset(buffer + cur, 0, -wordsize - cur);
                 switch (wordsize)
                 {
@@ -150,10 +143,8 @@ int main(int argc, char** argv)
             }
             cur = i * -wordsize;
         }
-        fprintf(stderr, "size=%zu cur=%zu\n", size, cur);
         if (cur < size)
         {
-            fprintf(stderr, "fill up with %zu 0 bytes\n", size - cur);
             /* fill the rest with 0 */
             memset((char*) map + cur, 0, size - cur);
         }
