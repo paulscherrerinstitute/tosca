@@ -171,25 +171,25 @@ size_t toscaStrToSize(const char* str)
 unsigned int toscaStrToAddrSpace(const char* str, char** end)
 {
     unsigned int addrspace = 0;
-    unsigned long device;
+    unsigned long device = 0;
     char *s;
     
     if (!str)
     {
 fault:
         errno = EINVAL;
-        if (*end) *end = (char*)str;
+        if (end) *end = (char*)str;
         return 0;
     }
     
     device = strtoul(str, &s, 0);
     if (*s == ':')
-    {
         s++;
-        addrspace = device << 16;
-    }
     else
+    {
+        device = 0;
         s = (char*) str;
+    }
     if ((strncmp(s, "USR", 3) == 0 && (s+=3)) ||
         (strncmp(s, "USER", 4) == 0 && (s+=4)) ||
         (strncmp(s, "TOSCA_USER", 10) == 0 && (s+=10)))
@@ -282,6 +282,11 @@ fault:
         errno = EINVAL;
         return 0;
     }
+    if (addrspace != 0) addrspace |= device << 16;
+    else if (device != 0)
+    {
+        goto fault;
+    }
     return addrspace;
 }
 
@@ -293,7 +298,7 @@ toscaMapAddr_t toscaStrToAddr(const char* str, char** end)
     if (!str)
     {
         errno = EINVAL;
-        if (*end) *end = (char*)str;
+        if (end) *end = (char*)str;
         return (toscaMapAddr_t) {0};
     }
     result.addrspace = toscaStrToAddrSpace(str, &s);
