@@ -506,7 +506,7 @@ static void toscaStrToAddrFunc(const iocshArgBuf *args)
     errno = 0;
     toscaMapAddr_t addr = toscaStrToAddr(args[0].sval, NULL);
     if (errno) perror(NULL);
-    printf("0x%x:0x%"PRIx64"\n", addr.addrspace, addr.address);
+    else printf("0x%x:0x%"PRIx64"\n", addr.addrspace, addr.address);
 }
 
 static const iocshFuncDef toscaAddrSpaceToStrDef =
