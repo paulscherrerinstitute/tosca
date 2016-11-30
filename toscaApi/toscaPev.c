@@ -13,6 +13,7 @@
 #include "toscaReg.h"
 #include "toscaIntr.h"
 #include "toscaDma.h"
+#include "toscaPev.h"
 #include "i2c.h"
 
 #define TOSCA_DEBUG_NAME pev
@@ -522,6 +523,8 @@ int pev_evt_unmask(struct pev_ioctl_evt *evt, int src_id)
     return pevx_evt_unmask(defaultCrate, evt, src_id);
 }
 
+/** DMA ***************************************************/
+
 void *pevx_buf_alloc(uint crate, struct pev_ioctl_buf *buf)
 {
     buf->u_addr = valloc(buf->size);
@@ -579,7 +582,7 @@ static int pev_dmaspace_to_tosca_addrspace(int dmaspace)
 
 int pevx_dma_move(uint crate, struct pev_ioctl_dma_req *req)
 {
-    int source, dest, swap=0, timeout = -1, status;
+    int source, dest, swap=0, timeout=-1, status;
     
     source = pev_dmaspace_to_tosca_addrspace(req->src_space);
     dest = pev_dmaspace_to_tosca_addrspace(req->des_space);
@@ -602,6 +605,7 @@ int pevx_dma_move(uint crate, struct pev_ioctl_dma_req *req)
         req->dma_status |= DMA_STATUS_TMO;
     return status ? -1 : 0;
 }
+
 int pev_dma_move(struct pev_ioctl_dma_req *req)
 {
     return pevx_dma_move(defaultCrate, req);
@@ -616,4 +620,83 @@ int pevx_dma_status(uint crate, int channel, struct pev_ioctl_dma_sts *stat)
 int pev_dma_status(int channel, struct pev_ioctl_dma_sts *stat)
 {
     return pevx_dma_status(defaultCrate, channel, stat);
+}
+
+/** Old wrappers ******************************************/
+
+intrmask_t pev_src_id_to_mask(unsigned int src_id)
+{
+    switch (src_id & 0xf0)
+    {
+        case EVT_SRC_VME:
+            return TOSCA_VME_INTR_VECS(src_id & 0xf, 0, 255);
+            break;
+        case EVT_SRC_USR1:
+        case EVT_SRC_USR2:
+            return TOSCA_USER1_INTR(src_id & 0x1f);
+            break;
+        default: return 0;
+    }
+}
+
+volatile void* pevMapExt(unsigned int card, unsigned int sg_id, unsigned int map_mode,
+    size_t logicalAddress, size_t size, unsigned int flags, size_t localAddress)
+{
+    unsigned int addrspace;
+    
+    addrspace = pev_mode_to_tosca_addrspace(map_mode);
+    if (sg_id == MAP_SLAVE_VME) addrspace |= VME_SLAVE;
+    if (!addrspace)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+    addrspace |= (card << 16);
+    return toscaMap(addrspace, logicalAddress, size, localAddress);                
+}
+
+void pevUnmap(volatile void* ptr)
+{
+}
+
+int pevIntrConnect(unsigned int card, unsigned int src_id, unsigned int vec_id, void (*func)(), void* usr)
+{
+    if (card != 0) return -1;
+    return toscaIntrConnectHandler(pev_src_id_to_mask(src_id), func, usr);
+}
+
+int pevIntrDisconnect(unsigned int card, unsigned int src_id, unsigned int vec_id, void (*func)(), void* usr)
+{
+    if (card != 0) return -1;
+    return toscaIntrDisconnectHandler(pev_src_id_to_mask(src_id), func, usr);
+}
+
+int pevIntrEnable(unsigned int card, unsigned int src_id)
+{
+    if (card != 0) return -1;
+    return toscaIntrEnable(pev_src_id_to_mask(src_id));
+}
+
+int pevIntrDisable(unsigned int card, unsigned int src_id)
+{
+    if (card != 0) return -1;
+    return toscaIntrDisable(pev_src_id_to_mask(src_id));
+}
+
+int pevDmaTransfer(unsigned int card, unsigned int src_space, size_t src_addr, unsigned int des_space, size_t des_addr, size_t size, unsigned int dont_use,
+    unsigned int priority, pevDmaCallback callback, void *usr)
+{
+    int source, dest, swap=0;
+    source = pev_dmaspace_to_tosca_addrspace(src_space);
+    dest = pev_dmaspace_to_tosca_addrspace(des_space);
+    if (source == -1 || dest == -1) return -1;
+    source |= card << 16;
+    if (((src_space & DMA_SPACE_MASK) == DMA_SPACE_USR1 ||
+        (src_space & DMA_SPACE_MASK) == DMA_SPACE_SHM) && src_space & 0x30)
+        swap = 1 << (src_space >> 4 & 0x3);
+    if (((des_space & DMA_SPACE_MASK) == DMA_SPACE_USR1 ||
+        (des_space & DMA_SPACE_MASK) == DMA_SPACE_SHM) && des_space & 0x30)
+        swap = 1 << (des_space >> 4 & 0x3);
+
+    return toscaDmaTransfer(source, src_addr, dest, des_addr, size, swap, -1, callback, usr);  
 }
