@@ -20,7 +20,7 @@ int main(int argc, char** argv)
         fprintf(stderr, "usage: tosca addrspace:address [wordsize] [size]\n");
         return 1;
     }
-    toscaMapAddr_t addr = toscaStrToAddr(argv[1]);
+    toscaMapAddr_t addr = toscaStrToAddr(argv[1], NULL);
     if (argc >= 3)
     {
         wordsize = strtol(argv[2], &end, 0);
