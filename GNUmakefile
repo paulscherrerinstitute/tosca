@@ -7,3 +7,4 @@ USR_CFLAGS += -I /opt/eldk-5.2/ifc/include/
 
 DIRS = toscaApi .
 SOURCES = $(wildcard $(DIRS:%=%/[^_]*.c))
+HEADERS = $(wildcard $(DIRS:%=%/tosca*.h))
