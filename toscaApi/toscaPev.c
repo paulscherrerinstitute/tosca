@@ -1,3 +1,6 @@
+#undef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -624,12 +627,12 @@ int pev_dma_status(int channel, struct pev_ioctl_dma_sts *stat)
 
 /** Old wrappers ******************************************/
 
-intrmask_t pev_src_id_to_mask(unsigned int src_id)
+intrmask_t pev_src_id_to_mask(unsigned int src_id, unsigned int vec)
 {
     switch (src_id & 0xf0)
     {
         case EVT_SRC_VME:
-            return TOSCA_VME_INTR_VECS(src_id & 0xf, 0, 255);
+            return vec ? TOSCA_VME_INTR_VEC(src_id & 0xf, vec) : TOSCA_VME_INTR_VECS(src_id & 0xf, 0, 255);
             break;
         case EVT_SRC_USR1:
         case EVT_SRC_USR2:
@@ -662,25 +665,44 @@ void pevUnmap(volatile void* ptr)
 int pevIntrConnect(unsigned int card, unsigned int src_id, unsigned int vec_id, void (*func)(), void* usr)
 {
     if (card != 0) return -1;
-    return toscaIntrConnectHandler(pev_src_id_to_mask(src_id), func, usr);
+    return toscaIntrConnectHandler(pev_src_id_to_mask(src_id, vec_id), func, usr);
 }
 
 int pevIntrDisconnect(unsigned int card, unsigned int src_id, unsigned int vec_id, void (*func)(), void* usr)
 {
     if (card != 0) return -1;
-    return toscaIntrDisconnectHandler(pev_src_id_to_mask(src_id), func, usr);
+    return toscaIntrDisconnectHandler(pev_src_id_to_mask(src_id, vec_id), func, usr);
 }
 
 int pevIntrEnable(unsigned int card, unsigned int src_id)
 {
     if (card != 0) return -1;
-    return toscaIntrEnable(pev_src_id_to_mask(src_id));
+    return toscaIntrEnable(pev_src_id_to_mask(src_id, 0));
 }
 
 int pevIntrDisable(unsigned int card, unsigned int src_id)
 {
     if (card != 0) return -1;
-    return toscaIntrDisable(pev_src_id_to_mask(src_id));
+    return toscaIntrDisable(pev_src_id_to_mask(src_id, 0));
+}
+
+void* pevDmaAlloc(unsigned int card, size_t size)
+{
+    void* newptr = NULL;
+    posix_memalign(&newptr, sysconf(_SC_PAGESIZE), size);
+    return newptr;
+}
+
+void* pevDmaFree(unsigned int card, void* oldptr)
+{
+    free(oldptr);
+    return NULL;
+}
+
+void* pevDmaRealloc(unsigned int card, void* oldptr, size_t size)
+{
+    pevDmaFree(card, oldptr);
+    return pevDmaAlloc(card, size);
 }
 
 int pevDmaTransfer(unsigned int card, unsigned int src_space, size_t src_addr, unsigned int des_space, size_t des_addr, size_t size, unsigned int dont_use,

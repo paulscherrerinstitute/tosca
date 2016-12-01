@@ -30,24 +30,11 @@ int pevIntrDisable(unsigned int card, unsigned int src_id);
 
 #define DMA_SPACE_BUF DMA_SPACE_MASK
 
-static inline void* pevDmaRealloc(unsigned int card, void* oldptr, size_t size)
-{
-    free(oldptr);
-    return malloc(size);
-}
+void* pevDmaAlloc(unsigned int card, size_t size);
 
-static inline void* pevDmaAlloc(unsigned int card, size_t size)
-{
-    return malloc(size);
-}
+void* pevDmaFree(unsigned int card, void* oldptr);
 
-static inline void* pevDmaFree(unsigned int card, void* oldptr)
-{
-    free(oldptr);
-    return NULL;
-}
-
-const char* pevDmaSpaceName(unsigned int dma_space);
+void* pevDmaRealloc(unsigned int card, void* oldptr, size_t size);
 
 typedef void (*pevDmaCallback)(void* usr, int status);
 
