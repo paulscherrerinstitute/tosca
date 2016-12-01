@@ -1,6 +1,3 @@
-#undef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 600
-
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -8,9 +5,6 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/select.h>
-
-#include <pevulib.h>
-#include <pevxulib.h>
 
 #include "toscaMap.h"
 #include "toscaReg.h"

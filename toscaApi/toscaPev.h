@@ -1,6 +1,8 @@
 #ifndef toscaPev_h
 #define toscaPev_h
 
+#include <stddef.h>
+#include <pevioctl.h>
 #include <pevulib.h>
 #include <pevxulib.h>
 
