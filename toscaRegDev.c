@@ -47,7 +47,11 @@ struct regDevice
 
 void toscaRegDevReport(regDevice *device, int level)
 {
-    printf("Tosca %s:0x%zx", toscaAddrSpaceToStr(device->addrspace), device->baseaddr);
+    printf("Tosca %s%s%s:0x%zx",
+        device->baseptr ? toscaAddrSpaceToStr(device->addrspace) : "",
+        device->baseptr && device->dmaSpace & ~(TOSCA_USER|TOSCA_SMEM) ? "/" : "",
+        device->dmaSpace & ~(TOSCA_USER|TOSCA_SMEM) ? toscaDmaTypeToStr(device->dmaSpace) : "",
+        device->baseaddr);
     if (device->swap)
         printf(", swap=%s",
             device->swap == 2 ? "WS" : device->swap == 4 ? "DS" : device->swap == 8 ? "QS" : "??");
