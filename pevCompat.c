@@ -64,8 +64,10 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     }
     if (args[4].sval && l < sizeof(flags)) /* protocol */
     {
-        if (strstr(args[4].sval, "BLT") || strstr(args[4].sval, "2e"))
+        if (strcasestr(args[4].sval, "BLT") || strcasestr(args[4].sval, "2e"))
             l += sprintf(flags+l, "%.*s ", (int)sizeof(flags)-1-l, args[4].sval);
+        else if (strcasestr(args[4].sval, "NODMA"))
+            l += sprintf(flags+l, "nodma ");
     }
     if (args[8].sval && l < sizeof(flags)) /* swap */
         l += sprintf(flags+l, "%.*s ", (int)sizeof(flags)-1-l, args[8].sval);
