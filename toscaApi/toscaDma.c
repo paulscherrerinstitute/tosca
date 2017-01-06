@@ -84,19 +84,19 @@ const char* toscaDmaTypeToStr(unsigned int type)
         case VME_SCT:
             return "VME_SCT";
         case VME_BLT:
-            return "VME_BLT";
+            return "BLT";
         case VME_MBLT:
-            return "VME_MBLT";
+            return "MBLT";
         case VME_2eVME:
-            return "VME_2eVME";
+            return "2eVME";
         case VME_2eVMEFast:
-            return "VME_2eVMEFast";
+            return "2eVMEFast";
         case VME_2eSST160:
-            return "VME_2eSST160";
+            return "2eSST160";
         case VME_2eSST267:
-            return "VME_2eSST267";
+            return "2eSST267";
         case VME_2eSST320:
-            return "VME_2eSST320";
+            return "2eSST320";
         default:
             return "????";
     }
