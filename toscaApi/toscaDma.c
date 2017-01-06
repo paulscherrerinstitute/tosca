@@ -104,7 +104,7 @@ const char* toscaDmaTypeToStr(unsigned int type)
 
 const char* toscaDmaWidthToSwapStr(int width)
 {
-    return (const char*[]){"","WS","DS","QS"}[width>>10];
+    return (const char*[]){"NS","WS","DS","QS"}[(width>>10)&3];
 }
 
 int toscaDmaStrToType(const char* str)
@@ -364,6 +364,8 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         case 8:
             r->req.dwidth = 0xc00;
             break;
+        default:
+            r->req.dwidth = 0;
     }
         
     switch (source)
