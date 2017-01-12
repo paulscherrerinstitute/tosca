@@ -1,3 +1,5 @@
+#undef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 600 /* for posix_memalign */
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -5,6 +7,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/select.h>
+#include <endian.h>
 
 #include "toscaMap.h"
 #include "toscaReg.h"
@@ -147,36 +150,55 @@ void pev_smon_wr(int address, int value)
 
 static int pev_bmr_fd(uint bmr, uint address)
 {
-    static int fd[4] = {0};
+    static int bmr_fd[4] = {0};
 
     if (bmr > 3)
     {
         errno = EINVAL;
         return -1;
     }
-    if (!fd[bmr])
-        fd[bmr] = i2cOpen("/sys/devices/*localbus/*000a0.pon-i2c/i2c-*", bmr == 3 ? 0x24 : 0x53 + bmr * 8);
-    if (fd[bmr] < 0)
+    if (!bmr_fd[bmr])
+        bmr_fd[bmr] = i2cOpen("/sys/devices/*localbus/*000a0.pon-i2c/i2c-*", bmr == 3 ? 0x24 : 0x53 + bmr * 8);
+    if (bmr_fd[bmr] < 0)
         errno = ENODEV;
-    return fd[bmr];
+    return bmr_fd[bmr];
 }
 
-int pev_bmr_read(uint bmr, uint address, uint *value, uint count)
+#define I2C_CTL_DONE     0x200000
+#define I2C_CTL_ERROR    0x300000
+
+int pev_bmr_read(uint bmr, uint address, uint *pvalue, uint count)
 {
-    int fd;
+    int fd, status;
+    uint value;
     debug("bmr=%u address=0x%x, count=%u", bmr, address, count);
     fd = pev_bmr_fd(bmr, address);
+    debug("fd=%d", fd);
     if (fd < 0) return -1;
-    return i2cRead(fd, address, count, value);
+    status = i2cRead(fd, address, count, &value);
+    usleep(1000);
+    if (status != 0) return I2C_CTL_ERROR;
+#if __BYTE_ORDER == __BIG_ENDIAN
+    value >>= (sizeof(uint) - count) * 8;
+#endif
+    *pvalue = value;
+    debug("value = 0x%x", value);
+    return I2C_CTL_DONE;
 }
 
 int pev_bmr_write(uint bmr, uint address, uint value, uint count)
 {
-    int fd;
+    int fd, status;
     debug("bmr=%u address=0x%x, value=0x%x  count=%u", bmr, address, value, count);
     fd = pev_bmr_fd(bmr, address);
     if (fd < 0) return -1;
-    return i2cWrite(fd, address, count, value);
+#if __BYTE_ORDER == __BIG_ENDIAN
+    value <<= (sizeof(int) - count) * 8;
+#endif
+    status = i2cWrite(fd, address, count, value);
+    usleep(1000);
+    if (status != 0) return I2C_CTL_ERROR;
+    return I2C_CTL_DONE;
 }
 
 float pev_bmr_conv_11bit_u(ushort value)
