@@ -133,9 +133,9 @@ long devIfc1210AiInitRecord(aiRecord* record)
 
 long devIfc1210AiRead(aiRecord* record)
 {
-   ifcPrivate* p = record->dpvt;
-   unsigned int rval = 0;
-   int status = 0;
+    ifcPrivate* p = record->dpvt;
+    unsigned int rval = 0;
+    int status = 0;
 
     if (p == NULL)
     {
@@ -148,11 +148,11 @@ long devIfc1210AiRead(aiRecord* record)
     switch (p->devType)
     {
         case IFC_ELB:
-                rval = pev_elb_rd( p->address );
+            rval = pev_elb_rd( p->address );
             break;
         case IFC_SMON:
         case IFC_SMON_10S:
-                rval = pev_smon_rd( p->address );
+            rval = pev_smon_rd( p->address );
             break;
         case PCI_IO:
             rval = pev_csr_rd( p->address | 0x80000000 );
@@ -160,16 +160,18 @@ long devIfc1210AiRead(aiRecord* record)
         default:
             status = pev_bmr_read( p->card,  p->address, &rval, p->count);
             if((status&I2CEXEC_MASK) != I2CEXEC_OK)
-             {
-               recGblSetSevr(record, READ_ALARM, INVALID_ALARM);
-               return -1;
-             }
+            {
+                fprintf(stderr, "%s: pev_bmr_read bmr=%d addr=%d failed",
+                    record->name, p->card, p->address);
+                recGblSetSevr(record, READ_ALARM, INVALID_ALARM);
+                return -1;
+            }
     }
 
     switch (p->devType)
     {
         case BMR_11U:
-                record->val = pev_bmr_conv_11bit_u(rval);
+            record->val = pev_bmr_conv_11bit_u(rval);
             break;
         case BMR_11S:
             record->val = pev_bmr_conv_11bit_s(rval);
@@ -278,9 +280,9 @@ long devIfc1210LonginInitRecord(longinRecord* record)
 
 long devIfc1210LonginRead(longinRecord* record)
 {
-   ifcPrivate* p = record->dpvt;
-   unsigned int rval = 0;
-   int status = 0;
+    ifcPrivate* p = record->dpvt;
+    unsigned int rval = 0;
+    int status = 0;
 
     if (p == NULL)
     {
@@ -306,6 +308,8 @@ long devIfc1210LonginRead(longinRecord* record)
             status = pev_bmr_read( p->card,  p->address, &rval, p->count);
             if((status&I2CEXEC_MASK) != I2CEXEC_OK)
             {
+                fprintf(stderr, "%s: pev_bmr_read bmr=%d addr=%d failed",
+                    record->name, p->card, p->address);
                 recGblSetSevr(record, READ_ALARM, INVALID_ALARM);
                 return -1;
             }
