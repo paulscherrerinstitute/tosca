@@ -29,6 +29,10 @@
 #define I2CEXEC_MASK    0x0300000
 #define BIT_31_SET      0x80000000
 
+#define TOSCA_DEBUG_NAME ifc1210
+#include "toscaDebug.h"
+epicsExportAddress(int, ifc1210Debug);
+
 long  ifc1210Init(){ pev_init(0); return 0; }
 struct {
     long number;
@@ -161,7 +165,7 @@ long devIfc1210AiRead(aiRecord* record)
             status = pev_bmr_read( p->card,  p->address, &rval, p->count);
             if((status&I2CEXEC_MASK) != I2CEXEC_OK)
             {
-                fprintf(stderr, "%s: pev_bmr_read bmr=%d addr=%d failed",
+                debugErrno("%s: pev_bmr_read bmr=%d addr=%d",
                     record->name, p->card, p->address);
                 recGblSetSevr(record, READ_ALARM, INVALID_ALARM);
                 return -1;
