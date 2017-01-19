@@ -165,7 +165,7 @@ long devIfc1210AiRead(aiRecord* record)
             status = pev_bmr_read( p->card,  p->address, &rval, p->count);
             if((status&I2CEXEC_MASK) != I2CEXEC_OK)
             {
-                debugErrno("%s: pev_bmr_read bmr=%d addr=%d",
+                error("%s: pev_bmr_read bmr=%d addr=%d failed: %m",
                     record->name, p->card, p->address);
                 recGblSetSevr(record, READ_ALARM, INVALID_ALARM);
                 return -1;
@@ -312,7 +312,7 @@ long devIfc1210LonginRead(longinRecord* record)
             status = pev_bmr_read( p->card,  p->address, &rval, p->count);
             if((status&I2CEXEC_MASK) != I2CEXEC_OK)
             {
-                fprintf(stderr, "%s: pev_bmr_read bmr=%d addr=%d failed",
+                error("%s: pev_bmr_read bmr=%d addr=%d failed: %m",
                     record->name, p->card, p->address);
                 recGblSetSevr(record, READ_ALARM, INVALID_ALARM);
                 return -1;
