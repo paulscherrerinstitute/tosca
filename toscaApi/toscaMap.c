@@ -462,7 +462,7 @@ check_existing_maps:
             if (addrspace & VME_SWAP) vme_window.cycle |= VME_LE_TO_BE;
             vme_window.size += 0xffffful; /* Expand slave maps to MB boundary. */
             vme_window.size &= ~0xffffful;
-            if (vme_window.size > 0x400000ul) /* more than 4 MB */
+            if ((addrspace & 0xfe0) == VME_SLAVE && vme_window.size > 0x400000ul) /* more than 4 MB to RAM*/
             {
                 error("slave windows size 0x%"PRIx64" exceeds 4 MB",
                     vme_window.size);
