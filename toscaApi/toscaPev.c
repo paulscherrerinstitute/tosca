@@ -173,7 +173,6 @@ int pev_bmr_read(uint bmr, uint address, uint *pvalue, uint count)
     uint value;
     debug("bmr=%u address=0x%x, count=%u", bmr, address, count);
     fd = pev_bmr_fd(bmr, address);
-    debug("fd=%d", fd);
     if (fd < 0) return -1;
     status = i2cRead(fd, address, count, &value);
     usleep(1000);
@@ -182,7 +181,6 @@ int pev_bmr_read(uint bmr, uint address, uint *pvalue, uint count)
     value >>= (sizeof(uint) - count) * 8;
 #endif
     *pvalue = value;
-    debug("value = 0x%x", value);
     return I2C_CTL_DONE;
 }
 
