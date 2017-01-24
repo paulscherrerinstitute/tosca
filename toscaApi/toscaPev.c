@@ -158,7 +158,7 @@ static int pev_bmr_fd(uint bmr, uint address)
         return -1;
     }
     if (!bmr_fd[bmr])
-        bmr_fd[bmr] = i2cOpen("/sys/devices/*localbus/*000a0.pon-i2c/i2c-*", bmr == 3 ? 0x24 : 0x53 + bmr * 8);
+        bmr_fd[bmr] = i2cOpen("/sys/devices/{,*/}*localbus/*000a0.pon-i2c/i2c-*", bmr == 3 ? 0x24 : 0x53 + bmr * 8);
     if (bmr_fd[bmr] < 0)
         errno = ENODEV;
     return bmr_fd[bmr];

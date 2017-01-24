@@ -183,7 +183,7 @@ static void pevI2cConfigureFunc(const iocshArgBuf *args)
         card, name, controlword, pev_i2c_bus, pon_addr, i2c_addr);
 
     /* pev i2c adapters are the ones on localbus/pon */
-    sprintf(sysfspattern, "/sys/devices/*.localbus/*%05x.pon-i2c/i2c-*", pon_addr);
+    sprintf(sysfspattern, "/sys/devices/{,*/}*.localbus/*%05x.pon-i2c/i2c-*", pon_addr);
     printf("Compatibility mode! pev[Asyn]I2cConfigure replaced by:\n"
         "i2cDevConfigure %s,%s, 0x%x\n", name, sysfspattern, i2c_addr);
     i2cDevConfigure(name, sysfspattern, i2c_addr, NULL);
