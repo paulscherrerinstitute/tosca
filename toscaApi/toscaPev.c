@@ -550,7 +550,7 @@ void *pevx_buf_alloc(uint crate, struct pev_ioctl_buf *buf)
         int i;
         buf->k_addr = buf->u_addr;
         buf->b_addr = buf->u_addr;
-        for (i = 0; i < buf->size-3; i += 4)
+        for (i = 0; i < buf->size/4; i++)
             ((uint32_t *) buf->u_addr)[i] = 0xdeadface;
     }
     return buf->u_addr;
@@ -574,7 +574,7 @@ int pev_buf_free(struct pev_ioctl_buf *buf)
 
 static int pev_dmaspace_to_tosca_addrspace(int dmaspace)
 {
-    switch (dmaspace)
+    switch (dmaspace & DMA_SPACE_MASK)
     {
         case DMA_SPACE_PCIE:               return 0;
         case DMA_SPACE_USR1:
@@ -593,7 +593,9 @@ static int pev_dmaspace_to_tosca_addrspace(int dmaspace)
         case DMA_SPACE_VME|DMA_VME_2e160:  return VME_2eSST160;
         case DMA_SPACE_VME|DMA_VME_2e233:  return VME_2eSST267;
         case DMA_SPACE_VME|DMA_VME_2e320:  return VME_2eSST320;
-        default: return -1;
+        default:
+            error("invalid dmaspace=0x%x", dmaspace);
+            return -1;
     }
 }
 
