@@ -190,9 +190,9 @@ fault:
         device = 0;
         s = (char*) str;
     }
-    if ((strncmp(s, "USR", 3) == 0 && (s+=3)) ||
-        (strncmp(s, "USER", 4) == 0 && (s+=4)) ||
-        (strncmp(s, "TOSCA_USER", 10) == 0 && (s+=10)))
+    if ((strncasecmp(s, "USR", 3) == 0 && (s+=3)) ||
+        (strncasecmp(s, "USER", 4) == 0 && (s+=4)) ||
+        (strncasecmp(s, "TOSCA_USER", 10) == 0 && (s+=10)))
     {
         if (*s == '2')
         {
@@ -206,32 +206,32 @@ fault:
         }
     }
     else
-    if ((strncmp(s, "SH_MEM", 6) == 0 && (s+=6)) ||
-        (strncmp(s, "SHMEM", 5) == 0 && (s+=5)) ||
-        (strncmp(s, "SMEM", 4) == 0 && (s+=4)) ||
-        (strncmp(s, "SHM", 3) == 0 && (s+=3)) ||
-        (strncmp(s, "TOSCA_SMEM", 10) == 0 && (s+=10)))
+    if ((strncasecmp(s, "SH_MEM", 6) == 0 && (s+=6)) ||
+        (strncasecmp(s, "SHMEM", 5) == 0 && (s+=5)) ||
+        (strncasecmp(s, "SMEM", 4) == 0 && (s+=4)) ||
+        (strncasecmp(s, "SHM", 3) == 0 && (s+=3)) ||
+        (strncasecmp(s, "TOSCA_SMEM", 10) == 0 && (s+=10)))
         addrspace |= TOSCA_SMEM;
     else
-    if ((strncmp(s, "TCSR", 4) == 0 && (s+=4)) ||
-        (strncmp(s, "TOSCA_CSR", 9) == 0 && (s+=9)))
+    if ((strncasecmp(s, "TCSR", 4) == 0 && (s+=4)) ||
+        (strncasecmp(s, "TOSCA_CSR", 9) == 0 && (s+=9)))
         addrspace |= TOSCA_CSR;
     else
-    if ((strncmp(s, "TIO", 3) == 0 && (s+=3)) ||
-        (strncmp(s, "TOSCA_IO", 8) == 0 && (s+=8)))
+    if ((strncasecmp(s, "TIO", 3) == 0 && (s+=3)) ||
+        (strncasecmp(s, "TOSCA_IO", 8) == 0 && (s+=8)))
         addrspace |= TOSCA_IO;
     else
-    if ((strncmp(s, "SRAM", 4) == 0 && (s+=4)) ||
-        (strncmp(s, "TOSCA_SRAM", 10) == 0 && (s+=10)))
+    if ((strncasecmp(s, "SRAM", 4) == 0 && (s+=4)) ||
+        (strncasecmp(s, "TOSCA_SRAM", 10) == 0 && (s+=10)))
         addrspace |= TOSCA_SRAM;
     else
     {
-        if (strncmp(s, "VME_", 4) == 0) s+=4;
-        if ((strncmp(s, "CRCSR", 5) == 0 && (s+=5)) || 
-            (strncmp(s, "CSR", 3) == 0 && (s+=3)))
+        if (strncasecmp(s, "VME_", 4) == 0) s+=4;
+        if ((strncasecmp(s, "CRCSR", 5) == 0 && (s+=5)) || 
+            (strncasecmp(s, "CSR", 3) == 0 && (s+=3)))
             addrspace |= VME_CRCSR;
         else
-        if (strncmp(s, "SLAVE", 5) == 0 && (s+=5))
+        if (strncasecmp(s, "SLAVE", 5) == 0 && (s+=5))
         {
             addrspace |= VME_SLAVE;
             switch (strtol(s, &s, 10))
