@@ -120,7 +120,7 @@ int toscaDmaStrToType(const char* str)
     if (strcasecmp(str, "USR2") == 0 || strcasecmp(str, "USER2") == 0 || strcasecmp(str, "TOSCA_USER2") == 0)
         return TOSCA_USER2;
     if (strcasecmp(str, "SMEM") == 0 || strcasecmp(str, "SHM") == 0 || strcasecmp(str, "SHMEM") == 0 ||
-        strcasecmp(str, "SH_MEM") == 0 strcasecmp(str, "TOSCA_SMEM") == 0)
+        strcasecmp(str, "SH_MEM") == 0 || strcasecmp(str, "TOSCA_SMEM") == 0)
         return TOSCA_SMEM;
     if (strcasecmp(str, "VME") == 0)
         return VME_SCT;
