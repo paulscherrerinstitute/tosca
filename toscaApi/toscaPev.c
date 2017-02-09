@@ -1,5 +1,12 @@
 #undef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600 /* for posix_memalign */
+#include "toscaPev.h"
+#include "toscaMap.h"
+#include "toscaReg.h"
+#include "toscaIntr.h"
+#include "toscaDma.h"
+#include "i2c.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -8,13 +15,7 @@
 #include <signal.h>
 #include <sys/select.h>
 #include <endian.h>
-
-#include "toscaMap.h"
-#include "toscaReg.h"
-#include "toscaIntr.h"
-#include "toscaDma.h"
-#include "toscaPev.h"
-#include "i2c.h"
+#include <malloc.h>
 
 #define TOSCA_DEBUG_NAME pev
 #include "toscaDebug.h"
