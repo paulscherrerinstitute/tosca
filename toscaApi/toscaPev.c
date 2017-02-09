@@ -616,7 +616,9 @@ int pevx_dma_move(uint crate, struct pev_ioctl_dma_req *req)
     if (req->wait_mode)
         timeout = (req->wait_mode >> 4) * (int[]){0,1,10,100,1000,10000,100000,0}[req->wait_mode >> 1 & 7];
     req->dma_status = DMA_STATUS_WAITING;
-    status = toscaDmaTransfer(source, req->src_addr, dest, req->des_addr, req->size, swap, timeout, NULL, NULL);
+    status = toscaDmaTransfer(source, req->src_addr, dest, req->des_addr,
+        req->size & 0x3FFFFFFF, /* mask out VME package size bits */
+        swap, timeout, NULL, NULL);
     req->dma_status = DMA_STATUS_DONE | DMA_STATUS_ENDED;
     if (status != 0)
         req->dma_status |= DMA_STATUS_ERR;
