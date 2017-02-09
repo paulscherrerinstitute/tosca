@@ -611,13 +611,16 @@ int pevx_dma_move(uint crate, struct pev_ioctl_dma_req *req)
 {
     int source, dest, swap=0, timeout=-1, status;
     
+    printf("pevx_dma_move src_space=0x%x des_space=0x%x\n",
+        req->src_space, req->des_space);
+    
     source = pev_dmaspace_to_tosca_addrspace(req->src_space);
     dest = pev_dmaspace_to_tosca_addrspace(req->des_space);
     if (source == -1 || dest == -1) return -1;
     source |= crate << 16;
-    if (!(req->src_space & DMA_SPACE_VME) && req->src_space & 0x30)
+    if ((req->src_space & DMA_SPACE_MASK) != DMA_SPACE_VME && req->src_space & 0x30)
         swap = 1 << (req->src_space >> 4 & 0x3);
-    if (!(req->des_space & DMA_SPACE_VME) && req->des_space & 0x30)
+    if ((req->des_space & DMA_SPACE_MASK) != DMA_SPACE_VME && req->des_space & 0x30)
         swap = 1 << (req->des_space >> 4 & 0x3);
     if (req->wait_mode)
         timeout = (req->wait_mode >> 4) * (int[]){0,1,10,100,1000,10000,100000,0}[req->wait_mode >> 1 & 7];
@@ -737,9 +740,9 @@ int pevDmaTransfer(unsigned int card, unsigned int src_space, size_t src_addr, u
     dest = pev_dmaspace_to_tosca_addrspace(des_space);
     if (source == -1 || dest == -1) return -1;
     source |= card << 16;
-    if (!(src_space & DMA_SPACE_VME) && src_space & 0x30)
+    if ((src_space & DMA_SPACE_MASK) != DMA_SPACE_VME && src_space & 0x30)
         swap = 1 << (src_space >> 4 & 0x3);
-    if (!(des_space & DMA_SPACE_VME) && des_space & 0x30)
+    if ((des_space & DMA_SPACE_MASK) != DMA_SPACE_VME && des_space & 0x30)
         swap = 1 << (des_space >> 4 & 0x3);
 
     return toscaDmaTransfer(source, src_addr, dest, des_addr, size, swap, -1, callback, usr);  
