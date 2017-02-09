@@ -435,7 +435,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     p = strchr(s, ':');
     if (p) *p++ = 0;
     else p = args[0].sval;
-    source = toscaDmaStrToType(s);
+    source = toscaDmaStrToSpace(s);
     if (source == -1)
     {
         fprintf(stderr, "invalid DMA source %s\n",
@@ -454,7 +454,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     p = strchr(s, ':');
     if (p) *p++ = 0;
     else p = args[1].sval;
-    dest = toscaDmaStrToType(s);
+    dest = toscaDmaStrToSpace(s);
     if (dest == -1)
     {
         fprintf(stderr, "invalid DMA dest %s\n",

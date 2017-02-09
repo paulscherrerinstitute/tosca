@@ -50,7 +50,7 @@ void toscaRegDevReport(regDevice *device, int level)
     printf("Tosca %s%s%s:0x%zx",
         device->baseptr ? toscaAddrSpaceToStr(device->addrspace) : "",
         device->baseptr && device->dmaSpace & ~(TOSCA_USER|TOSCA_SMEM) ? "/" : "",
-        device->dmaSpace & ~(TOSCA_USER|TOSCA_SMEM) ? toscaDmaTypeToStr(device->dmaSpace) : "",
+        device->dmaSpace & ~(TOSCA_USER|TOSCA_SMEM) ? toscaDmaSpaceToStr(device->dmaSpace) : "",
         device->baseaddr);
     if (device->swap)
         printf(", swap=%s",
@@ -94,7 +94,7 @@ int toscaRegDevRead(
         if (callback != NULL && status == 0)
             return ASYNC_COMPLETION;
         if (status != 0) debugErrno("toscaDmaRead %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
-            user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen,
+            user, device->name, offset, toscaDmaSpaceToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen,
             device->swap, fname=symbolName(callback,0), user), free(fname);
         return status;
     }
@@ -142,7 +142,7 @@ int toscaRegDevWrite(
         if (callback != NULL && status == 0)
             return ASYNC_COMPLETION;
         if (status != 0) debugErrno("toscaDmaWrite %s %s:0x%zx %s:0x%zx[0x%zx] swap=%d callback=%s(%p)",
-            user, device->name, offset, toscaDmaTypeToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen,
+            user, device->name, offset, toscaDmaSpaceToStr(device->dmaSpace), device->baseaddr + offset, nelem*dlen,
             device->swap, fname=symbolName(callback,0), user), free(fname);
         return status;
     }
@@ -362,7 +362,7 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
     if (device->dmaSpace & VME_BLOCKTRANSFER && !(addrspace & VME_A32))
     {
         error("%s only possible on VME A32 address space",
-            toscaDmaTypeToStr(device->dmaSpace));
+            toscaDmaSpaceToStr(device->dmaSpace));
         device->dmaSpace = 0;
         return -1;
     }
