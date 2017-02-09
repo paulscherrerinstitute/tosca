@@ -78,7 +78,9 @@ const char* toscaDmaTypeToStr(unsigned int type)
         case 0:
             return "MEM";
         case TOSCA_USER:
-            return "USER";
+            return "USER1";
+        case TOSCA_USER2:
+            return "USER2";
         case TOSCA_SMEM:
             return "SMEM";
         case VME_SCT:
@@ -89,8 +91,6 @@ const char* toscaDmaTypeToStr(unsigned int type)
             return "MBLT";
         case VME_2eVME:
             return "2eVME";
-        case VME_2eVMEFast:
-            return "2eVMEFast";
         case VME_2eSST160:
             return "2eSST160";
         case VME_2eSST267:
@@ -112,34 +112,34 @@ int toscaDmaStrToType(const char* str)
     if (!str || !*str) return 0;
     if (strcmp(str, "0") == 0)
         return 0;
-    if (strcmp(str, "MEM") == 0)
+    if (strcasecmp(str, "MEM") == 0)
         return 0;
-    if (strcmp(str, "USER") == 0)
-        return TOSCA_USER;
-    if (strcmp(str, "SMEM") == 0)
+    if (strcasecmp(str, "USR") == 0 || strcasecmp(str, "USER") == 0 || strcasecmp(str, "TOSCA_USER") == 0 ||
+        strcasecmp(str, "USR1") == 0 || strcasecmp(str, "USER1") == 0 || strcasecmp(str, "TOSCA_USER1") == 0)
+        return TOSCA_USER2;
+    if (strcasecmp(str, "USR2") == 0 || strcasecmp(str, "USER2") == 0 || strcasecmp(str, "TOSCA_USER2") == 0)
+        return TOSCA_USER2;
+    if (strcasecmp(str, "SMEM") == 0 || strcasecmp(str, "SHM") == 0 || strcasecmp(str, "SHMEM") == 0 ||
+        strcasecmp(str, "SH_MEM") == 0 strcasecmp(str, "TOSCA_SMEM") == 0)
         return TOSCA_SMEM;
-    if (strcmp(str, "SHM") == 0)
-        return TOSCA_SMEM;
-    if (strcmp(str, "VME") == 0)
+    if (strcasecmp(str, "VME") == 0)
         return VME_SCT;
-    if (strncmp(str, "VME_", 4) == 0) str += 4;
-    if (strcmp(str, "A32") == 0)
+    if (strncasecmp(str, "VME_", 4) == 0) str += 4;
+    if (strcasecmp(str, "A32") == 0)
         return VME_SCT;
-    if (strcmp(str, "SCT") == 0)
+    if (strcasecmp(str, "SCT") == 0)
         return VME_SCT;
-    if (strcmp(str, "BLT") == 0)
+    if (strcasecmp(str, "BLT") == 0)
         return VME_BLT;
-    if (strcmp(str, "MBLT") == 0)
+    if (strcasecmp(str, "MBLT") == 0)
         return VME_MBLT;
-    if (strcmp(str, "2eVME") == 0)
+    if (strcasecmp(str, "2eVME") == 0)
         return VME_2eVME;
-    if (strcmp(str, "2eVMEFast") == 0)
-        return VME_2eVMEFast;
-    if (strcmp(str, "2eSST160") == 0)
+    if (strcasecmp(str, "2eSST160") == 0)
         return VME_2eSST160;
-    if (strcmp(str, "2eSST267") == 0)
+    if (strcasecmp(str, "2eSST267") == 0)
         return VME_2eSST267;
-    if (strcmp(str, "2eSST320") == 0)
+    if (strcasecmp(str, "2eSST320") == 0)
         return VME_2eSST320;
     errno = EINVAL;
     return -1;
@@ -179,6 +179,16 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
         toscaDmaTypeToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_EXECUTE, &ex) != 0)
     {
+        debugErrno("ioctl (%d, VME_DMA_EXECUTE, {%s 0x%"PRIx64"->0x%"PRIx64" [0x%x] dw=0x%x %s cy=0x%x=%s})",
+            r->fd,
+            toscaDmaRouteToStr(r->req.route),
+            r->req.src_addr,
+            r->req.dst_addr,
+            r->req.size,
+            r->req.dwidth,
+            toscaDmaWidthToSwapStr(r->req.dwidth),
+            r->req.cycle,
+            toscaDmaTypeToStr(r->req.cycle));
         if (r->oneShot) toscaDmaRelease(r);
         return errno;
     }
@@ -303,8 +313,7 @@ struct dmaRequest* toscaDmaRequestCreate(void)
         }
         debugLvl(3, "got request %p from malloc", r);
     }
-    r->fd = -1;
-    r->next = NULL;
+    memset(r, 0, sizeof(struct dmaRequest));
     return r;
 }
 
@@ -313,7 +322,6 @@ void toscaDmaRelease(struct dmaRequest* r)
     if (!r) return;
     LOCK;
     if (r->fd > 0) close(r->fd);
-    r->fd = -1;
     if (!r->next)
     {
         debugLvl(3, "put back request %p to freelist, freelist = %p", r, freelist);
@@ -346,7 +354,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
     if (size >= 0x100000000ULL)
     {
         errno = EINVAL;
-        debug("size too long (max 32 bit)");
+        error("size too long (max 32 bit)");
         return  NULL;
     }
 #endif
@@ -365,6 +373,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             r->req.dwidth = 0xc00;
             break;
         default:
+            error("invalid swap = %d, using 0", swap);
             r->req.dwidth = 0;
     }
         
@@ -374,7 +383,10 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             r->req.src_type = VME_DMA_PCI;
             break;
         case TOSCA_USER:
-            r->req.src_type = VME_DMA_USER;
+            r->req.src_type = VME_DMA_USER1;
+            break;
+        case TOSCA_USER2:
+            r->req.src_type = VME_DMA_USER2;
             break;
         case TOSCA_SMEM:
             r->req.src_type = VME_DMA_SHM;
@@ -383,7 +395,6 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         case VME_BLT:
         case VME_MBLT:
         case VME_2eVME:
-        case VME_2eVMEFast:
         case VME_2eSST160:
         case VME_2eSST267:
         case VME_2eSST320:
@@ -399,7 +410,8 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             r->req.dst_type = VME_DMA_PCI;
             switch (r->req.src_type)
             {
-                case VME_DMA_USER:
+                case VME_DMA_USER1:
+                case VME_DMA_USER2:
                     r->req.route = VME_DMA_USER_TO_MEM;
                     break;
                 case VME_DMA_SHM:
@@ -411,7 +423,8 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             }
             break;
         case TOSCA_USER:
-            r->req.dst_type = VME_DMA_USER;
+        case TOSCA_USER2:
+            r->req.dst_type = dest == TOSCA_USER ? VME_DMA_USER1 : VME_DMA_USER2;
             switch (r->req.src_type)
             {
                 case VME_DMA_PCI:
@@ -432,7 +445,8 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
                 case VME_DMA_PCI:
                     r->req.route = VME_DMA_MEM_TO_SHM;
                     break;
-                case VME_DMA_USER:
+                case VME_DMA_USER1:
+                case VME_DMA_USER2:
                     r->req.route = VME_DMA_USER_TO_SHM;
                     break;
                 case VME_DMA_VME:
@@ -444,7 +458,6 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         case VME_BLT:
         case VME_MBLT:
         case VME_2eVME:
-        case VME_2eVMEFast:
         case VME_2eSST160:
         case VME_2eSST267:
         case VME_2eSST320:
@@ -456,7 +469,8 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
                 case VME_DMA_PCI:
                     r->req.route = VME_DMA_MEM_TO_VME;
                     break;
-                case VME_DMA_USER:
+                case VME_DMA_USER1:
+                case VME_DMA_USER2:
                     r->req.route = VME_DMA_USER_TO_VME;
                     break;
                 case VME_DMA_SHM:

@@ -77,7 +77,8 @@ struct dma_request {
 #define VME_DMA_PCI			(1<<1)
 #define VME_DMA_VME			(1<<2)
 #define VME_DMA_SHM			(1<<3)
-#define VME_DMA_USER			(1<<4)
+#define VME_DMA_USER1			(1<<4)
+#define VME_DMA_USER2			(1<<5)
 
 #define VME_DMA_PATTERN_BYTE		(1<<0)
 #define VME_DMA_PATTERN_WORD		(1<<1)
