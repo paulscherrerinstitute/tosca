@@ -611,9 +611,6 @@ int pevx_dma_move(uint crate, struct pev_ioctl_dma_req *req)
 {
     int source, dest, swap=0, timeout=-1, status;
     
-    printf("pevx_dma_move src_space=0x%x des_space=0x%x\n",
-        req->src_space, req->des_space);
-    
     source = pev_dmaspace_to_tosca_addrspace(req->src_space);
     dest = pev_dmaspace_to_tosca_addrspace(req->des_space);
     if (source == -1 || dest == -1) return -1;
