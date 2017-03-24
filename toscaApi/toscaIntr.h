@@ -44,6 +44,7 @@ const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
 
 int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* parameter);
 /* returns 0 on success */
+/* function is called with arguments (void* parameter, int inum, int ivec) */
 
 int toscaIntrDisconnectHandler(intrmask_t intrmask, void (*function)(), void* parameter);
 /* check parameter only if it is not NULL */
@@ -53,9 +54,10 @@ int toscaIntrDisable(intrmask_t intrmask);
 int toscaIntrEnable(intrmask_t intrmask);
 /* Temporarily suspends interrupt handling but keeps interrupts in queue */
 
-void toscaIntrLoop();
+void toscaIntrLoop(void*);
 /* handles the interrupts and calls installed handlers */
 /* Start it in a worker thread. */
+/* The ignored void* argument is for compatibility with pthread_create. */
 
 int toscaIntrLoopIsRunning(void);
 /* Is 1 if the toscaIntrLoop is already running. */

@@ -308,7 +308,7 @@ unsigned long long toscaIntrCount()
 
 static int loopRunning = 0;
 
-void toscaIntrLoop()
+void toscaIntrLoop(void* dummy)
 {
     int n, index, inum, vec;
     fd_set read_fs;

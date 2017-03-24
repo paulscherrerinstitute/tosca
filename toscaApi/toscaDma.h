@@ -72,7 +72,8 @@ static inline int toscaDmaRead(unsigned int source, uint64_t source_addr, void* 
 }
 
 /* Start this in one or more threads to handle DMA requests with callback */
-void toscaDmaLoop();
+/* The ignored void* argument is for compatibility with pthread_create. */
+void toscaDmaLoop(void*);
 
 int toscaDmaLoopsRunning(void);
 /* Returns number of running DMA loops. */

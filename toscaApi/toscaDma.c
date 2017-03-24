@@ -232,7 +232,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
 static int loopsRunning = 0;
 static int stopLoops = 0;
 
-void toscaDmaLoop()
+void toscaDmaLoop(void* dummy)
 {
     struct dmaRequest* r;
     int status;
