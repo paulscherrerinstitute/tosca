@@ -172,7 +172,7 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
         for (i = 0; i < 32; i++)
         {
             if (intrmask & TOSCA_USER1_INTR(i))
-                ADD_FD(IX(USER, i), "/dev/toscauserevent%u.%u", i & TOSCA_USER2_INTR_ANY ? 2 : 1, i & 15);
+                ADD_FD(IX(USER, i), "/dev/toscauserevent%u.%u", i > 15 ? 2 : 1, i & 15);
         }
     }
     if (intrmask & TOSCA_VME_INTR_ANY)
