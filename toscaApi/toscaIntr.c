@@ -329,7 +329,7 @@ void toscaIntrLoop(void* dummy)
         {
             long long dummy = 0;
             debugLvl(1, "new fd notification on newIntrFd[0]=%d", newIntrFd[0]);
-            /* we have at lease one new fd in the intrFdSet and need to restart select */
+            /* we have at least one change in the intrFdSet and need to restart select */
             if (read(newIntrFd[0], &dummy, sizeof(dummy)) < 0)
                 debugErrno("read newIntrFd[0]=%d", newIntrFd[0]);
             if (dummy != 0) break; /* exit the loop (see toscaIntrLoopStop) */
