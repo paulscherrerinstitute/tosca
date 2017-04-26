@@ -341,6 +341,12 @@ void toscaInitHook(initHookState state)
     if (state != initHookAfterInitDrvSup) return;
     epicsThreadId tid;
     
+    if (toscaNumDevices() == 0)
+    {
+        fprintf(stderr, "No Tosca device found. Kernel driver not loaded?\n");
+        return;
+    }
+    
     toscaInstallSpuriousVMEInterruptHandler();
     debug("starting interrupt handler thread");
     tid = epicsThreadCreate("irq-TOSCA", toscaIntrPrio,

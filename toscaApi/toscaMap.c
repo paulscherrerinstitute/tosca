@@ -64,7 +64,7 @@ void toscaInit()
     }
     numDevices = globresults.gl_pathc;
     toscaDevices = calloc(globresults.gl_pathc, sizeof(struct toscaDevice));
-    debug ("found %zd tosca devices", globresults.gl_pathc);
+    debug("found %zd tosca devices", globresults.gl_pathc);
     for (i = 0; i < globresults.gl_pathc; i++)
     {
         int dom, bus, dev, func;
