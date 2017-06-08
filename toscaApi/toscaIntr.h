@@ -42,6 +42,8 @@ typedef uint64_t intrmask_t;
 
 const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
 
+intrmask_t toscaIntrStrToBit(const char* s);
+
 int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* parameter);
 /* returns 0 on success */
 /* function is called with arguments (void* parameter, int inum, int ivec) */

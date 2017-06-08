@@ -1,5 +1,4 @@
-#undef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 600 /* for posix_memalign */
+#define _GNU_SOURCE
 #include "toscaPev.h"
 #include "toscaMap.h"
 #include "toscaReg.h"
@@ -11,6 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/select.h>
@@ -364,7 +364,7 @@ struct pev_ioctl_evt *pevx_evt_queue_alloc(uint crate, int sig)
     evt = calloc(1, sizeof(struct pev_ioctl_evt) + sizeof(my_pev_evt_queue));
     evt->sig = sig;
     evt->evt_queue = evt + 1;
-    pipe(((my_pev_evt_queue*)evt->evt_queue)->fd);
+    pipe2(((my_pev_evt_queue*)evt->evt_queue)->fd, O_CLOEXEC);
     return evt;
 }
 

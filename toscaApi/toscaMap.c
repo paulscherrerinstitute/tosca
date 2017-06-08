@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
@@ -98,7 +99,7 @@ int toscaOpen(unsigned int device, const char* resource)
         toscaDevices[device].dev,
         toscaDevices[device].func,
         resource);
-    fd = open(filename, O_RDWR);
+    fd = open(filename, O_RDWR|O_CLOEXEC);
     if (fd < 0)
         debugErrno("open %s", filename);
     return fd;
@@ -492,7 +493,7 @@ check_existing_maps:
             vme_window.aspace = addrspace & 0x0fff;
         }
 
-        fd = open(filename, O_RDWR);
+        fd = open(filename, O_RDWR|O_CLOEXEC);
         if (fd < 0)
         {
             debugErrno("open %s", filename);
@@ -587,7 +588,7 @@ check_existing_maps:
             errno = ENODEV;
             goto fail;
         }
-        fd = open(globresults.gl_pathv[0], O_RDONLY);
+        fd = open(globresults.gl_pathv[0], O_RDONLY|O_CLOEXEC);
         n = read(fd, buffer, sizeof(buffer)-1);
         close(fd);
         if (n >= 0) buffer[n] = 0;
@@ -598,7 +599,7 @@ check_existing_maps:
         *strchr(uiodev, '/') = 0;
         debug ("found SRAM device %s size %s", uiodev, buffer);
         sprintf(filename, "/dev/%s", uiodev);
-        fd = open(filename, O_RDWR);
+        fd = open(filename, O_RDWR|O_CLOEXEC);
         globfree(&globresults);
         if (fd < 0)
         {

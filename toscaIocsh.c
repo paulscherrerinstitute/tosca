@@ -387,6 +387,61 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
     toscaIntrShow(args[0].ival);
 }
 
+
+static const iocshFuncDef toscaIntrLoopIsRunningDef =
+    { "toscaIntrLoopIsRunning", 0, (const iocshArg *[]) {
+}};
+
+static void toscaIntrLoopIsRunningFunc(const iocshArgBuf *args)
+{
+    printf("%s\n", toscaIntrLoopIsRunning() ? "yes" : "no");
+}
+
+static const iocshFuncDef toscaIntrLoopStopDef =
+    { "toscaIntrLoopStop", 0, (const iocshArg *[]) {
+}};
+
+static void toscaIntrLoopStopFunc(const iocshArgBuf *args)
+{
+    toscaIntrLoopStop();
+}
+
+static const iocshFuncDef toscaIntrConnectHandlerDef =
+    { "toscaIntrConnectHandler", 3, (const iocshArg *[]) {
+    &(iocshArg) { "intmask", iocshArgString },
+    &(iocshArg) { "function", iocshArgString },
+    &(iocshArg) { "[argument]", iocshArgString },
+}};
+
+static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
+{
+    intrmask_t mask = toscaIntrStrToBit(args[0].sval);
+    void (*function)() = symbolAddr(args[1].sval);
+    void* arg = args[2].sval;
+    
+    if (!args[0].sval)
+    {
+        iocshCmd("help toscaIntrConnectHandler");
+        return;
+    }
+    if (!mask)
+    {
+        printf("invalid mask");
+        return;
+    }
+    if (!function)
+    {
+        printf("invalid function");
+        return;
+    }
+    toscaIntrConnectHandler(mask, function, arg);
+}
+
+void toscaDebugInterruptHandler(void* param, int inum, int ivec)
+{
+    printf("interrupt param %s level %d vector %d\n", (char*)param, inum, ivec);
+}
+
 static const iocshFuncDef toscaSendVMEIntrDef =
     { "toscaSendVMEIntr", 2, (const iocshArg *[]) {
     &(iocshArg) { "level(1-7)", iocshArgInt },
@@ -570,6 +625,9 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaIoSetDef, toscaIoSetFunc);
     iocshRegister(&toscaIoClearDef, toscaIoClearFunc);
     iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
+    iocshRegister(&toscaIntrLoopIsRunningDef, toscaIntrLoopIsRunningFunc);
+    iocshRegister(&toscaIntrLoopStopDef, toscaIntrLoopStopFunc);
+    iocshRegister(&toscaIntrConnectHandlerDef, toscaIntrConnectHandlerFunc);
     iocshRegister(&toscaSendVMEIntrDef, toscaSendVMEIntrFunc);
     iocshRegister(&toscaInstallSpuriousVMEInterruptHandlerDef, toscaInstallSpuriousVMEInterruptHandlerFunc);
     iocshRegister(&toscaDmaTransferDef, toscaDmaTransferFunc);

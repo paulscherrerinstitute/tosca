@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
@@ -513,7 +514,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         return NULL;
     }
     sprintf(filename, "/dev/dmaproxy%u", device);
-    r->fd = open(filename, O_RDWR);
+    r->fd = open(filename, O_RDWR|O_CLOEXEC);
     if (r->fd < 0)
     {
         debugErrno("open %s", filename);
