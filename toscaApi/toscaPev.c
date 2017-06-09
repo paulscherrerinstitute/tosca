@@ -364,7 +364,7 @@ struct pev_ioctl_evt *pevx_evt_queue_alloc(uint crate, int sig)
     evt = calloc(1, sizeof(struct pev_ioctl_evt) + sizeof(my_pev_evt_queue));
     evt->sig = sig;
     evt->evt_queue = evt + 1;
-    pipe2(((my_pev_evt_queue*)evt->evt_queue)->fd, O_CLOEXEC);
+    pipe2(((my_pev_evt_queue*)evt->evt_queue)->fd, O_NONBLOCK|O_CLOEXEC);
     return evt;
 }
 
@@ -442,26 +442,36 @@ int pev_evt_queue_free(struct pev_ioctl_evt *evt)
 
 int pevx_evt_read(uint crate, struct pev_ioctl_evt *evt, int timeout)
 {
-    struct timeval tv;
-    fd_set read_fs;
     int fd = ((my_pev_evt_queue*)evt->evt_queue)->fd[0];
-    int n;
     uint16_t ev;
 
-    FD_ZERO(&read_fs);
-    FD_SET(fd, &read_fs);
-    if (timeout >= 0)
+    if (timeout)
     {
-        tv.tv_sec = timeout/1000;
-        tv.tv_usec = (timeout%1000)*1000;
+        fd_set read_fs;
+        struct timeval tv;
+        int n;
+
+        FD_ZERO(&read_fs);
+        FD_SET(fd, &read_fs);
+        if (timeout > 0)
+        {
+            tv.tv_sec = timeout/1000;
+            tv.tv_usec = (timeout%1000)*1000;
+        }
+        n = select(fd + 1, &read_fs, NULL, NULL, timeout > 0 ? &tv : NULL);
+        if (n < 1)
+        {
+            debugErrno("crate=%d select", crate);
+            return -1 << 8;
+        }
     }
-    n = select(fd + 1, &read_fs, NULL, NULL, timeout >= 0 ? &tv : NULL);
-    if (n < 1)
+    if (read(fd, &ev, 2) < 0) /* non-blocking */
     {
-        debugErrno("crate=%d select", crate);
-        return -1;
+        if (errno == EWOULDBLOCK)
+            return 0;
+        else
+            return -1 << 8;
     }
-    if (read(fd, &ev, 2) < 0) return -1;
     debug("crate=%d ev=0x%04x", crate, ev);
     return ev;
 }
