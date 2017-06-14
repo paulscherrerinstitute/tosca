@@ -437,7 +437,7 @@ static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
     toscaIntrConnectHandler(mask, function, arg);
 }
 
-void toscaDebugInterruptHandler(void* param, int inum, int ivec)
+void toscaDebugIntrHandler(void* param, int inum, int ivec)
 {
     printf("interrupt param %s level %d vector %d\n", (char*)param, inum, ivec);
 }
