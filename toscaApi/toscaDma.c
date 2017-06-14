@@ -182,7 +182,7 @@ struct dmaRequest
 
 int toscaDmaDoTransfer(struct dmaRequest* r)
 {
-    struct dma_execute ex = {0};
+    struct dma_execute ex = {0,0};
     struct timespec start, finished;
  
 #ifdef VME_DMA_TIMEOUT
@@ -233,7 +233,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
 static int loopsRunning = 0;
 static int stopLoops = 0;
 
-void toscaDmaLoop(void* dummy)
+void toscaDmaLoop(void* dummy __attribute__((unused)))
 {
     struct dmaRequest* r;
     int status;
@@ -397,7 +397,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             r->req.dwidth = 0;
             break;
         default:
-            error("invalid swap = %d, using 0", swap);
+            error("invalid swap = %u, using 0", swap);
             r->req.dwidth = 0;
     }
         

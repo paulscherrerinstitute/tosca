@@ -60,14 +60,14 @@ unsigned int toscaCsrClear(unsigned int address, unsigned int value)
 unsigned int toscaIoRead(unsigned int address)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
-    if (!ptr) return -1;
+    if (!ptr) return (unsigned int)-1;
     return le32toh(*ptr);
 }
 
 unsigned int toscaIoWrite(unsigned int address, unsigned int value)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
-    if (!ptr) return -1;
+    if (!ptr) return (unsigned int)-1;
     *ptr = htole32(value);
     return le32toh(*ptr);
 }
@@ -75,7 +75,7 @@ unsigned int toscaIoWrite(unsigned int address, unsigned int value)
 unsigned int toscaIoSet(unsigned int address, unsigned int value)
 {
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_IO, (address & 0xffff), 4, 0);
-    if (!ptr) return -1;
+    if (!ptr) return (unsigned int)-1;
     __sync_fetch_and_or(ptr, htole32(value));
     return le32toh(*ptr);
 }
@@ -119,9 +119,36 @@ unsigned int toscaSmonWrite(unsigned int address, unsigned int value)
     (void) smon[0]; /* read back to flush write */
     /* check status 0x48 here ? */
     smon[1] = htole32(value);
-    value = le32toh(smon[1]);
+    value = le32toh(smon[1]); /* read back to flush write */
     pthread_mutex_unlock(&smon_mutex);
     return value;
+}
+
+unsigned int toscaSmonWriteMasked(unsigned int address, unsigned int mask, unsigned int value)
+{
+    volatile uint32_t* smon = toscaMap((address & 0xffff0000)|TOSCA_CSR, CSR_SMON, 12, 0);
+    if (!smon) return -1;
+    address &= 0xffff;
+    if (address < 0x40) { errno = EACCES; return -1; }
+    if (address >= 0x80) { errno = EINVAL; return -1; }
+    pthread_mutex_lock(&smon_mutex);
+    smon[0] = htole32(address);
+    (void) smon[0]; /* read back to flush write */
+    /* check status 0x48 here ? */
+    smon[1] = htole32((value & mask) | (le32toh(smon[1]) & ~mask));
+    value = le32toh(smon[1]); /* read back to flush write */
+    pthread_mutex_unlock(&smon_mutex);
+    return value;
+}
+
+unsigned int toscaSmonSet(unsigned int address, unsigned int value)
+{
+    return toscaSmonWriteMasked(address, value, 0xffffffff);
+}
+
+unsigned int toscaSmonClear(unsigned int address, unsigned int value)
+{
+    return toscaSmonWriteMasked(address, value, 0);
 }
 
 #define CSR_VMEERR 0x418
@@ -155,7 +182,7 @@ const char* toscaPonAddrToRegname(unsigned int address)
 int toscaPonFd(unsigned int address)
 {
     static int fd[11] = {0};
-    int reg;
+    unsigned int reg;
     
     address &= ~3;
     if (address >= 0x28 && address != 0x40)
@@ -191,4 +218,23 @@ unsigned int toscaPonWrite(unsigned int address, unsigned int value)
     if (fd < 0) return -1;
     sysfsWrite(fd, "%x", value);
     return sysfsReadULong(fd);
+}
+
+unsigned int toscaPonWriteMasked(unsigned int address, unsigned int mask, unsigned int value)
+{
+    debug("address=0x%02x value=0x%x", address, value);
+    int fd = toscaPonFd(address);
+    if (fd < 0) return -1;
+    sysfsWrite(fd, "%x", (value & mask) | (sysfsReadULong(fd) & ~mask));
+    return sysfsReadULong(fd);
+}
+
+unsigned int toscaPonSet(unsigned int address, unsigned int value)
+{
+    return toscaPonWriteMasked(address, value, 0xffffffff);
+}
+
+unsigned int toscaPonClear(unsigned int address, unsigned int value)
+{
+    return toscaPonWriteMasked(address, value, 0);
 }

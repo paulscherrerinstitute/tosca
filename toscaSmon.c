@@ -169,9 +169,53 @@ static const iocshFuncDef toscaSmonWriteDef =
 static void toscaSmonWriteFunc(const iocshArgBuf *args)
 {
     unsigned int addr = args[0].ival;
-    unsigned int val = args[1].ival;
+    unsigned int val  = args[1].ival;
     errno = 0;
     smonShow(addr, toscaSmonWrite(addr, val));
+}
+
+static const iocshFuncDef toscaSmonWriteMaskedDef =
+    { "toscaSmonWriteMasked", 3, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "mask", iocshArgInt },
+    &(iocshArg) { "value", iocshArgInt },
+}};
+
+static void toscaSmonWriteMaskedFunc(const iocshArgBuf *args)
+{
+    unsigned int addr = args[0].ival;
+    unsigned int mask = args[1].ival;
+    unsigned int val  = args[2].ival;
+    errno = 0;
+    smonShow(addr, toscaSmonWriteMasked(addr, mask, val));
+}
+
+static const iocshFuncDef toscaSmonSetDef =
+    { "toscaSmonSet", 2, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "value", iocshArgInt },
+}};
+
+static void toscaSmonSetFunc(const iocshArgBuf *args)
+{
+    unsigned int addr = args[0].ival;
+    unsigned int val = args[1].ival;
+    errno = 0;
+    smonShow(addr, toscaSmonSet(addr, val));
+}
+
+static const iocshFuncDef toscaSmonClearDef =
+    { "toscaSmonClear", 2, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "value", iocshArgInt },
+}};
+
+static void toscaSmonClearFunc(const iocshArgBuf *args)
+{
+    unsigned int addr = args[0].ival;
+    unsigned int val = args[1].ival;
+    errno = 0;
+    smonShow(addr, toscaSmonClear(addr, val));
 }
 
 /* RegDev Interface */
@@ -181,7 +225,7 @@ struct regDevice
     void* nope;
 };
 
-void smonDevReport(regDevice *device, int level)
+void smonDevReport(regDevice *device __attribute__((unused)), int level __attribute__((unused)))
 {
     printf("Tosca Virtex FPGA System Monitor\n");
 }
@@ -192,11 +236,11 @@ int smonDevRead(
     unsigned int dlen,
     size_t nelem,
     void* pdata,
-    int priority,
-    regDevTransferComplete callback,
+    int priority __attribute__((unused)),
+    regDevTransferComplete callback __attribute__((unused)),
     const char* user)
 {
-    int i;
+    size_t i;
 
     if (dlen != 2)
     {
@@ -215,19 +259,28 @@ int smonDevWrite(
     size_t nelem,
     void* pdata,
     void* pmask,
-    int priority,
-    regDevTransferComplete callback,
+    int priority __attribute__((unused)),
+    regDevTransferComplete callback __attribute__((unused)),
     const char* user)
 {
-    int i;
+    size_t i;
 
     if (dlen != 2)
     {
-        error("%s %s: dlen must be 4 bytes", regDevName(device), user);
+        error("%s %s: dlen must be 2 bytes", regDevName(device), user);
         return -1;
     }
-    for (i = 0; i < nelem; i++)
-        toscaSmonWrite(offset+i, ((epicsUInt16*) pdata)[i]);
+    if (pmask && *(epicsUInt16*)pmask != 0xffff)
+    {
+        epicsUInt16 mask = *(epicsUInt16*)pmask;
+        for (i = 0; i < nelem; i++)
+        {
+            toscaSmonWriteMasked(offset+i, mask, ((epicsUInt16*) pdata)[i]);
+        }
+    }
+    else
+        for (i = 0; i < nelem; i++)
+            toscaSmonWrite(offset+i, ((epicsUInt16*) pdata)[i]);
     return 0;
 }
 
@@ -284,6 +337,9 @@ static void toscaSmonRegistrar(void)
     iocshRegister(&toscaSmonDevConfigureDef, toscaSmonDevConfigureFunc);
     iocshRegister(&toscaSmonReadDef, toscaSmonReadFunc);
     iocshRegister(&toscaSmonWriteDef, toscaSmonWriteFunc);
+    iocshRegister(&toscaSmonWriteMaskedDef, toscaSmonWriteMaskedFunc);
+    iocshRegister(&toscaSmonSetDef, toscaSmonSetFunc);
+    iocshRegister(&toscaSmonClearDef, toscaSmonClearFunc);
 }
 
 epicsExportRegistrar(toscaSmonRegistrar);

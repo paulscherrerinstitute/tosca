@@ -38,7 +38,7 @@ static const iocshFuncDef memfillDef =
 }};
 
 static jmp_buf memfillFail;
-void memfillSigAction(int sig, siginfo_t *info, void *ctx)
+void memfillSigAction(int sig __attribute__((unused)), siginfo_t *info, void *ctx __attribute__((unused)))
 {
     fprintf(stdout, "\nInvalid address %p.\n", info->si_addr);
     longjmp(memfillFail, 1);
@@ -64,10 +64,10 @@ static void memfillFunc(const iocshArgBuf *args)
     }
     size_t address = toscaStrToSize(args[0].sval);
     uint32_t pattern = args[1].ival;
-    int size = toscaStrToSize(args[2].sval);
+    size_t size = toscaStrToSize(args[2].sval);
     int width = args[3].ival;
     int increment = args[4].ival;
-    int i;
+    size_t i;
 
     switch (width)
     {
@@ -116,8 +116,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
     volatile void* sourceptr;
     volatile void* destptr;
     toscaMapAddr_t addr;
-    size_t size;
-    int i;
+    size_t size, i;
     
     if (!args[0].sval || !args[1].sval || !args[2].sval)
     {

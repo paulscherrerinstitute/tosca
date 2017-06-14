@@ -30,16 +30,16 @@ struct map {
     struct map *next;
 };
 
-struct toscaDevice {
+static struct toscaDevice {
     unsigned int dom:16;
     unsigned int bus:8;
     unsigned int dev:5;
     unsigned int func:3;
     struct map *maps, *csr, *io, *sram;
     pthread_mutex_t maplist_mutex;
-} static *toscaDevices;
+} *toscaDevices;
 
-int numDevices = 0;
+unsigned int numDevices = 0;
 
 unsigned int toscaNumDevices()
 {
@@ -68,7 +68,7 @@ void toscaInit()
     debug("found %zd tosca devices", globresults.gl_pathc);
     for (i = 0; i < globresults.gl_pathc; i++)
     {
-        int dom, bus, dev, func;
+        unsigned int dom, bus, dev, func;
         debug ("found %s", globresults.gl_pathv[i]+sizeof(TOSCA_PCI_DIR));
         sscanf(globresults.gl_pathv[i]+sizeof(TOSCA_PCI_DIR),
             "%x:%x:%x.%x", &dom, &bus, &dev, &func);
@@ -293,14 +293,14 @@ fault:
 
 toscaMapAddr_t toscaStrToAddr(const char* str, char** end)
 {
-    toscaMapAddr_t result = {0};
+    toscaMapAddr_t result = {0,0};
     char *s;
     
     if (!str)
     {
         errno = EINVAL;
         if (end) *end = (char*)str;
-        return (toscaMapAddr_t) {0};
+        return (toscaMapAddr_t) {0,0};
     }
     result.addrspace = toscaStrToAddrSpace(str, &s);
     if (s > str && *s == ':') s++;
@@ -310,7 +310,7 @@ toscaMapAddr_t toscaStrToAddr(const char* str, char** end)
     if (*s != 0)
     {
         errno = EINVAL;
-        return (toscaMapAddr_t){0};
+        return (toscaMapAddr_t){0,0};
     }
     return result;
 }
@@ -408,9 +408,9 @@ check_existing_maps:
     debug("creating new %s mapping", toscaAddrSpaceToStr(addrspace));
     if (addrspace & (VME_A16|VME_A24|VME_A32|VME_A64|VME_CRCSR|VME_SLAVE|TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM))
     {
-        struct vme_slave vme_window = {0};
+        struct vme_slave vme_window = {0,0,0,0,0,0};
         
-        if (size == -1)
+        if (size == (size_t)-1)
         {
             error("invalid size");
             errno = EINVAL;
@@ -569,7 +569,7 @@ check_existing_maps:
     else if (addrspace & TOSCA_SRAM)
     {
         glob_t globresults;
-        int n;
+        ssize_t n;
         char* uiodev;
         char buffer[24];
 
@@ -671,7 +671,7 @@ fail:
 toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void* usr), void* usr)
 {
     struct map *map;
-    int device;
+    unsigned int device;
 
     for (device = 0; device < numDevices; device++)
     {
@@ -681,7 +681,7 @@ toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void* usr), void*
         }
         if (map) return map->info;           /* info of map where user func returned non 0 */
     }
-    return (toscaMapInfo_t) {0};
+    return (toscaMapInfo_t) {0,0,0,0};
 }
 
 int toscaMapPtrCompare(toscaMapInfo_t info, void* ptr)

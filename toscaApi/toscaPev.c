@@ -24,7 +24,7 @@
 
 static uint defaultCrate;
 
-struct pevx_node* pevx_init(uint crate)
+struct pevx_node* pevx_init(uint crate __attribute__((unused)))
 {
     debug("pevx compatibility mode");
     return (void*) -1;
@@ -98,6 +98,11 @@ static uint32_t *sramPtr(size_t address)
 
 int pevx_elb_rd(uint crate, int address)
 {
+    if (crate != 0)
+    {
+        debug("can only access crate 0");
+        return -1;
+    }
     if (address >= 0xe000) /* sram */
     {
         uint32_t* ptr = sramPtr(address - 0xe000);
@@ -117,6 +122,11 @@ int pev_elb_rd(int address)
 
 int pevx_elb_wr(uint crate, int address, int value)
 {
+    if (crate != 0)
+    {
+        debug("can only access crate 0");
+        return -1;
+    }
     if (address >= 0xe000) /* sram */
     {
         uint32_t* ptr = sramPtr(address - 0xe000);
@@ -149,7 +159,7 @@ void pev_smon_wr(int address, int value)
 
 /** BMR ***************************************************/
 
-static int pev_bmr_fd(uint bmr, uint address)
+static int pev_bmr_fd(uint bmr)
 {
     static int bmr_fd[4] = {0};
 
@@ -173,7 +183,7 @@ int pev_bmr_read(uint bmr, uint address, uint *pvalue, uint count)
     int fd, status;
     uint value;
     debug("bmr=%u address=0x%x, count=%u", bmr, address, count);
-    fd = pev_bmr_fd(bmr, address);
+    fd = pev_bmr_fd(bmr);
     if (fd < 0) return -1;
     status = i2cRead(fd, address, count, &value);
     usleep(1000);
@@ -189,7 +199,7 @@ int pev_bmr_write(uint bmr, uint address, uint value, uint count)
 {
     int fd, status;
     debug("bmr=%u address=0x%x, value=0x%x  count=%u", bmr, address, value, count);
-    fd = pev_bmr_fd(bmr, address);
+    fd = pev_bmr_fd(bmr);
     if (fd < 0) return -1;
 #if __BYTE_ORDER == __BIG_ENDIAN
     value <<= (sizeof(int) - count) * 8;
@@ -303,7 +313,7 @@ int pev_map_alloc(struct pev_ioctl_map_pg *map_p)
     return pevx_map_alloc(defaultCrate, map_p);
 }
 
-void *pevx_mmap(uint crate, struct pev_ioctl_map_pg *map_p)
+void *pevx_mmap(uint crate __attribute__((unused)), struct pev_ioctl_map_pg *map_p)
 {
     return map_p->usr_addr;
 }
@@ -313,40 +323,40 @@ void *pev_mmap(struct pev_ioctl_map_pg *map_p)
     return map_p->usr_addr;
 }
 
-int pevx_munmap(uint crate, struct pev_ioctl_map_pg *map_p)
+int pevx_munmap(uint crate __attribute__((unused)), struct pev_ioctl_map_pg *map_p __attribute__((unused)))
 {
     /* do nothing, tosca will clean up at exit */
     return 0;
 }
 
-int pev_munmap(struct pev_ioctl_map_pg *map_p)
+int pev_munmap(struct pev_ioctl_map_pg *map_p __attribute__((unused)))
 {
     /* do nothing, tosca will clean up at exit */
     return 0;
 }
 
-int pevx_map_free(uint crate, struct pev_ioctl_map_pg *map_p)
+int pevx_map_free(uint crate __attribute__((unused)), struct pev_ioctl_map_pg *map_p __attribute__((unused)))
 {
     /* do nothing, tosca will clean up at exit */
     return 0;
 }
 
-int pev_map_free(struct pev_ioctl_map_pg *map_p)
+int pev_map_free(struct pev_ioctl_map_pg *map_p __attribute__((unused)))
 {
     /* do nothing, tosca will clean up at exit */
     return 0;
 }
 
-int pevx_map_modify(uint crate, struct pev_ioctl_map_pg *map_p)
+int pevx_map_modify(uint crate __attribute__((unused)), struct pev_ioctl_map_pg *map_p __attribute__((unused)))
 {
     /* do nothing, cannot modify */
+    debug("cannot modify maps");
     return -1;
 }
 
 int pev_map_modify(struct pev_ioctl_map_pg *map_p)
 {
-    /* do nothing, cannot modify */
-    return -1;
+    return pevx_map_modify(0, map_p);
 }
 
 /** INTR **************************************************/
@@ -397,6 +407,11 @@ static void pev_intr_usr(struct pev_ioctl_evt *evt, int inum)
 
 int pevx_evt_register(uint crate, struct pev_ioctl_evt *evt, int src_id)
 {
+    if (crate != 0)
+    {
+        debug("can only access crate 0");
+        return -1;
+    }
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
     intrmask_t mask;
     switch (src_id & 0xf0)
@@ -423,7 +438,7 @@ int pev_evt_register(struct pev_ioctl_evt *evt, int src_id)
     return pevx_evt_register(defaultCrate, evt, src_id);
 }
 
-int pevx_evt_queue_free(uint crate, struct pev_ioctl_evt *evt)
+int pevx_evt_queue_free(uint crate __attribute__((unused)), struct pev_ioctl_evt *evt)
 {
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
     q->enabled = 0;
@@ -440,7 +455,7 @@ int pev_evt_queue_free(struct pev_ioctl_evt *evt)
     return pevx_evt_queue_free(defaultCrate, evt);
 }
 
-int pevx_evt_read(uint crate, struct pev_ioctl_evt *evt, int timeout)
+int pevx_evt_read(uint crate __attribute__((unused)), struct pev_ioctl_evt *evt, int timeout)
 {
     int fd = ((my_pev_evt_queue*)evt->evt_queue)->fd[0];
     uint16_t ev;
@@ -481,7 +496,7 @@ int pev_evt_read(struct pev_ioctl_evt *evt, int timeout)
     return pevx_evt_read(defaultCrate, evt, timeout);
 }
 
-int pevx_evt_queue_enable(uint crate, struct pev_ioctl_evt *evt)
+int pevx_evt_queue_enable(uint crate __attribute__((unused)), struct pev_ioctl_evt *evt)
 {
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
     q->enabled = 1;
@@ -493,7 +508,7 @@ int pev_evt_queue_enable(struct pev_ioctl_evt *evt)
     return pevx_evt_queue_enable(defaultCrate, evt);
 }
 
-int pevx_evt_queue_disable(uint crate, struct pev_ioctl_evt *evt)
+int pevx_evt_queue_disable(uint crate __attribute__((unused)), struct pev_ioctl_evt *evt)
 {
     my_pev_evt_queue *q = (my_pev_evt_queue*)evt->evt_queue;
     q->enabled = 0;
@@ -505,8 +520,13 @@ int pev_evt_queue_disable(struct pev_ioctl_evt *evt)
     return pevx_evt_queue_disable(defaultCrate, evt);
 }
 
-int pevx_evt_mask(uint crate, struct pev_ioctl_evt *evt, int src_id)
+int pevx_evt_mask(uint crate, struct pev_ioctl_evt *evt __attribute__((unused)), int src_id)
 {
+    if (crate != 0)
+    {
+        debug("can only access crate 0");
+        return -1;
+    }
     intrmask_t mask;
     switch (src_id & 0xf0)
     {
@@ -528,8 +548,13 @@ int pev_evt_mask(struct pev_ioctl_evt *evt, int src_id)
     return pevx_evt_mask(defaultCrate, evt, src_id);
 }
 
-int pevx_evt_unmask(uint crate, struct pev_ioctl_evt *evt, int src_id)
+int pevx_evt_unmask(uint crate, struct pev_ioctl_evt *evt __attribute__((unused)), int src_id)
 {
+    if (crate != 0)
+    {
+        debug("can only access crate 0");
+        return -1;
+    }
     intrmask_t mask;
     switch (src_id & 0xf0)
     {
@@ -553,12 +578,12 @@ int pev_evt_unmask(struct pev_ioctl_evt *evt, int src_id)
 
 /** DMA ***************************************************/
 
-void *pevx_buf_alloc(uint crate, struct pev_ioctl_buf *buf)
+void *pevx_buf_alloc(uint crate __attribute__((unused)), struct pev_ioctl_buf *buf)
 {
     buf->u_addr = valloc(buf->size);
     if (buf->u_addr)
     {
-        int i;
+        size_t i;
         buf->k_addr = buf->u_addr;
         buf->b_addr = buf->u_addr;
         for (i = 0; i < buf->size/4; i++)
@@ -572,7 +597,7 @@ void *pev_buf_alloc(struct pev_ioctl_buf *buf)
     return pevx_buf_alloc(defaultCrate, buf);
 }
 
-int pevx_buf_free(uint crate, struct pev_ioctl_buf *buf)
+int pevx_buf_free(uint crate __attribute__((unused)), struct pev_ioctl_buf *buf)
 {
     free(buf->u_addr);
     return 0;
@@ -621,6 +646,11 @@ int pevx_dma_move(uint crate, struct pev_ioctl_dma_req *req)
 {
     int source, dest, swap=0, timeout=-1, status;
     
+    if (crate != 0)
+    {
+        debug("can only access crate 0");
+        return -1;
+    }
     source = pev_dmaspace_to_tosca_addrspace(req->src_space);
     dest = pev_dmaspace_to_tosca_addrspace(req->des_space);
     if (source == -1 || dest == -1) return -1;
@@ -648,7 +678,7 @@ int pev_dma_move(struct pev_ioctl_dma_req *req)
     return pevx_dma_move(defaultCrate, req);
 }
 
-int pevx_dma_status(uint crate, int channel, struct pev_ioctl_dma_sts *stat)
+int pevx_dma_status(uint crate __attribute__((unused)), int channel __attribute__((unused)), struct pev_ioctl_dma_sts *stat)
 {
     memset(stat, 0, sizeof(struct pev_ioctl_dma_sts));
     return 0;
@@ -677,7 +707,7 @@ intrmask_t pev_src_id_to_mask(unsigned int src_id, unsigned int vec)
 }
 
 volatile void* pevMapExt(unsigned int card, unsigned int sg_id, unsigned int map_mode,
-    size_t logicalAddress, size_t size, unsigned int flags, size_t localAddress)
+    size_t logicalAddress, size_t size, unsigned int flags __attribute__((unused)), size_t localAddress)
 {
     unsigned int addrspace;
     
@@ -692,7 +722,7 @@ volatile void* pevMapExt(unsigned int card, unsigned int sg_id, unsigned int map
     return toscaMap(addrspace, logicalAddress, size, localAddress);                
 }
 
-void pevUnmap(volatile void* ptr)
+void pevUnmap(volatile void* ptr __attribute__((unused)))
 {
 }
 
@@ -720,14 +750,14 @@ int pevIntrDisable(unsigned int card, unsigned int src_id)
     return toscaIntrDisable(pev_src_id_to_mask(src_id, 0));
 }
 
-void* pevDmaAlloc(unsigned int card, size_t size)
+void* pevDmaAlloc(unsigned int card __attribute__((unused)), size_t size)
 {
     void* newptr = NULL;
     posix_memalign(&newptr, sysconf(_SC_PAGESIZE), size);
     return newptr;
 }
 
-void* pevDmaFree(unsigned int card, void* oldptr)
+void* pevDmaFree(unsigned int card __attribute__((unused)), void* oldptr)
 {
     free(oldptr);
     return NULL;
@@ -739,8 +769,12 @@ void* pevDmaRealloc(unsigned int card, void* oldptr, size_t size)
     return pevDmaAlloc(card, size);
 }
 
-int pevDmaTransfer(unsigned int card, unsigned int src_space, size_t src_addr, unsigned int des_space, size_t des_addr, size_t size, unsigned int dont_use,
-    unsigned int priority, pevDmaCallback callback, void *usr)
+int pevDmaTransfer(
+    unsigned int card, unsigned int src_space, size_t src_addr,
+    unsigned int des_space, size_t des_addr, size_t size,
+    unsigned int dont_use __attribute__((unused)),
+    unsigned int priority __attribute__((unused)),
+    pevDmaCallback callback, void *usr)
 {
     int source, dest, swap=0;
     source = pev_dmaspace_to_tosca_addrspace(src_space);

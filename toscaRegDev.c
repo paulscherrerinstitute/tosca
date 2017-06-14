@@ -40,12 +40,12 @@ struct regDevice
     unsigned int dmaWriteLimit;
     unsigned int addrspace;
     unsigned int dmaSpace;
-    int swap;
+    unsigned int swap;
     int ivec;
     IOSCANPVT ioscanpvt[256];
 };
 
-void toscaRegDevReport(regDevice *device, int level)
+void toscaRegDevReport(regDevice *device, int level __attribute__((unused)))
 {
     printf("Tosca %s%s%s:0x%zx",
         device->baseptr ? toscaAddrSpaceToStr(device->addrspace) : "",
@@ -60,7 +60,7 @@ void toscaRegDevReport(regDevice *device, int level)
     if (!device->dmaSpace)
         printf(", no DMA");
     if (device->dmaReadLimit > 1 || device->dmaWriteLimit > 1)
-        printf(", DMA R/W limit=%d/%d", device->dmaReadLimit, device->dmaWriteLimit);
+        printf(", DMA R/W limit=%u/%u", device->dmaReadLimit, device->dmaWriteLimit);
     printf("\n");
 }
 
@@ -70,7 +70,7 @@ int toscaRegDevRead(
     unsigned int dlen,
     size_t nelem,
     void* pdata,
-    int priority,
+    int priority __attribute__((unused)),
     regDevTransferComplete callback,
     const char* user)
 {
@@ -118,7 +118,7 @@ int toscaRegDevWrite(
     size_t nelem,
     void* pdata,
     void* pmask,
-    int priority,
+    int priority __attribute__((unused)),
     regDevTransferComplete callback,
     const char* user)
 {
@@ -150,7 +150,7 @@ int toscaRegDevWrite(
     /* TODO: check alignment of offset and nelem*dlen with device->swap */
     if (pmask && dlen != device->swap) /* mask with different dlen than swap */
     {
-        int i;
+        unsigned int i;
         uint64_t mask;
         debug("mask, swap, regDevCopy");
         for (i = 0; i < 8/dlen; i++) memcpy((char*)&mask + dlen * i, pmask, dlen);
@@ -200,7 +200,13 @@ void toscaScanIoRequest(IOSCANPVT pioscanpvt)
     }
 }
 
-static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, unsigned int dlen, size_t nelm, int ivec, const char* user)
+static IOSCANPVT toscaRegDevGetIoScanPvt(
+    regDevice *device,
+    size_t offset __attribute__((unused)),
+    unsigned int dlen __attribute__((unused)),
+    size_t nelm __attribute__((unused)),
+    int ivec,
+    const char* user)
 {
     debug("%s: ivec=0x%x", user, ivec);
     if (ivec == -1)
@@ -259,7 +265,7 @@ static IOSCANPVT toscaRegDevGetIoScanPvt(regDevice *device, size_t offset, unsig
     return device->ioscanpvt[ivec];
 }
 
-void* toscaRegDevDmaAlloc(regDevice *device, void* ptr, size_t size)
+void* toscaRegDevDmaAlloc(regDevice *device __attribute__((unused)), void* ptr, size_t size)
 {
     if (ptr) free(ptr);
     if (size) return valloc(size); /* in principle we can use any memory, but page aligned is more efficient */
@@ -309,7 +315,7 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
     {
         const char* p;
         const char* q = flags;
-        int l;
+        size_t l;
         while (*q)
         {
             p = q;
@@ -363,7 +369,7 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
     {
         error("%s only possible on VME A32 address space",
             toscaDmaSpaceToStr(device->dmaSpace));
-        device->dmaSpace = 0;
+        free(device);
         return -1;
     }
     if (device->dmaSpace && blockmode & REGDEV_BLOCK_READ)
@@ -382,6 +388,7 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
         if ((device->baseptr = toscaMap(addrspace, address, size, 0)) == NULL)
         {
             error("error mapping Tosca %s:0x%zx[0x%zx]: %m", toscaAddrSpaceToStr(addrspace), address, size);
+            free(device);
             return -1;
         }
     }
@@ -393,12 +400,14 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
     if (!device->dmaSpace && !device->baseptr)
     {
         error("device has neither DMA nor memory map");
+        free(device);
         return -1;
     }
     
     if (regDevRegisterDevice(name, &toscaRegDev, device, size) != SUCCESS)
     {
         error("regDevRegisterDevice() failed");
+        free(device);
         return -1;
     }
     
@@ -420,7 +429,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
 {
     toscaMapAddr_t addr;
     size_t size;
-    int i, l=0;
+    unsigned int i, l=0;
     char flags[80] = "";
 
     if (!args[0].sval)
@@ -455,7 +464,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
     }
     size = toscaStrToSize(args[2].sval);
 
-    for (i = 1; i < args[3].aval.ac && l < sizeof(flags); i++)
+    for (i = 1; i < (unsigned int)args[3].aval.ac && l < sizeof(flags); i++)
         l += sprintf(flags+l, "%.*s ", (int)sizeof(flags)-l, args[3].aval.av[i]);
     if (l) flags[l-1] = 0;
 

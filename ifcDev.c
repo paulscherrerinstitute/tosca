@@ -81,24 +81,24 @@ long devIfc1210InitRecord(dbCommon* record, struct link* link)
     }
     else
     if(strcmp(link->value.vmeio.parm, "SMON") == 0)
-            p->devType = IFC_SMON;
+        p->devType = IFC_SMON;
     else
     if(strcmp(link->value.vmeio.parm, "SMON_10S") == 0)
-            p->devType = IFC_SMON_10S;
+        p->devType = IFC_SMON_10S;
     else
     if(strcmp(link->value.vmeio.parm, "PIO") == 0)
-            p->devType = PCI_IO;
+        p->devType = PCI_IO;
     else
     if(strncmp(link->value.vmeio.parm, "BMR_11U", 7) == 0)
     {
-          p->devType = BMR_11U;
-            p->count = atoi(strchr( link->value.vmeio.parm, ' ')+1);
+        p->devType = BMR_11U;
+        p->count = atoi(strchr( link->value.vmeio.parm, ' ')+1);
     }
     else
     if(strncmp(link->value.vmeio.parm, "BMR_11S", 7) == 0)
     {
-              p->devType = BMR_11S;
-          p->count = atoi(strchr( link->value.vmeio.parm, ' ')+1);
+        p->devType = BMR_11S;
+        p->count = atoi(strchr( link->value.vmeio.parm, ' ')+1);
     }
     else
     if(strncmp(link->value.vmeio.parm, "BMR_16U", 7) == 0)
@@ -116,6 +116,7 @@ long devIfc1210InitRecord(dbCommon* record, struct link* link)
     {
         recGblRecordError(S_db_badField, record,
             "devIfc1210InitRecord: Illegal param in io link");
+        free(p);
         return S_db_badField;
     }
 

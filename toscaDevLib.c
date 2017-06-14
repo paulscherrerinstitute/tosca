@@ -126,9 +126,9 @@ long toscaDevLibProbe(
     toscaMapAddr_t vme_addr;
     toscaMapVmeErr_t vme_err;
     void* readptr;
-    int device;
-    int i;
-    int readval;
+    unsigned int device;
+    unsigned int i;
+    epicsUInt32 readval;
 
     if (isWrite)
         readptr = &readval;
@@ -281,7 +281,7 @@ long toscaDevLibDisconnectInterrupt(
         function, NULL) ? S_dev_success : S_dev_vectorNotInUse;
 }
 
-int toscaDevLibInterruptInUseVME(unsigned int vec)
+int toscaDevLibInterruptInUseVME(unsigned int vec __attribute__((unused)))
 {
     /* Actually this asks if a new handler cannot be connected to vec.
        Since we keep a linked list, a new handler can always be connected.
@@ -291,7 +291,7 @@ int toscaDevLibInterruptInUseVME(unsigned int vec)
 
 /** VME A24 DMA memory *****************/
 
-void *toscaDevLibA24Malloc(size_t size)
+void *toscaDevLibA24Malloc(size_t size __attribute__((unused)))
 {
     /* This function should allocate some DMA capable memory
      * and map it into a A24 slave window.
@@ -300,7 +300,7 @@ void *toscaDevLibA24Malloc(size_t size)
     return NULL;
 }
 
-void toscaDevLibA24Free(void *pBlock) {};
+void toscaDevLibA24Free(void *pBlock __attribute__((unused))) {};
 
 
 /** Initialization *****************/

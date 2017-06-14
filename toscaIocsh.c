@@ -26,7 +26,7 @@ static const iocshFuncDef toscaNumDevicesDef =
     { "toscaNumDevices", 0, (const iocshArg *[]) {
 }};
 
-static void toscaNumDevicesFunc(const iocshArgBuf *args)
+static void toscaNumDevicesFunc(const iocshArgBuf *args __attribute__((unused)))
 {
     printf("%u\n", toscaNumDevices());
 }
@@ -41,7 +41,7 @@ static const iocshFuncDef toscaMapDef =
 
 static void toscaMapFunc(const iocshArgBuf *args)
 {
-    toscaMapAddr_t addr, res_addr = {0};
+    toscaMapAddr_t addr, res_addr = {0,0};
     size_t size;
     volatile void* ptr;
 
@@ -58,7 +58,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
         return;
     }
     size = toscaStrToSize(args[1].sval);
-    if (size == -1)
+    if (size == (size_t)-1)
     {
         fprintf(stderr, "invalid size %s\n",
             args[1].sval);
@@ -133,7 +133,7 @@ static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
             vme_addr.address);
 }
 
-int toscaMapPrintInfo(toscaMapInfo_t info, void* unused)
+int toscaMapPrintInfo(toscaMapInfo_t info, void* unused __attribute__((unused)))
 {
     unsigned int device = info.addrspace >> 16;
     char buf[60];
@@ -160,7 +160,7 @@ static const iocshFuncDef toscaMapShowDef =
     { "toscaMapShow", 0, (const iocshArg *[]) {
 }};
 
-static void toscaMapShowFunc(const iocshArgBuf *args)
+static void toscaMapShowFunc(const iocshArgBuf *args __attribute__((unused)))
 {
     printf("\e[4maddrspace:baseaddr         size         pointer \e[0m\n");
     toscaMapForeach(toscaMapPrintInfo, NULL);
@@ -371,7 +371,7 @@ void toscaIntrShow(int level)
         count = toscaIntrCount();
         delta = count - prevIntrTotalCount;
         prevIntrTotalCount = count;
-        printf("total number of interrupts: %lld (+%lld)\n", count, delta);
+        printf("total number of interrupts: %llu (+%llu)\n", count, delta);
         toscaIntrForeachHandler(toscaIntrPrintInfo, &level);
         rep = 1;
     } while (level < 0 && !waitForKeypress(-1000*level));
@@ -392,7 +392,7 @@ static const iocshFuncDef toscaIntrLoopIsRunningDef =
     { "toscaIntrLoopIsRunning", 0, (const iocshArg *[]) {
 }};
 
-static void toscaIntrLoopIsRunningFunc(const iocshArgBuf *args)
+static void toscaIntrLoopIsRunningFunc(const iocshArgBuf *args __attribute__((unused)))
 {
     printf("%s\n", toscaIntrLoopIsRunning() ? "yes" : "no");
 }
@@ -401,7 +401,7 @@ static const iocshFuncDef toscaIntrLoopStopDef =
     { "toscaIntrLoopStop", 0, (const iocshArg *[]) {
 }};
 
-static void toscaIntrLoopStopFunc(const iocshArgBuf *args)
+static void toscaIntrLoopStopFunc(const iocshArgBuf *args __attribute__((unused)))
 {
     toscaIntrLoopStop();
 }
@@ -437,9 +437,9 @@ static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
     toscaIntrConnectHandler(mask, function, arg);
 }
 
-void toscaDebugIntrHandler(void* param, int inum, int ivec)
+void toscaDebugIntrHandler(void* param, unsigned int inum, unsigned int ivec)
 {
-    printf("interrupt param %s level %d vector %d\n", (char*)param, inum, ivec);
+    printf("param %s level %u vector %u\n", (char*)param, inum, ivec);
 }
 
 static const iocshFuncDef toscaSendVMEIntrDef =
@@ -457,7 +457,7 @@ static const iocshFuncDef toscaInstallSpuriousVMEInterruptHandlerDef =
     { "toscaInstallSpuriousVMEInterruptHandler", 0, (const iocshArg *[]) {
 }};
 
-static void toscaInstallSpuriousVMEInterruptHandlerFunc(const iocshArgBuf *args)
+static void toscaInstallSpuriousVMEInterruptHandlerFunc(const iocshArgBuf *args __attribute__((unused)))
 {
     toscaInstallSpuriousVMEInterruptHandler();
 }
@@ -475,7 +475,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
 {
     int source = 0, dest = 0, swap = 0;
     size_t source_addr, dest_addr, size;
-    int device;
+    unsigned long device;
     char *s, *p;
     
     if (!args[0].sval || !args[1].sval) 
@@ -500,7 +500,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     source_addr = toscaStrToSize(p);
     if (source != 0)
     {
-        if (source_addr == -1) source_addr = 0;
+        if (source_addr == (size_t)-1) source_addr = 0;
         source |= device << 16;
     }
 
@@ -519,7 +519,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     dest_addr = toscaStrToSize(p);
     if (dest != 0)
     {
-        if (dest_addr == -1) dest_addr = 0;
+        if (dest_addr == (size_t)-1) dest_addr = 0;
         dest |= device << 16;
     }
     

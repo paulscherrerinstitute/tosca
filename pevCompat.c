@@ -40,7 +40,7 @@ static const iocshFuncDef pevAsynConfigureDef =
 static void pevConfigureFunc(const iocshArgBuf *args)
 {
     char flags[40] = "";
-    int l = 0;
+    unsigned int l = 0;
     const char *resource;
     unsigned int card;
     unsigned int addrspace;
@@ -174,9 +174,9 @@ static void pevI2cConfigureFunc(const iocshArgBuf *args)
     unsigned int card = args[0].ival;
     const char* name = args[1].sval;
     unsigned int controlword = args[2].ival;
-    int i2c_addr = (controlword & 0x7f) | ((controlword & 0x70) >> 8);
-    int pev_i2c_bus = controlword >> 29;
-    int pon_addr = 0x80 + (pev_i2c_bus << 4);
+    unsigned int i2c_addr = (controlword & 0x7f) | ((controlword & 0x70) >> 8);
+    unsigned int pev_i2c_bus = controlword >> 29;
+    unsigned int pon_addr = 0x80 + (pev_i2c_bus << 4);
     char sysfspattern[80];
     
     debug("card=%d, name=%s, controlword=0x%08x bus=elb-%d ponaddr=0x%02x addr=0x%02x", 

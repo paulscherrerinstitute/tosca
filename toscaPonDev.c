@@ -19,7 +19,7 @@ struct regDevice
     int dummy;
 };
 
-void toscaPonDevReport(regDevice *device, int level)
+void toscaPonDevReport(regDevice *device __attribute__((unused)), int level __attribute__((unused)))
 {
     printf("Tosca PON\n");
 }
@@ -30,11 +30,11 @@ int toscaPonDevRead(
     unsigned int dlen,
     size_t nelem,
     void* pdata,
-    int priority,
-    regDevTransferComplete callback,
+    int priority __attribute__((unused)),
+    regDevTransferComplete callback __attribute__((unused)),
     const char* user)
 {
-    int i;
+    size_t i;
     
     if (dlen == 0) return 0; /* any way to check online status ? */
     if (dlen != 4)
@@ -61,11 +61,11 @@ int toscaPonDevWrite(
     size_t nelem,
     void* pdata,
     void* pmask,
-    int priority,
-    regDevTransferComplete callback,
+    int priority __attribute__((unused)),
+    regDevTransferComplete callback __attribute__((unused)),
     const char* user)
 {
-    int i;
+    size_t i;
     
     if (dlen != 4)
     {
@@ -77,10 +77,19 @@ int toscaPonDevWrite(
         error("%s %s: offset must be multiple of 4", user, regDevName(device));
         return -1;
     }
-    for (i = 0; i < nelem; i++)
+    if (pmask && *(epicsUInt32*)pmask != 0xffffffff)
     {
-        toscaPonWrite(offset+(i<<2), ((epicsUInt32*)pdata)[i]);
+        epicsUInt32 mask = *(epicsUInt32*)pmask;
+        for (i = 0; i < nelem; i++)
+        {
+            toscaPonWriteMasked(offset+(i<<2), mask, ((epicsUInt32*)pdata)[i]);
+        }
     }
+    else
+        for (i = 0; i < nelem; i++)
+        {
+            toscaPonWrite(offset+(i<<2), ((epicsUInt32*)pdata)[i]);
+        }
     return 0;
 }
 
@@ -158,10 +167,56 @@ static void toscaPonWriteFunc(const iocshArgBuf *args)
     else printf("0x%08x\n", val);
 }
 
+static const iocshFuncDef toscaPonWriteMaskedDef =
+    { "toscaPonWriteMasked", 3, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "mask", iocshArgInt },
+    &(iocshArg) { "value", iocshArgInt },
+}};
+
+static void toscaPonWriteMaskedFunc(const iocshArgBuf *args)
+{
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaPonWriteMasked(args[0].ival, args[1].ival,  args[2].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
+}
+
+static const iocshFuncDef toscaPonSetDef =
+    { "toscaPonSet", 2, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "value", iocshArgInt },
+}};
+
+static void toscaPonSetFunc(const iocshArgBuf *args)
+{
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaPonSet(args[0].ival, args[1].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
+}
+
 static const iocshFuncDef toscaPonDevConfigureDef =
     { "toscaPonDevConfigure", 1, (const iocshArg *[]) {
     &(iocshArg) { "name", iocshArgString },
 }};
+
+static const iocshFuncDef toscaPonClearDef =
+    { "toscaPonClear", 2, (const iocshArg *[]) {
+    &(iocshArg) { "address", iocshArgInt },
+    &(iocshArg) { "value", iocshArgInt },
+}};
+
+static void toscaPonClearFunc(const iocshArgBuf *args)
+{
+    epicsUInt32 val;
+    errno = 0;
+    val = toscaPonClear(args[0].ival, args[1].ival);
+    if (val == 0xffffffff && errno != 0) perror(NULL);
+    else printf("0x%08x\n", val);
+}
 
 static void toscaPonDevConfigureFunc(const iocshArgBuf *args)
 {
@@ -173,6 +228,9 @@ static void toscaPonRegistrar(void)
     iocshRegister(&toscaPonDevConfigureDef, toscaPonDevConfigureFunc);
     iocshRegister(&toscaPonReadDef, toscaPonReadFunc);
     iocshRegister(&toscaPonWriteDef, toscaPonWriteFunc);
+    iocshRegister(&toscaPonWriteMaskedDef, toscaPonWriteMaskedFunc);
+    iocshRegister(&toscaPonSetDef, toscaPonSetFunc);
+    iocshRegister(&toscaPonClearDef, toscaPonClearFunc);
 }
 
 epicsExportRegistrar(toscaPonRegistrar);
