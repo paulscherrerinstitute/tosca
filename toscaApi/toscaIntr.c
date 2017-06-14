@@ -228,6 +228,14 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
 
     debug("intrmask=0x%016"PRIx64" function=%s, parameter=%p count=%d",
         intrmask, fname=symbolName(function,0), parameter, count++), free(fname);
+        
+    if (!function)
+    {
+        debug("handler function is NULL");
+        errno = EINVAL;
+        return -1;
+    }
+
     LOCK; /* only need to lock installation, not calling of handlers */
 
     #define ADD_FD(i, name, ...)                         \
@@ -355,11 +363,7 @@ int toscaIntrForeachHandler(int (*callback)(toscaIntrHandlerInfo_t, void* user),
     {                                                  \
         struct intr_handler* handler;                  \
         int status;                                    \
-        debug("%s %d index=%d handlers=%p",            \
-            toscaIntrBitToStr(bit),                    \
-            INTR_INDEX_TO_IVEC(i), i, handlers[i]);    \
         FOREACH_HANDLER(handler, i) {                  \
-            debug("%p", handler->function);            \
             status = callback((toscaIntrHandlerInfo_t) \
                 { .intrmaskbit = bit,                  \
                   .index = i,                          \
@@ -387,7 +391,11 @@ void toscaIntrLoop(void* dummy)
     #define MAX_EVENTS 64
     struct epoll_event events[MAX_EVENTS];
     
-    if (intrLoopStopEvent >= 0) return;
+    if (intrLoopStopEvent >= 0)
+    {
+        debug("interrupt loop already running");
+        return;
+    }
     debug("starting interrupt handling");
 
     intrLoopStopEvent = eventfd(0, EFD_CLOEXEC);
