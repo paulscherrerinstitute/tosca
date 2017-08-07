@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/eventfd.h>
