@@ -290,13 +290,13 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
     
     if (regDevFind(name))
     {
-        error("name \"%s\" already in use", name);
+        debugLvl(-2, "name \"%s\" already in use", name);
         return -1;
     }
 
     if ((device = calloc(1, sizeof(regDevice))) == NULL)
     {
-        error("cannot allocate device structure: %m");
+        debugLvl(-2, "cannot allocate device structure: %m");
         return -1;
     }
     device->magic = TOSCA_MAGIC;
@@ -367,7 +367,7 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
     }
     if (device->dmaSpace & VME_BLOCKTRANSFER && !(addrspace & VME_A32))
     {
-        error("%s only possible on VME A32 address space",
+        debugLvl(-2, "%s only possible on VME A32 address space",
             toscaDmaSpaceToStr(device->dmaSpace));
         free(device);
         return -1;
@@ -387,7 +387,7 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
     {
         if ((device->baseptr = toscaMap(addrspace, address, size, 0)) == NULL)
         {
-            error("error mapping Tosca %s:0x%zx[0x%zx]: %m", toscaAddrSpaceToStr(addrspace), address, size);
+            debugLvl(-2, "error mapping Tosca %s:0x%zx[0x%zx]: %m", toscaAddrSpaceToStr(addrspace), address, size);
             free(device);
             return -1;
         }
@@ -399,14 +399,14 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
     }
     if (!device->dmaSpace && !device->baseptr)
     {
-        error("device has neither DMA nor memory map");
+        debugLvl(-2, "device has neither DMA nor memory map");
         free(device);
         return -1;
     }
     
     if (regDevRegisterDevice(name, &toscaRegDev, device, size) != SUCCESS)
     {
-        error("regDevRegisterDevice() failed");
+        debugLvl(-2, "regDevRegisterDevice() failed");
         free(device);
         return -1;
     }
@@ -470,7 +470,12 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
 
     if (toscaRegDevConfigure(args[0].sval, addr.addrspace, addr.address, size, flags) != 0)
     {
-        if (!interruptAccept) epicsExit(-1);
+        fprintf(stderr, "toscaRegDevConfigure failed.\n");
+        if (!interruptAccept)
+        {
+            fprintf(stderr, "Terminating.\n");
+            epicsExit(-1);
+        }
     }
 }
 
