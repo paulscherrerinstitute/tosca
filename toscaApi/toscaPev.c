@@ -1,13 +1,6 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-#include "toscaPev.h"
-#include "toscaMap.h"
-#include "toscaReg.h"
-#include "toscaIntr.h"
-#include "toscaDma.h"
-#include "i2c.h"
-
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -18,6 +11,18 @@
 #include <sys/select.h>
 #include <endian.h>
 #include <malloc.h>
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#define pipe2(fds,flags) pipe(fds)
+#endif
+
+#include "toscaPev.h"
+#include "toscaMap.h"
+#include "toscaReg.h"
+#include "toscaIntr.h"
+#include "toscaDma.h"
+#include "i2c.h"
 
 #define TOSCA_DEBUG_NAME pev
 #include "toscaDebug.h"

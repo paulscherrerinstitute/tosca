@@ -3,7 +3,6 @@
 #endif
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
-#include <sys/eventfd.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -12,8 +11,20 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <glob.h>
 
-#include <symbolname.h>
+#include "symbolname.h"
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#define pipe2(fds,flags) pipe(fds)
+#endif
+
+#ifndef EPOLL_CLOEXEC
+#define EPOLL_CLOEXEC 1
+#define epoll_create1 epoll_create
+#endif
 
 typedef uint64_t __u64;
 typedef uint32_t __u32;
@@ -42,7 +53,6 @@ static int epollfd = -1;
 static int intrFd[TOSCA_NUM_INTR];
 static unsigned long long totalIntrCount, intrCount[TOSCA_NUM_INTR];
 static struct intr_handler* handlers[TOSCA_NUM_INTR];
-static int intrLoopStopEvent = -1;
 
 #define TOSCA_INTR_INDX_USER(i)   (i)                            
 #define TOSCA_INTR_INDX_USER1(i)  TOSCA_INTR_INDX_USER(i)
@@ -83,7 +93,7 @@ static int intrLoopStopEvent = -1;
 
 const char* toscaIntrBitToStr(intrmask_t intrmaskbit)
 {
-    switch(intrmaskbit & 0xffffffff0000ffff)
+    switch(intrmaskbit & 0xffffffff0000ffffLL)
     {
         case TOSCA_VME_INTR(1):    return "VME-1";       
         case TOSCA_VME_INTR(2):    return "VME-2";       
@@ -202,21 +212,45 @@ intrmask_t toscaIntrStrToBit(const char* str)
     return 0;
 }
 
-int toscaIntrMonitorFile(int index, const char* filename)
+int toscaIntrMonitorFile(int index, const char* filepattern, ...)
 {
+    char* filename = NULL;
     struct epoll_event ev;
+    va_list ap;
+    glob_t globresults;
 
-    intrFd[index] = open(filename, O_RDWR|O_CLOEXEC);
-    debug ("%s open %s intrFd[%d]=%d", toscaIntrIndexToStr(index), filename, index, intrFd[index]);
+    va_start(ap, filepattern);
+    vasprintf(&filename, filepattern, ap);
+    va_end(ap);
+    if (!filename)
+    {
+        debugErrno("%s vasprintf %s", toscaIntrIndexToStr(index), filepattern);
+        return -1;
+    }
+    debug("%s glob(%s)", toscaIntrIndexToStr(index), filename);
+    if (glob(filename, 0, NULL, &globresults) != 0)
+    {
+        debug("cannot find %s", filename);
+        free(filename);
+        errno = ENOENT;
+        return -1;
+    }
+    free(filename);
+    intrFd[index] = open(globresults.gl_pathv[0], O_RDWR|O_CLOEXEC);
+    debug ("%s open %s intrFd[%d]=%d", toscaIntrIndexToStr(index), globresults.gl_pathv[0], index, intrFd[index]);
     if (intrFd[index] < 0)
     {
-        debugErrno("%s open %s", toscaIntrIndexToStr(index), filename);
+        debugErrno("%s open %s", toscaIntrIndexToStr(index), globresults.gl_pathv[0]);
+        globfree(&globresults);
         return -1;
     } 
     ev.events = EPOLLIN;
     ev.data.u32 = index;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, intrFd[index], &ev) < 0)
-        debugErrno("epoll_ctl ADD %d", intrFd[index]);
+    {
+        debugErrno("epoll_ctl ADD %d %s", intrFd[index], globresults.gl_pathv[0]);
+    }
+    globfree(&globresults);
     return 0;
 }
 
@@ -224,7 +258,6 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
 {
     char* fname;
     unsigned int i;
-    char filename[30];
     int status = 0;
 
     debug("intrmask=0x%016"PRIx64" function=%s, parameter=%p",
@@ -239,20 +272,14 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
 
     LOCK; /* only need to lock installation, not calling of handlers */
 
-    #define ADD_FD(i, name, ...)                         \
-    {                                                    \
-        if (intrFd[i] == 0) {                            \
-            sprintf(filename, name , ## __VA_ARGS__ );   \
-            status |= toscaIntrMonitorFile(i, filename); \
-        }                                                \
-    }
-
     if (intrmask & TOSCA_USER_INTR_ANY)
     {
         for (i = 0; i < 32; i++)
         {
             if (intrmask & TOSCA_USER1_INTR(i))
-                ADD_FD(IX(USER, i), "/dev/toscauserevent%u.%u", i > 15 ? 2 : 1, i & 15);
+            {
+                status |= toscaIntrMonitorFile(IX(USER, i), "/dev/toscauserevent*%u.%u", i > 15 ? 2 : 1, i & 15);
+            }
         }
     }
     if (intrmask & TOSCA_VME_INTR_ANY)
@@ -261,16 +288,16 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
         {
             unsigned int ivec = (intrmask >> 16) & 0xff, ivec2 = (intrmask >> 24) & 0xff;
             do {
-                ADD_FD(IX(VME, i, ivec), "/dev/toscavmeevent%u.%u", i, ivec);
+                status |= toscaIntrMonitorFile(IX(VME, i, ivec), "/dev/toscavmeevent*%u.%u", i, ivec);
             } while (++ivec <= ivec2);
         }
     }
     if (intrmask & TOSCA_VME_SYSFAIL)
-        ADD_FD(IX(SYSFAIL), "/dev/toscavmesysfail");
+        status |= toscaIntrMonitorFile(IX(SYSFAIL), "/dev/toscavmesysfail*");
     if (intrmask & TOSCA_VME_ACFAIL)
-        ADD_FD(IX(ACFAIL), "/dev/toscavmeacfail");
+        status |= toscaIntrMonitorFile(IX(ACFAIL), "/dev/toscavmeacfail*");
     if (intrmask & TOSCA_VME_ERROR)
-        ADD_FD(IX(ERROR), "/dev/toscavmeerror");
+        status |= toscaIntrMonitorFile(IX(ERROR), "/dev/toscavmeerror*");
 
     #define INSTALL_HANDLER(i, bit)                                                  \
     {                                                                                \
@@ -384,6 +411,9 @@ unsigned long long toscaIntrCount()
     return totalIntrCount;
 }
 
+static int toscaIntrLoopRunning = 0;
+static int intrLoopStopEvent[2];
+
 void toscaIntrLoop(void* dummy __attribute__((unused)))
 {
     unsigned int i, n, index, inum, ivec;
@@ -392,21 +422,22 @@ void toscaIntrLoop(void* dummy __attribute__((unused)))
     #define MAX_EVENTS 64
     struct epoll_event events[MAX_EVENTS];
     
-    if (intrLoopStopEvent >= 0)
+    if (toscaIntrLoopRunning)
     {
         debug("interrupt loop already running");
         return;
     }
-    debug("starting interrupt handling");
+    toscaIntrLoopRunning = 1;
 
-    intrLoopStopEvent = eventfd(0, EFD_CLOEXEC);
-    events[0].events = EPOLLIN;
-    events[0].data.u32 = -1;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, intrLoopStopEvent, &events[0]) < 0)
-        debugErrno("epoll_ctl ADD %d", intrLoopStopEvent);
+    debug("starting interrupt handling");
+    pipe2(intrLoopStopEvent, O_NONBLOCK|O_CLOEXEC);
     
-    int running = 1;
-    while (running)
+    events[0].events = EPOLLIN;
+    events[0].data.u32 = (uint32_t)-1;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, intrLoopStopEvent[0], &events[0]) < 0)
+        debugErrno("epoll_ctl ADD %d", intrLoopStopEvent[0]);
+    
+    while (toscaIntrLoopRunning)
     {
         debugLvl(2,"waiting for interrupts");
         n = epoll_wait(epollfd, events, MAX_EVENTS, -1);
@@ -423,8 +454,11 @@ void toscaIntrLoop(void* dummy __attribute__((unused)))
             index = events[i].data.u32;
             if (index == (uint32_t)-1)
             {
-                running = 0;
-                continue;
+                /* got intrLoopStopEvent */
+                close(intrLoopStopEvent[0]);
+                close(intrLoopStopEvent[1]);
+                toscaIntrLoopRunning = 0;
+                break;
             }
             inum = INTR_INDEX_TO_INUM(index);
             ivec = INTR_INDEX_TO_IVEC(index);
@@ -447,15 +481,12 @@ void toscaIntrLoop(void* dummy __attribute__((unused)))
                 write(intrFd[index], NULL, 0);  /* re-enable VME interrupt */
         }
     }
-
     debug("interrupt handling ended");
-    uint64_t e;
-    read(intrLoopStopEvent,&e,sizeof(e));
 }
 
 int toscaIntrLoopIsRunning(void)
 {
-    return (intrLoopStopEvent >= 0);
+    return (toscaIntrLoopRunning);
 }
 
 void toscaIntrInit () __attribute__((constructor));
@@ -468,13 +499,10 @@ void toscaIntrInit ()
 
 void toscaIntrLoopStop()
 {
-    uint64_t e = 0xfffffffffffffffe;
-    if (intrLoopStopEvent < 0) return;
-    write(intrLoopStopEvent, &e, sizeof(e));
-    debug("waiting for intrLoop to terminate");
-    write(intrLoopStopEvent, &e, sizeof(e));
-    close(intrLoopStopEvent);
-    intrLoopStopEvent = -1;
+    char e = 1;
+    if (!toscaIntrLoopRunning) return;
+    write(intrLoopStopEvent[1], &e, 1);
+    while (toscaIntrLoopRunning) usleep(10);
 }
 
 int toscaSendVMEIntr(unsigned int level, unsigned int ivec)
@@ -495,16 +523,24 @@ int toscaSendVMEIntr(unsigned int level, unsigned int ivec)
     return toscaCsrWrite(0x40c, 0x1000+(level<<8)+ivec);
 
 */
-    const char* filename = "/dev/bus/vme/ctl";
+    const char* filename;
     static int fd = -1;
     struct vme_irq_id {
         __u8 level;
         __u8 ivec;
     } irq;
     
+    
     if (fd < 0)
     {
+        filename = "/dev/bus/vme/ctl0";
+        
         fd = open(filename, O_RDWR|O_CLOEXEC);
+        if (fd < 0)
+        {
+            filename = "/dev/bus/vme/ctl";
+            fd = open(filename, O_RDWR|O_CLOEXEC);       
+        }
         if (fd < 0)
         {
             debugErrno("open %s", filename);

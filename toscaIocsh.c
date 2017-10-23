@@ -16,6 +16,7 @@
 #include "toscaReg.h"
 #include "toscaIntr.h"
 #include "toscaDma.h"
+#include "toscaDevLib.h"
 
 #include <epicsExport.h>
 
@@ -31,11 +32,34 @@ static void toscaNumDevicesFunc(const iocshArgBuf *args __attribute__((unused)))
     printf("%u\n", toscaNumDevices());
 }
 
+static const iocshFuncDef toscaListDevicesDef =
+    { "toscaListDevices", 0, (const iocshArg *[]) {
+}};
+
+static void toscaListDevicesFunc(const iocshArgBuf *args __attribute__((unused)))
+{
+    toscaListDevices();
+}
+
+static const iocshFuncDef toscaDeviceTypeDef =
+    { "toscaDeviceType", 1, (const iocshArg *[]) {
+    &(iocshArg) { "device", iocshArgInt },
+}};
+
+static void toscaDeviceTypeFunc(const iocshArgBuf *args __attribute__((unused)))
+{
+    unsigned int type = toscaDeviceType(args[0].ival);
+    if (type)
+        printf("%04x\n", type);
+    else
+        perror(NULL);
+}
+
 static const iocshFuncDef toscaMapDef =
     { "toscaMap", 4, (const iocshArg *[]) {
-    &(iocshArg) { "(A16|A24|A32|CRCSR|USER|SMEM|TCSR|TIO|SRAM|SLAVE):address", iocshArgString },
+    &(iocshArg) { "[device:](A16|A24|A32|CRCSR|USER[1|2]|SMEM[1|2]|TCSR|TIO|SRAM|SLAVE)[:address]", iocshArgString },
     &(iocshArg) { "size", iocshArgString },
-    &(iocshArg) { "[(USER|SMEM):address", iocshArgString },
+    &(iocshArg) { "[(USER[1|2]|SMEM[1|2]):address", iocshArgString },
     &(iocshArg) { "[SWAP]]", iocshArgString },
 }};
 
@@ -137,9 +161,10 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused __attribute__((unused)))
 {
     unsigned int device = info.addrspace >> 16;
     char buf[60];
-    if (device) printf("%u:", device);
+    int n = 7;
+    if (device) n-=printf("%u:", device);
     if ((info.addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM|VME_SLAVE)) > VME_SLAVE)
-    printf("%7s:0x%-8"PRIx64" %16s %7s:0x%-8zx%s\n",
+    printf("%*s:0x%-8"PRIx64" %16s %7s:0x%-8zx%s\n", n,
         toscaAddrSpaceToStr(info.addrspace),
         info.baseaddress,
         sizeToStr(info.size, buf),
@@ -147,7 +172,7 @@ int toscaMapPrintInfo(toscaMapInfo_t info, void* unused __attribute__((unused)))
         (size_t) info.baseptr,
         info.addrspace & VME_SWAP ? " SWAP" : "");
     else
-    printf("%7s:0x%-8"PRIx64" %16s   %-16p%s\n",
+    printf("%*s:0x%-8"PRIx64" %16s   %-16p%s\n", n,
         toscaAddrSpaceToStr(info.addrspace),
         info.baseaddress,
         sizeToStr(info.size, buf),
@@ -162,7 +187,7 @@ static const iocshFuncDef toscaMapShowDef =
 
 static void toscaMapShowFunc(const iocshArgBuf *args __attribute__((unused)))
 {
-    printf("\e[4maddrspace:baseaddr         size         pointer \e[0m\n");
+    printf("\e[4maddrspace:baseaddr         size         pointer%*c\e[0m\n", (int)sizeof(void*)-3, ' ');
     toscaMapForeach(toscaMapPrintInfo, NULL);
 }
 
@@ -387,6 +412,14 @@ static void toscaIntrShowFunc(const iocshArgBuf *args)
     toscaIntrShow(args[0].ival);
 }
 
+static const iocshFuncDef toscaIntrLoopStartDef =
+    { "toscaIntrLoopStart", 0, (const iocshArg *[]) {
+}};
+
+static void toscaIntrLoopStartFunc(const iocshArgBuf *args __attribute__((unused)))
+{
+    toscaIntrLoopStart();
+}
 
 static const iocshFuncDef toscaIntrLoopIsRunningDef =
     { "toscaIntrLoopIsRunning", 0, (const iocshArg *[]) {
@@ -579,38 +612,20 @@ volatile void* toscaAddrHandler(size_t address, size_t size, size_t addrspace)
     return toscaMap(addrspace, address, size, 0);
 }
 
+volatile void* toscaAddrTranslator(const char* addrstr, size_t offset, size_t size)
+{
+    toscaMapAddr_t addr = toscaStrToAddr(addrstr, NULL);
+    return toscaMap(addr.addrspace, addr.address, size, 0);
+}
+
 static void toscaRegistrar(void)
 {
     /* register with 'md' command */
-
-    memDisplayInstallAddrHandler("A16",  toscaAddrHandler, VME_A16);
-    memDisplayInstallAddrHandler("A24",  toscaAddrHandler, VME_A24);
-    memDisplayInstallAddrHandler("A32",  toscaAddrHandler, VME_A32);
-    memDisplayInstallAddrHandler("A16*",  toscaAddrHandler, VME_A16 | VME_SUPER);
-    memDisplayInstallAddrHandler("A24*",  toscaAddrHandler, VME_A24 | VME_SUPER);
-    memDisplayInstallAddrHandler("A32*",  toscaAddrHandler, VME_A32 | VME_SUPER);
-    memDisplayInstallAddrHandler("A16#",  toscaAddrHandler, VME_A16 | VME_PROG);
-    memDisplayInstallAddrHandler("A24#",  toscaAddrHandler, VME_A24 | VME_PROG);
-    memDisplayInstallAddrHandler("A32#",  toscaAddrHandler, VME_A32 | VME_PROG);
-    memDisplayInstallAddrHandler("A16*#", toscaAddrHandler, VME_A16 | VME_PROG | VME_SUPER);
-    memDisplayInstallAddrHandler("A24*#", toscaAddrHandler, VME_A24 | VME_PROG | VME_SUPER);
-    memDisplayInstallAddrHandler("A32*#", toscaAddrHandler, VME_A32 | VME_PROG | VME_SUPER);
-    memDisplayInstallAddrHandler("A16#*", toscaAddrHandler, VME_A16 | VME_PROG | VME_SUPER);
-    memDisplayInstallAddrHandler("A24#*", toscaAddrHandler, VME_A24 | VME_PROG | VME_SUPER);
-    memDisplayInstallAddrHandler("A32#*", toscaAddrHandler, VME_A32 | VME_PROG | VME_SUPER);
-
-    memDisplayInstallAddrHandler("SRAM",  toscaAddrHandler, TOSCA_SRAM);
-
-    /* best access these with wordsize = -4 */
-    memDisplayInstallAddrHandler("USER",  toscaAddrHandler, TOSCA_USER1);
-    memDisplayInstallAddrHandler("USER1", toscaAddrHandler, TOSCA_USER1);
-    memDisplayInstallAddrHandler("USER2", toscaAddrHandler, TOSCA_USER2);
-    memDisplayInstallAddrHandler("SMEM",  toscaAddrHandler, TOSCA_SMEM);
-    memDisplayInstallAddrHandler("SHM",   toscaAddrHandler, TOSCA_SMEM);
-    memDisplayInstallAddrHandler("TCSR",  toscaAddrHandler, TOSCA_CSR);
-    memDisplayInstallAddrHandler("TIO",   toscaAddrHandler, TOSCA_IO);
+    memDisplayInstallAddrTranslator(toscaAddrTranslator);
 
     iocshRegister(&toscaNumDevicesDef, toscaNumDevicesFunc);
+    iocshRegister(&toscaListDevicesDef, toscaListDevicesFunc);
+    iocshRegister(&toscaDeviceTypeDef, toscaDeviceTypeFunc);
     iocshRegister(&toscaMapDef, toscaMapFunc);
     iocshRegister(&toscaMapLookupAddrDef, toscaMapLookupAddrFunc);
     iocshRegister(&toscaMapShowDef, toscaMapShowFunc);
@@ -625,6 +640,7 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaIoSetDef, toscaIoSetFunc);
     iocshRegister(&toscaIoClearDef, toscaIoClearFunc);
     iocshRegister(&toscaIntrShowDef, toscaIntrShowFunc);
+    iocshRegister(&toscaIntrLoopStartDef, toscaIntrLoopStartFunc);
     iocshRegister(&toscaIntrLoopIsRunningDef, toscaIntrLoopIsRunningFunc);
     iocshRegister(&toscaIntrLoopStopDef, toscaIntrLoopStopFunc);
     iocshRegister(&toscaIntrConnectHandlerDef, toscaIntrConnectHandlerFunc);

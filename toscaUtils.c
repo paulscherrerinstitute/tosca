@@ -4,6 +4,11 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <byteswap.h>
+#include <time.h>
+#ifndef CLOCK_MONOTONIC_RAW
+#define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC
+#endif
+
 #include "toscaMap.h"
 #include "toscaDma.h"
 
@@ -149,7 +154,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
     int width = args[3].ival;
 
     if (toscaDmaDebug)
-        clock_gettime(CLOCK, &start);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     switch (width)
     {
         case 0:
@@ -205,7 +210,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
     if (toscaDmaDebug)
     {
         double sec;
-        clock_gettime(CLOCK, &finished);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &finished);
         finished.tv_sec  -= start.tv_sec;
         if ((finished.tv_nsec -= start.tv_nsec) < 0)
         {

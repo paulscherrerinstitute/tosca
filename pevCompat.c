@@ -202,7 +202,7 @@ static void pevRegistrar(void)
     iocshRegister(&pevI2cConfigureDef, pevI2cConfigureFunc);
     iocshRegister(&pevAsynI2cConfigureDef, pevI2cConfigureFunc);
 
-    toscaRegDevConfigure("pev_csr", TOSCA_CSR, 0, 0x2000, NULL);
+    toscaRegDevConfigure("pev_csr", TOSCA_CSR, 0, 0, NULL);
 }
 
 epicsExportRegistrar(pevRegistrar);

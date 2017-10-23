@@ -12,8 +12,17 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <symbolname.h>
+#include <time.h>
 
+#ifndef CLOCK_MONOTONIC_RAW
+#define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC
+#endif
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
+
+#include "symbolname.h"
 typedef uint64_t __u64;
 typedef uint32_t __u32;
 typedef uint8_t __u8;
@@ -49,25 +58,25 @@ const char* toscaDmaRouteToStr(int route)
             return "PAT->VME";
         case VME_DMA_PATTERN_TO_MEM:  /* not implemented (EINVALID) */
             return "PAT->MEM";
-        case VME_DMA_MEM_TO_USER:     /* works */
+        case VME_DMA_MEM_TO_USER1:    /* works */
             return "MEM->USER";
-        case VME_DMA_USER_TO_MEM:     /* works */
+        case VME_DMA_USER1_TO_MEM:    /* works */
             return "USER->MEM";
-        case VME_DMA_VME_TO_USER:     /* copies, but ignores swap 0x400 0x800 0xc00 */
+        case VME_DMA_VME_TO_USER1:    /* copies, but ignores swap 0x400 0x800 0xc00 */
             return "VME->USER";
-        case VME_DMA_USER_TO_VME:     /* copies, but ignores swap 0x400 0x800 0xc00 */
+        case VME_DMA_USER1_TO_VME:    /* copies, but ignores swap 0x400 0x800 0xc00 */
             return "USER->VME";
-        case VME_DMA_VME_TO_SHM:      /* works */
+        case VME_DMA_VME_TO_SHM1:     /* works */
             return "VME->SHM";
-        case VME_DMA_SHM_TO_VME:      /* works */
+        case VME_DMA_SHM1_TO_VME:     /* works */
             return "SHM->VME";
-        case VME_DMA_MEM_TO_SHM:      /* copies, but ignores swap 0x400 0x800 0xc00 */
+        case VME_DMA_MEM_TO_SHM1:     /* copies, but ignores swap 0x400 0x800 0xc00 */
             return "MEM->SHM";
-        case VME_DMA_SHM_TO_MEM:      /* works */
+        case VME_DMA_SHM1_TO_MEM:     /* works */
             return "SHM->MEM";
-        case VME_DMA_USER_TO_SHM:     /* works */
+        case VME_DMA_USER1_TO_SHM1:   /* works */
             return "USER->SHM";
-        case VME_DMA_SHM_TO_USER:     /* works */
+        case VME_DMA_SHM1_TO_USER1:   /* works */
             return "SHM->USER";
         default:
             return "unknown";
@@ -115,8 +124,10 @@ static const char* toscaDmaTypeToStr(unsigned int type)
             return "VME_DMA_PCI";
         case VME_DMA_VME:
             return "VME_DMA_VME";
-        case VME_DMA_SHM:
-            return "VME_DMA_SHM";
+        case VME_DMA_SHM1:
+            return "VME_DMA_SHM1";
+        case VME_DMA_SHM2:
+            return "VME_DMA_SHM2";
         case VME_DMA_USER1:
             return "VME_DMA_USER1";
         case VME_DMA_USER2:
@@ -192,7 +203,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
     ioctl(r->fd, VME_DMA_TIMEOUT, r->timeout);
 #endif
     if (toscaDmaDebug)
-        clock_gettime(CLOCK, &start);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     debugLvl(2, "ioctl(%d, VME_DMA_EXECUTE)",
         r->fd);
     if (ioctl(r->fd, VME_DMA_EXECUTE, &ex) != 0)
@@ -213,7 +224,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
     if (toscaDmaDebug)
     {
         double sec;
-        clock_gettime(CLOCK, &finished);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &finished);
         finished.tv_sec  -= start.tv_sec;
         if ((finished.tv_nsec -= start.tv_nsec) < 0)
         {
@@ -287,9 +298,8 @@ void toscaDmaLoopsStop()
     debug("stopping DMA loops");
     while (loopsRunning)
     {
-        struct timespec wait = { 0, 0 };
         WAKEUP;
-        nanosleep(&wait, NULL);
+        usleep(10);
     }
     debug("DMA loops stopped");
 }
@@ -414,8 +424,11 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         case TOSCA_USER2:
             r->req.src_type = VME_DMA_USER2;
             break;
-        case TOSCA_SMEM:
-            r->req.src_type = VME_DMA_SHM;
+        case TOSCA_SMEM1:
+            r->req.src_type = VME_DMA_SHM1;
+            break;
+        case TOSCA_SMEM2:
+            r->req.src_type = VME_DMA_SHM2;
             break;
         case VME_SCT:
         case VME_BLT:
@@ -430,6 +443,8 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             break;
     }
     
+/* Old driver for ifc1210 needs route, newer driver does not need it */
+/* SHM2 and USER2 are only available in the new driver */
     switch (dest)
     {
         case 0:
@@ -437,48 +452,51 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             switch (r->req.src_type)
             {
                 case VME_DMA_USER1:
-                case VME_DMA_USER2:
-                    r->req.route = VME_DMA_USER_TO_MEM;
+                    r->req.route = VME_DMA_USER1_TO_MEM;
                     break;
-                case VME_DMA_SHM:
-                    r->req.route = VME_DMA_SHM_TO_MEM;
+                case VME_DMA_SHM1:
+                    r->req.route = VME_DMA_SHM1_TO_MEM;
                     break;
                 case VME_DMA_VME:
                     r->req.route = VME_DMA_VME_TO_MEM;
                     break;
             }
             break;
-        case TOSCA_USER:
-        case TOSCA_USER2:
-            r->req.dst_type = dest == TOSCA_USER ? VME_DMA_USER1 : VME_DMA_USER2;
+        case TOSCA_USER1:
+            r->req.dst_type = VME_DMA_USER1;
             switch (r->req.src_type)
             {
                 case VME_DMA_PCI:
-                    r->req.route = VME_DMA_MEM_TO_USER;
+                    r->req.route = VME_DMA_MEM_TO_USER1;
                     break;
-                case VME_DMA_SHM:
-                    r->req.route = VME_DMA_SHM_TO_USER;
+                case VME_DMA_SHM1:
+                    r->req.route = VME_DMA_SHM1_TO_USER1;
                     break;
                 case VME_DMA_VME:
-                    r->req.route = VME_DMA_VME_TO_USER;
+                    r->req.route = VME_DMA_VME_TO_USER1;
                     break;
             }
             break;
-        case TOSCA_SMEM:
-            r->req.dst_type = VME_DMA_SHM;
+        case TOSCA_USER2:
+            r->req.dst_type = VME_DMA_USER2;
+            break;
+        case TOSCA_SMEM1:
+            r->req.dst_type = VME_DMA_SHM1;
             switch (r->req.src_type)
             {
                 case VME_DMA_PCI:
-                    r->req.route = VME_DMA_MEM_TO_SHM;
+                    r->req.route = VME_DMA_MEM_TO_SHM1;
                     break;
                 case VME_DMA_USER1:
-                case VME_DMA_USER2:
-                    r->req.route = VME_DMA_USER_TO_SHM;
+                    r->req.route = VME_DMA_USER1_TO_SHM1;
                     break;
                 case VME_DMA_VME:
-                    r->req.route = VME_DMA_VME_TO_SHM;
+                    r->req.route = VME_DMA_VME_TO_SHM1;
                     break;
             }
+            break;
+        case TOSCA_SMEM2:
+            r->req.dst_type = VME_DMA_SHM2;
             break;
         case VME_SCT:
         case VME_BLT:
@@ -496,11 +514,10 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
                     r->req.route = VME_DMA_MEM_TO_VME;
                     break;
                 case VME_DMA_USER1:
-                case VME_DMA_USER2:
-                    r->req.route = VME_DMA_USER_TO_VME;
+                    r->req.route = VME_DMA_USER1_TO_VME;
                     break;
-                case VME_DMA_SHM:
-                    r->req.route = VME_DMA_SHM_TO_VME;
+                case VME_DMA_SHM1:
+                    r->req.route = VME_DMA_SHM1_TO_VME;
                     break;
                 case VME_DMA_VME:
                     if (source == dest) r->req.route = VME_DMA_VME_TO_VME;
@@ -508,7 +525,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             }
             break;
     }
-    if (!r->req.route)
+    if (!r->req.src_type || !r->req.dst_type)
     {
         errno = EINVAL;
         debugErrno("DMA route %s -> %s", toscaDmaSpaceToStr(source), toscaDmaSpaceToStr(dest));
@@ -523,7 +540,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         toscaDmaRelease(r);
         return NULL;
     }
-    debugLvl(2, "ioctl(%d, VME_DMA_SET, {route=%s(0x%02x) src_type=%s(0x%02x) src_addr=0x%"PRIx64" dst_type=%s(0x%02x) dst_addr=0x%"PRIx64" size=0x%x dwidth=0x%x(%s) cycle=0x%x=%s})",
+    debugLvl(2, "ioctl(%d, VME_DMA_SET, {route=%s(0x%x) src_type=%s(0x%02x) src_addr=0x%"PRIx64" dst_type=%s(0x%02x) dst_addr=0x%"PRIx64" size=0x%x dwidth=0x%x(%s) cycle=0x%x=%s})",
         r->fd,
         toscaDmaRouteToStr(r->req.route), r->req.route,
         toscaDmaTypeToStr(r->req.src_type), r->req.src_type, 

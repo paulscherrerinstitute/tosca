@@ -6,21 +6,19 @@
 
 #include "memDisplay.h"
 
-/* VME access modes from vme.h */
+/* VME access modes */
 #define VME_A16	          0x1
 #define VME_A24	          0x2
 #define	VME_A32	          0x4
 #define VME_A64	          0x8
 #define VME_CRCSR        0x10
-#define VME_USER1        0x20
-#define VME_USER2        0x40
-#define VME_USER3        0x80
-#define VME_USER4       0x100
-#define TOSCA_USER  VME_USER1
-#define TOSCA_USER1 VME_USER1
-#define TOSCA_USER2 VME_USER2
-#define TOSCA_SMEM  VME_USER3
-#define TOSCA_CSR   VME_USER4
+#define TOSCA_USER       0x20
+#define TOSCA_USER1      0x20
+#define TOSCA_USER2      0x40
+#define TOSCA_SMEM       0x80
+#define TOSCA_SMEM1      0x80
+#define TOSCA_SMEM2    0x2100 /* had to squeeze this in for ifc1211+ */
+#define TOSCA_CSR       0x100
 #define TOSCA_IO        0x200
 #define TOSCA_SRAM      0x400
 #define VME_SLAVE       0x800
@@ -38,8 +36,10 @@ extern int toscaMapDebug;
 /* Set to redirect debug output  */
 extern FILE* toscaMapDebugFile;
 
-/* Report number of found Tosca devices */
+/* Report found Tosca devices */
 unsigned int toscaNumDevices();
+unsigned int toscaListDevices();
+unsigned int toscaDeviceType(unsigned int device);
 
 /* Map a Tosca resource to user space. Re-use maps if possible. */
 volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, uint64_t res_address);
@@ -47,8 +47,8 @@ volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, u
 /* For addrspace use
    * for VME address spaces A16, A24, A32, A64: VME_A16, VME_A24, VME_A32, VME_A64 ( | VME_SUPER, VME_PROG)
    * for VME CR/CSR addres space: VME_CRCSR
-   * for Tosca FPGA USER1, USER2: TOSCA_USER1 (or TOSCA_USER), TOSCA_USER2
-   * for Tosca shared memory: TOSCA_SMEM
+   * for Tosca FPGA user blocks: TOSCA_USER (or TOSCA_USER1), TOSCA_USER2
+   * for Tosca shared memory: TOSCA_SMEM (or TOSCA_SMEM1), TOSCA_2
    * for Tosca configuration space registers: TOSCA_CSR
    * for Tosca IO space registers: TOSCA_IO
    * for Tosca PON SRAM on ELB: TOSCA_SRAM

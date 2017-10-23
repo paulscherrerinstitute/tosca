@@ -11,6 +11,6 @@ void handler(void* arg, int inum) {
 
 int main() {
     toscaIntrConnectHandler(TOSCA_USER_INTR_ANY, handler, NULL);
-    toscaIntrLoop();
+    toscaIntrLoop(NULL);
     return 0;
 }
