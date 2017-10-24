@@ -78,6 +78,8 @@ const char* toscaDmaRouteToStr(int route)
             return "USER->SHM";
         case VME_DMA_SHM1_TO_USER1:   /* works */
             return "SHM->USER";
+        case 0:
+            return "none";
         default:
             return "unknown";
     }
@@ -85,7 +87,7 @@ const char* toscaDmaRouteToStr(int route)
 
 const char* toscaDmaSpaceToStr(unsigned int dmaspace)
 {
-    switch (dmaspace)
+    switch (dmaspace & 0xffff)
     {
         case 0:
             return "MEM";
@@ -93,8 +95,10 @@ const char* toscaDmaSpaceToStr(unsigned int dmaspace)
             return "USER1";
         case TOSCA_USER2:
             return "USER2";
-        case TOSCA_SMEM:
-            return "SMEM";
+        case TOSCA_SMEM1:
+            return "SMEM1";
+        case TOSCA_SMEM2:
+            return "SMEM2";
         case VME_SCT:
             return "VME_SCT";
         case VME_BLT:
@@ -142,7 +146,7 @@ const char* toscaDmaWidthToSwapStr(int width)
     return (const char*[]){"NS","WS","DS","QS"}[(width>>10)&3];
 }
 
-int toscaDmaStrToSpace(const char* str)
+int toscaStrToDmaSpace(const char* str)
 {
     if (!str || !*str) return 0;
     if (strcmp(str, "0") == 0)
@@ -156,7 +160,13 @@ int toscaDmaStrToSpace(const char* str)
         return TOSCA_USER2;
     if (strcasecmp(str, "SMEM") == 0 || strcasecmp(str, "SHM") == 0 || strcasecmp(str, "SHMEM") == 0 ||
         strcasecmp(str, "SH_MEM") == 0 || strcasecmp(str, "TOSCA_SMEM") == 0)
-        return TOSCA_SMEM;
+        return TOSCA_SMEM1;
+    if (strcasecmp(str, "SMEM1") == 0 || strcasecmp(str, "SHM1") == 0 || strcasecmp(str, "SHMEM1") == 0 ||
+        strcasecmp(str, "SH_MEM1") == 0 || strcasecmp(str, "TOSCA_SMEM1") == 0)
+        return TOSCA_SMEM1;
+    if (strcasecmp(str, "SMEM2") == 0 || strcasecmp(str, "SHM2") == 0 || strcasecmp(str, "SHMEM2") == 0 ||
+        strcasecmp(str, "SH_MEM2") == 0 || strcasecmp(str, "TOSCA_SMEM2") == 0)
+        return TOSCA_SMEM2;
     if (strcasecmp(str, "VME") == 0)
         return VME_SCT;
     if (strncasecmp(str, "VME_", 4) == 0) str += 4;
@@ -176,6 +186,8 @@ int toscaDmaStrToSpace(const char* str)
         return VME_2eSST267;
     if (strcasecmp(str, "2eSST320") == 0)
         return VME_2eSST320;
+    if (strcasecmp(str, "2eSST") == 0)
+        return VME_2eSST320;
     errno = EINVAL;
     return -1;
 }
@@ -186,7 +198,7 @@ struct dmaRequest
     int fd;
     int source;
     int dest;
-    int timeout;
+    long timeout;
     int oneShot;
     toscaDmaCallback callback;
     void *user;
@@ -199,8 +211,14 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
     struct timespec start, finished;
  
 #ifdef VME_DMA_TIMEOUT
-    debugLvl(2, "ioctl(%d, VME_DMA_TIMEOUT, %d ms)", r->fd, r->timeout);
-    ioctl(r->fd, VME_DMA_TIMEOUT, r->timeout);
+    r->timeout = 1000;
+    debugLvl(2, "ioctl(%d, VME_DMA_TIMEOUT, %ld ms)", r->fd, r->timeout);
+    if (ioctl(r->fd, VME_DMA_TIMEOUT, &r->timeout) != 0)
+    {
+        debugErrno("ioctl(%d, VME_DMA_TIMEOUT, %ld ms)", r->fd, r->timeout);
+        /* ignore and do dma anyway */
+        errno = 0;
+    }
 #endif
     if (toscaDmaDebug)
         clock_gettime(CLOCK_MONOTONIC_RAW, &start);
@@ -367,12 +385,13 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
 {
     struct dmaRequest* r;
     char* fname;
-    unsigned int device = (source | dest) >> 16;
     char filename[20];
+    unsigned int sdev = source >> 16;
+    unsigned int ddev = dest >> 16;
     
-    debugLvl(2, "%s(0x%x):0x%"PRIx64"->%s(0x%x):0x%"PRIx64"[0x%zx] swap=%d tout=%d cb=%s(%p)",
-        toscaDmaSpaceToStr(source), source, source_addr,
-        toscaDmaSpaceToStr(dest), dest, dest_addr,
+    debugLvl(2, "%d:%s(0x%x):0x%"PRIx64"->%d:%s(0x%x):0x%"PRIx64"[0x%zx] swap=%d tout=%d cb=%s(%p)",
+        sdev, toscaDmaSpaceToStr(source), source, source_addr,
+        ddev, toscaDmaSpaceToStr(dest), dest, dest_addr,
         size, swap, timeout, fname=symbolName(callback,0), user), free(fname);
     r = toscaDmaRequestCreate();
     if (!r) return NULL;
@@ -413,7 +432,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             r->req.dwidth = 0;
     }
         
-    switch (source)
+    switch (source & 0xffff)
     {
         case 0:
             r->req.src_type = VME_DMA_PCI;
@@ -438,14 +457,14 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         case VME_2eSST267:
         case VME_2eSST320:
             r->req.src_type = VME_DMA_VME;
-            r->req.cycle = source;
+            r->req.cycle = source & 0xffff;
             r->req.aspace = VME_A32;
             break;
     }
     
 /* Old driver for ifc1210 needs route, newer driver does not need it */
 /* SHM2 and USER2 are only available in the new driver */
-    switch (dest)
+    switch (dest & 0xffff)
     {
         case 0:
             r->req.dst_type = VME_DMA_PCI;
@@ -506,7 +525,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         case VME_2eSST267:
         case VME_2eSST320:
             r->req.dst_type = VME_DMA_VME;
-            r->req.cycle = dest;
+            r->req.cycle = dest & 0xffff;
             r->req.aspace = VME_A32;
             switch (r->req.src_type)
             {
@@ -532,7 +551,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         toscaDmaRelease(r);
         return NULL;
     }
-    sprintf(filename, "/dev/dmaproxy%u", device);
+    sprintf(filename, "/dev/dmaproxy%u", ddev > sdev ? ddev : sdev);
     r->fd = open(filename, O_RDWR|O_CLOEXEC);
     if (r->fd < 0)
     {
@@ -540,8 +559,8 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         toscaDmaRelease(r);
         return NULL;
     }
-    debugLvl(2, "ioctl(%d, VME_DMA_SET, {route=%s(0x%x) src_type=%s(0x%02x) src_addr=0x%"PRIx64" dst_type=%s(0x%02x) dst_addr=0x%"PRIx64" size=0x%x dwidth=0x%x(%s) cycle=0x%x=%s})",
-        r->fd,
+    debugLvl(2, "ioctl(%d (%s), VME_DMA_SET, {route=%s(0x%x) src_type=%s(0x%02x) src_addr=0x%"PRIx64" dst_type=%s(0x%02x) dst_addr=0x%"PRIx64" size=0x%x dwidth=0x%x(%s) cycle=0x%x=%s})",
+        r->fd, filename,
         toscaDmaRouteToStr(r->req.route), r->req.route,
         toscaDmaTypeToStr(r->req.src_type), r->req.src_type, 
         r->req.src_addr,

@@ -523,7 +523,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     p = strchr(s, ':');
     if (p) *p++ = 0;
     else p = args[0].sval;
-    source = toscaDmaStrToSpace(s);
+    source = toscaStrToDmaSpace(s);
     if (source == -1)
     {
         fprintf(stderr, "invalid DMA source %s\n",
@@ -542,7 +542,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     p = strchr(s, ':');
     if (p) *p++ = 0;
     else p = args[1].sval;
-    dest = toscaDmaStrToSpace(s);
+    dest = toscaStrToDmaSpace(s);
     if (dest == -1)
     {
         fprintf(stderr, "invalid DMA dest %s\n",
@@ -582,6 +582,29 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     errno = 0;
     toscaDmaTransfer(source, source_addr, dest, dest_addr, size, swap, args[4].ival, NULL, NULL);
     perror(NULL);
+}
+
+static const iocshFuncDef toscaStrToDmaSpaceDef =
+    { "toscaStrToDmaSpace", 1, (const iocshArg *[]) {
+    &(iocshArg) { "addrspace[:address]", iocshArgString },
+}};
+
+static void toscaStrToDmaSpaceFunc(const iocshArgBuf *args)
+{
+    errno = 0;
+    int dmaspace = toscaStrToDmaSpace(args[0].sval);
+    if (errno) perror(NULL);
+    else printf("0x%x\n", dmaspace);
+}
+
+static const iocshFuncDef toscaDmaSpaceToStrDef =
+    { "toscaDmaSpaceToStr", 1, (const iocshArg *[]) {
+    &(iocshArg) { "dmaspace", iocshArgInt },
+}};
+
+static void toscaDmaSpaceToStrFunc(const iocshArgBuf *args)
+{
+    printf("%s\n", toscaDmaSpaceToStr(args[0].ival));
 }
 
 static const iocshFuncDef toscaStrToAddrDef =
@@ -647,6 +670,8 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaSendVMEIntrDef, toscaSendVMEIntrFunc);
     iocshRegister(&toscaInstallSpuriousVMEInterruptHandlerDef, toscaInstallSpuriousVMEInterruptHandlerFunc);
     iocshRegister(&toscaDmaTransferDef, toscaDmaTransferFunc);
+    iocshRegister(&toscaStrToDmaSpaceDef, toscaStrToDmaSpaceFunc);
+    iocshRegister(&toscaDmaSpaceToStrDef, toscaDmaSpaceToStrFunc);
     iocshRegister(&toscaStrToAddrDef, toscaStrToAddrFunc);
     iocshRegister(&toscaAddrSpaceToStrDef, toscaAddrSpaceToStrFunc);
 }
