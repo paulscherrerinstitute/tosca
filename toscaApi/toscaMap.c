@@ -324,7 +324,7 @@ fault:
             }
         }
         else
-        if (*s == 'A')
+        if (*s == 'A' || *s == 'a')
         {
             switch (strtol(++s, &s, 10))
             {
