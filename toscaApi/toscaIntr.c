@@ -385,7 +385,7 @@ int toscaIntrEnable(intrmask_t intrmask)
     return 0;
 }
 
-int toscaIntrForeachHandler(int (*callback)(toscaIntrHandlerInfo_t, void* user), void* user)
+size_t toscaIntrForeachHandler(size_t (*callback)(toscaIntrHandlerInfo_t, void* user), void* user)
 {
     #define REPORT_HANDLER(i, bit)                     \
     {                                                  \

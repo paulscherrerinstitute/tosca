@@ -78,9 +78,10 @@ typedef struct {
     unsigned long long count;  /* number of times the interrupt has been received */
 } toscaIntrHandlerInfo_t;
 
-int toscaIntrForeachHandler(int (*callback)(toscaIntrHandlerInfo_t, void* user), void* user);
+size_t toscaIntrForeachHandler(size_t (*callback)(toscaIntrHandlerInfo_t, void* user), void* user);
 /* Calls callback for each installed handler until a callback returns something else than 0. */
 /* Returns what the last callback had returned. */
+/* (The return type is large enough to hold a pointer if necessary.) */
 
 unsigned long long toscaIntrCount();
 /* Returns total number of interrupts received by toscaIntrLoop since start of this API. */

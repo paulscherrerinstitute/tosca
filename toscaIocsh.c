@@ -353,7 +353,7 @@ static void toscaIoClearFunc(const iocshArgBuf *args)
     else printf("0x%08x\n", val);
 }
 
-int toscaIntrPrintInfo(toscaIntrHandlerInfo_t info, void* user)
+size_t toscaIntrPrintInfo(toscaIntrHandlerInfo_t info, void* user)
 {
     static unsigned long long prevIntrCount[TOSCA_NUM_INTR];
     unsigned long long count, delta;
