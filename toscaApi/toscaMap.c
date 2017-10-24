@@ -589,15 +589,15 @@ check_existing_maps:
                 errno = EFAULT;
                 goto fail;
             }
-            if (addrspace & ~(VME_SLAVE|TOSCA_USER1|TOSCA_SMEM1|TOSCA_SMEM2|VME_A32|VME_SWAP))
+            if (addrspace & ~(VME_SLAVE|TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM1|TOSCA_SMEM2|VME_A32|VME_SWAP))
             {
                 /* mapping to USER2 succeeds but crashes the kernel when accessing the VME range :-P */
-                error("slave map only possible on A32 to memory, USER1 or SMEM");
+                error("slave map only possible on A32 to memory, USER[1|2] or SMEM[1|2]");
                 errno = EINVAL;
                 goto fail;
             }
             vme_window.resource_offset = res_address & ~0xfffffLL;
-            vme_window.aspace = addrspace & 0x0fff;
+            vme_window.aspace = addrspace & (TOSCA_USER1|TOSCA_USER2|TOSCA_SMEM1|TOSCA_SMEM2);
             if (!vme_window.aspace) vme_window.aspace = VME_A32;
             if (addrspace & VME_SWAP) vme_window.cycle |= VME_LE_TO_BE;
             vme_window.size += 0xfffffLL; /* Expand slave maps to MB boundary. */
