@@ -27,10 +27,15 @@ static const iocshFuncDef mallocDef =
 
 static void mallocFunc(const iocshArgBuf *args)
 {
+    void *p;
+    char b[20];
     if (args[1].sval)
-        printf ("%p\n", memalign(toscaStrToSize(args[0].sval), toscaStrToSize(args[1].sval)));
+        p = memalign(toscaStrToSize(args[0].sval), toscaStrToSize(args[1].sval));
     else
-        printf ("%p\n", valloc(toscaStrToSize(args[0].sval)));
+        p = valloc(toscaStrToSize(args[0].sval));
+    sprintf(b, "%p", p);
+    setenv("BUFFER", b, 1);
+    printf ("BUFFER = %s\n", b);
 }
 
 static const iocshFuncDef memfillDef =
@@ -67,12 +72,23 @@ static void memfillFunc(const iocshArgBuf *args)
         iocshCmd("help memfill");
         return;
     }
-    size_t address = toscaStrToSize(args[0].sval);
+    toscaMapAddr_t addr = toscaStrToAddr(args[0].sval, NULL);
     uint32_t pattern = args[1].ival;
     size_t size = toscaStrToSize(args[2].sval);
     int width = args[3].ival;
     int increment = args[4].ival;
     size_t i;
+    volatile void* address;
+    
+    if (addr.addrspace)
+        address = toscaMap(addr.addrspace, addr.address, size, 0);
+    else
+        address = (volatile void*)(size_t)addr.address;
+    if (!address)
+    {
+        error("cannot map address %s", args[0].sval);
+        return;
+    }
 
     switch (width)
     {
@@ -129,7 +145,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
         return;
     }
     size = toscaStrToSize(args[2].sval);
-    
+
     addr = toscaStrToAddr(args[0].sval, NULL);
     if (addr.addrspace)
         sourceptr = toscaMap(addr.addrspace, addr.address, size, 0);
@@ -137,7 +153,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
         sourceptr = (volatile void*)(size_t)addr.address;
     if (!sourceptr)
     {
-        error("cannot map source address");
+        error("cannot map source address %s", args[0].sval);
         return;
     }
 
@@ -148,7 +164,7 @@ void toscaCopyFunc(const iocshArgBuf *args)
         destptr = (volatile void*)toscaStrToSize(args[1].sval);
     if (!destptr)
     {
-        error("cannot map dest address");
+        error("cannot map dest address %s", args[1].sval);
         return;
     }
     int width = args[3].ival;
