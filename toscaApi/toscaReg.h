@@ -16,12 +16,17 @@ extern FILE* toscaRegDebugFile;
 
 /* TOSCA CSR ACCESS */
 
-/* Access to the configuration space registers (CSR) of the local TOSCA.
+/* Access to the configuration space registers (CSR) of TOSCA.
    Values are automatically converted to and from host byte order.
    Address should be a multiple of 4.
-   On error these functions set errno and return -1 or 0xffffffff, respectively.
-   An invalid address sets errno to EINVAL. Other errors may come from open() and mmap() on first use.
-   Be aware that 0xffffffff can be a valid result of toscaCsrRead. First clear and then check errno.
+   On success these functions return the new value, which may be different
+   from the value set if some or all bits of the register are read-only.
+   On error they set errno and return (unsigned int)-1.
+   An invalid address sets errno to EINVAL.
+   Other errors may come from open() and mmap() on first use.
+   Be aware that (unsigned int)-1 can be a valid result.
+   First clear errno and later check it if (unsigned int)-1 was returned.
+   Setting inappropriate registers may crash the system! Be careful!
    If using more than one Tosca, use address|(tosca<<16).
 */
 unsigned int toscaCsrRead(unsigned int address);

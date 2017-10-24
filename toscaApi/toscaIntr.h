@@ -45,29 +45,29 @@ const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
 intrmask_t toscaIntrStrToBit(const char* s);
 
 int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* parameter);
-/* returns 0 on success */
-/* function is called with arguments (void* parameter, int inum, int ivec) */
+/* Returns 0 on success. */
+/* The user function will be called with arguments (void* parameter, int inum, int ivec) */
 
 int toscaIntrDisconnectHandler(intrmask_t intrmask, void (*function)(), void* parameter);
-/* check parameter only if it is not NULL */
-/* returns number of disconnected handlers */
+/* Remark: Checks parameter only if it is not NULL. */
+/* Returns number of disconnected handlers. Thus 0 means: fail, there is not such handler. */
 
 int toscaIntrDisable(intrmask_t intrmask);
 int toscaIntrEnable(intrmask_t intrmask);
-/* Temporarily suspends interrupt handling but keeps interrupts in queue */
+/* Temporarily suspends interrupt handling but keeps interrupts in queue. */
 
 void toscaIntrLoop(void*);
-/* handles the interrupts and calls installed handlers */
-/* Start it in a worker thread. */
+/* Handles incoming interrupt and calls installed handlers. */
+/* To be started in a worker thread. */
 /* The ignored void* argument is for compatibility with pthread_create. */
+/* Cannot run twice at the same time. (Second try will terminate immediately.) */
 
 int toscaIntrLoopIsRunning(void);
-/* Is 1 if the toscaIntrLoop is already running. */
-/* Further attemts to start the tread terminate silently. */
+/* Returns 1 if the toscaIntrLoop is already running, else 0. */
 
 void toscaIntrLoopStop();
 /* Terminate the interrupt loop. */
-/* Only returns after loop has stopped. */
+/* Returns after loop has stopped and no handler is active any more. */
 
 typedef struct {
     intrmask_t intrmaskbit;    /* one of the mask bits */
@@ -79,15 +79,18 @@ typedef struct {
 } toscaIntrHandlerInfo_t;
 
 int toscaIntrForeachHandler(int (*callback)(toscaIntrHandlerInfo_t, void* user), void* user);
-/* calls callback for each installed handler until a callback returns not 0 */
-/* returns what the last callback had returned */
+/* Calls callback for each installed handler until a callback returns something else than 0. */
+/* Returns what the last callback had returned. */
 
 unsigned long long toscaIntrCount();
-/* returns total number of received interrupts */
+/* Returns total number of interrupts received by toscaIntrLoop since start of this API. */
 
 int toscaSendVMEIntr(unsigned int level, unsigned int vec);
+/* Generates an interrupt on the VME bus. */
 
 void toscaInstallSpuriousVMEInterruptHandler(void);
+/* Installs dummy interrupt handlers on levels 1...7 vector 255. */
+/* Interrupt vector 255 is a hint that something went wrong with a pervious interrupt */
 
 #ifdef __cplusplus
 }

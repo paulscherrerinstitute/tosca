@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+/* Backward compatibility layer with old pev API */
+
 volatile void* pevMapExt(unsigned int card, unsigned int sg_id, unsigned int map_mode, size_t logicalAddress, size_t size, unsigned int flags, size_t localAddress);
 
 #define pevMap(card, sg_id, map_mode, logicalAddress, size) \

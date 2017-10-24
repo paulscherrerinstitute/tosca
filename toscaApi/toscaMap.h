@@ -17,7 +17,7 @@
 #define TOSCA_USER2      0x40
 #define TOSCA_SMEM       0x80
 #define TOSCA_SMEM1      0x80
-#define TOSCA_SMEM2    0x2100 /* had to squeeze this in for ifc1211+ */
+#define TOSCA_SMEM2    0x2100 /* had to squeeze this in for ifc1211+ while staying backward compatible */
 #define TOSCA_CSR       0x100
 #define TOSCA_IO        0x200
 #define TOSCA_SRAM      0x400
@@ -41,20 +41,20 @@ unsigned int toscaNumDevices();
 unsigned int toscaListDevices();
 unsigned int toscaDeviceType(unsigned int device);
 
-/* Map a Tosca resource to user space. Re-use maps if possible. */
 volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, uint64_t res_address);
+/* Maps a Tosca resource to user space (or to VME SLAVE). */
+/* Re-uses existing maps if possible. */
 
 /* For addrspace use
-   * for VME address spaces A16, A24, A32, A64: VME_A16, VME_A24, VME_A32, VME_A64 ( | VME_SUPER, VME_PROG)
-   * for VME CR/CSR addres space: VME_CRCSR
-   * for Tosca FPGA user blocks: TOSCA_USER (or TOSCA_USER1), TOSCA_USER2
-   * for Tosca shared memory: TOSCA_SMEM (or TOSCA_SMEM1), TOSCA_2
+   * for VME address spaces: VME_CRCSR, VME_A16, VME_A24, VME_A32, VME_A64 ( | VME_SUPER, VME_PROG)
+   * for Tosca FPGA user blocks: TOSCA_USER1 (or TOSCA_USER), TOSCA_USER2
+   * for Tosca shared memory: TOSCA_SMEM1 (or TOSCA_SMEM), TOSCA_SMEM2
    * for Tosca configuration space registers: TOSCA_CSR
    * for Tosca IO space registers: TOSCA_IO
    * for Tosca PON SRAM on ELB: TOSCA_SRAM
    * for VME A32 slave windows: VME_SLAVE|{TOSCA_USER1, TOSCA_USER2, TOSCA_SMEM} ( | VME_SWAP) and pass res_address
-   * if using more than one Tosca device, use addrspace|(device<<16).
-   At the moment Tosca does not support A64 but one day?
+   If using more than one Tosca device, use addrspace|(device<<16).
+   At the moment, Tosca does not support A64 but maybe one day?
 */
 
 /* Several map lookup functions. addrspace will be 0 if map is not found. */
@@ -70,32 +70,32 @@ typedef struct {
     unsigned int addrspace;
 } toscaMapAddr_t;
 
-/* Iterate over all maps (while func returns 0). */
-/* Returns info of map for which func returned not 0 */
 toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void *usr), void *usr);
+/* Iterates over all maps (while func returns 0). */
+/* Returns info of map for which func returned not 0. */
 
-/* Get map info from a user space pointer. */
 toscaMapInfo_t toscaMapFind(const volatile void* ptr);
+/* Gets map info from a user space pointer. */
 
-/* Find a VME address from a user space pointer. */
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);
+/* Finds a VME address from a user space pointer. */
 
-/* Convert addrspace code string and back. */
 const char* toscaAddrSpaceToStr(unsigned int addrspace);
+/* Converts addrspace code string and back. */
 
+unsigned int toscaStrToAddrSpace(const char* str, char** end);
 /* Convert string to addrspace code. */
 /* Returns 0 and sets errno on error */
 /* If end != NULL, passes first mismatch char, else mismatch is an error */
-unsigned int toscaStrToAddrSpace(const char* str, char** end);
 
-/* Convert (hex, dec, or 1M2k like) string to size. */
-/* returns (size_t)-1 and sets errno on error */
 size_t toscaStrToSize(const char* str);
+/* Converts (hex, dec, or "1M2k"-like) string to size. */
+/* returns (size_t)-1 and sets errno on error */
 
-/* Convert addrspace:address string to address structure. */
+toscaMapAddr_t toscaStrToAddr(const char* str, char** end);
+/* Converts addrspace:address string to address structure. */
 /* returns 0 addrspace and sets errno on error */
 /* If end != NULL, passes first mismatch char, else mismatch is an error */
-toscaMapAddr_t toscaStrToAddr(const char* str, char** end);
 
 #ifdef __cplusplus
 }

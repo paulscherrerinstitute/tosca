@@ -36,9 +36,9 @@ typedef void (*toscaDmaCallback)(void* usr, int status);
 struct dmaRequest* toscaDmaSetup(
     unsigned int source, uint64_t source_addr, unsigned int dest, uint64_t dest_addr,
     size_t size, unsigned int swap, int timeout, toscaDmaCallback callback, void* user);
-
 /* source and/or dest are one of:
-   0, TOSCA_USER, TOSCA_SMEM, VME_SCT, VME_BLT, VME_MBLT, VME_2eVME, VME_2eVMEFast, VME_2eSST160, VME_2eSST267, VME_2eSST320
+   0, TOSCA_USER1, TOSCA_USER2, TOSCA_SMEM1, TOSCA_SMEM2,
+   VME_SCT, VME_BLT, VME_MBLT, VME_2eVME, VME_2eVMEFast, VME_2eSST160, VME_2eSST267, VME_2eSST320
    0 means local buffer (RAM)
    source and dest cannot be the same space (RAM, USER, SHM, VME)
    Returns NULL on error and sets errno (EINVAL: invalid parameter, e.g. invalid DMA route).
@@ -51,9 +51,11 @@ int toscaDmaExecute(struct dmaRequest*);
 /* Returns 0 on success or errno */
 
 void toscaDmaRelease(struct dmaRequest*);
+/* Releases a dmaRequest previously created with toscaDmaSetup() */
+/* Do not use the request handle any more after releasing it. */
 
 
-/* toscaDmaTransfer works like toscaDmaSetup, toscaDmaExecute, toscaDmaRelease */
+/* toscaDmaTransfer works like (toscaDmaSetup, toscaDmaExecute, toscaDmaRelease) */
 
 int toscaDmaTransfer(
     unsigned int source, uint64_t source_addr, unsigned int dest, uint64_t dest_addr,
@@ -71,16 +73,17 @@ static inline int toscaDmaRead(unsigned int source, uint64_t source_addr, void* 
     return toscaDmaTransfer(source, source_addr, 0, (uint64_t)(size_t) dest_addr, size, swap, timeout, callback, user);
 }
 
-/* Start this in one or more threads to handle DMA requests with callback */
-/* The ignored void* argument is for compatibility with pthread_create. */
+
 void toscaDmaLoop(void*);
+/* Start this function in one or more threads to handle DMA requests with callback */
+/* The ignored void* argument is for compatibility with pthread_create. */
 
 int toscaDmaLoopsRunning(void);
 /* Returns number of running DMA loops. */
 
 void toscaDmaLoopsStop();
 /* Terminate all DMA loops. */
-/* Only returns after all loops have stopped. */
+/* Returns after all loops have stopped and no handler is active any more. */
 
 #ifdef __cplusplus
 }
