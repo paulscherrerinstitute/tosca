@@ -514,7 +514,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     if (!args[0].sval || !args[1].sval) 
     {
         iocshCmd("help toscaDmaTransfer");
-        printf("addrspaces: USER, SMEM, A32, BLT, MBLT, 2eVME, 2eVMEFast, 2eSST(160|267|320)\n");
+        printf("addrspaces: USER[1|2], SMEM[1|2], A32, BLT, MBLT, 2eVME, 2eVMEFast, 2eSST(160|267|320)\n");
         return;
     }
 
@@ -560,16 +560,16 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
 
     if (args[3].sval)
     {
-        if (strcmp(args[3].sval, "NS") == 0)
+        if (strcasecmp(args[3].sval, "NS") == 0)
             swap = 0;
         else
-        if (strcmp(args[3].sval, "WS") == 0)
+        if (strcasecmp(args[3].sval, "WS") == 0)
             swap = 2;
         else
-        if (strcmp(args[3].sval, "DS") == 0)
+        if (strcasecmp(args[3].sval, "DS") == 0)
             swap = 4;
         else
-        if (strcmp(args[3].sval, "QS") == 0)
+        if (strcasecmp(args[3].sval, "QS") == 0)
             swap = 8;
         else
         {
