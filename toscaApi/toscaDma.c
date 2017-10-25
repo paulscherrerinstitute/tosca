@@ -146,50 +146,102 @@ const char* toscaDmaWidthToSwapStr(int width)
     return (const char*[]){"NS","WS","DS","QS"}[(width>>10)&3];
 }
 
-int toscaStrToDmaSpace(const char* str)
+int toscaStrToDmaSpace(const char* str, const char** end)
 {
-    if (!str || !*str) return 0;
-    if (strcmp(str, "0") == 0)
-        return 0;
-    if (strcasecmp(str, "MEM") == 0)
-        return 0;
-    if (strcasecmp(str, "USR") == 0 || strcasecmp(str, "USER") == 0 || strcasecmp(str, "TOSCA_USER") == 0 ||
-        strcasecmp(str, "USR1") == 0 || strcasecmp(str, "USER1") == 0 || strcasecmp(str, "TOSCA_USER1") == 0)
-        return TOSCA_USER1;
-    if (strcasecmp(str, "USR2") == 0 || strcasecmp(str, "USER2") == 0 || strcasecmp(str, "TOSCA_USER2") == 0)
-        return TOSCA_USER2;
-    if (strcasecmp(str, "SMEM") == 0 || strcasecmp(str, "SHM") == 0 || strcasecmp(str, "SHMEM") == 0 ||
-        strcasecmp(str, "SH_MEM") == 0 || strcasecmp(str, "TOSCA_SMEM") == 0)
-        return TOSCA_SMEM1;
-    if (strcasecmp(str, "SMEM1") == 0 || strcasecmp(str, "SHM1") == 0 || strcasecmp(str, "SHMEM1") == 0 ||
-        strcasecmp(str, "SH_MEM1") == 0 || strcasecmp(str, "TOSCA_SMEM1") == 0)
-        return TOSCA_SMEM1;
-    if (strcasecmp(str, "SMEM2") == 0 || strcasecmp(str, "SHM2") == 0 || strcasecmp(str, "SHMEM2") == 0 ||
-        strcasecmp(str, "SH_MEM2") == 0 || strcasecmp(str, "TOSCA_SMEM2") == 0)
-        return TOSCA_SMEM2;
-    if (strcasecmp(str, "VME") == 0)
-        return VME_SCT;
-    if (strncasecmp(str, "VME_", 4) == 0) str += 4;
-    if (strcasecmp(str, "A32") == 0)
-        return VME_SCT;
-    if (strcasecmp(str, "SCT") == 0)
-        return VME_SCT;
-    if (strcasecmp(str, "BLT") == 0)
-        return VME_BLT;
-    if (strcasecmp(str, "MBLT") == 0)
-        return VME_MBLT;
-    if (strcasecmp(str, "2eVME") == 0)
-        return VME_2eVME;
-    if (strcasecmp(str, "2eSST160") == 0)
-        return VME_2eSST160;
-    if (strcasecmp(str, "2eSST267") == 0)
-        return VME_2eSST267;
-    if (strcasecmp(str, "2eSST320") == 0)
-        return VME_2eSST320;
-    if (strcasecmp(str, "2eSST") == 0)
-        return VME_2eSST320;
-    errno = EINVAL;
-    return -1;
+    unsigned int dmaspace = -1;
+    unsigned long device = 0;
+    const char *s;
+    
+    if (!str || !*str)
+    {
+fault:
+        errno = EINVAL;
+        if (end) *end = str;
+        return -1;
+    }
+    
+    device = strtoul(str, (char**)&s, 0);
+    if (*s == ':')
+        s++;
+    else
+    {
+        device = 0;
+        s = str;
+    }
+    if ((strncasecmp(s, "MEM", 3) == 0 && (s+=3)))
+        dmaspace = 0;
+    else
+    {
+        if (strncasecmp(s, "TOSCA_", 6) == 0) s+=6;
+        if ((strncasecmp(s, "USR", 3) == 0 && (s+=3)) ||
+            (strncasecmp(s, "USER", 4) == 0 && (s+=4)))
+        {
+            if (*s == '2')
+            {
+                dmaspace = TOSCA_USER2;
+                s++;
+            }
+            else
+            {
+                dmaspace = TOSCA_USER1;
+                if (*s == '1') s++;
+            }
+        }
+        else
+        if ((strncasecmp(s, "SH_MEM", 6) == 0 && (s+=6)) ||
+            (strncasecmp(s, "SHMEM", 5) == 0 && (s+=5)) ||
+            (strncasecmp(s, "SMEM", 4) == 0 && (s+=4)) ||
+            (strncasecmp(s, "SHM", 3) == 0 && (s+=3)))
+        {
+            if (*s == '2')
+            {
+                dmaspace = TOSCA_SMEM2;
+                s++;
+            }
+            else
+            {
+                dmaspace = TOSCA_SMEM1;
+                if (*s == '1') s++;
+            }
+        }
+        else
+        if (((strncasecmp(s, "VME_A32", 7) == 0) && (s+=7)) ||
+            ((strncasecmp(s, "A32", 3) == 0) && (s+=3)) ||
+            ((strncasecmp(s, "VME", 3) == 0) && (s+=3)) ||
+            ((strncasecmp(s, "SCT", 3) == 0) && (s+=3)))
+             dmaspace = VME_SCT;
+        else
+        if ((strncasecmp(s, "BLT", 3) == 0 && (s+=3)))
+            dmaspace = VME_BLT;
+        else
+        if ((strncasecmp(s, "MBLT", 4) == 0 && (s+=4)))
+            dmaspace = VME_MBLT;
+        else
+        if ((strncasecmp(s, "2eVME", 5) == 0 && (s+=5)))
+            dmaspace = VME_2eVME;
+        else
+        if ((strncasecmp(s, "2eSST160", 8) == 0 && (s+=8)))
+            dmaspace = VME_2eSST160;
+        else
+        if ((strncasecmp(s, "2eSST267", 8) == 0 && (s+=8)))
+            dmaspace = VME_2eSST267;
+        else
+        if ((strncasecmp(s, "2eSST320", 8) == 0 && (s+=8)) ||
+            (strncasecmp(s, "2eSST", 5) == 0 && (s+=5)))
+            dmaspace = VME_2eSST320;
+        else goto fault;
+    }
+    if (*s != 0 && *s !=':')
+        goto fault;
+    if (*s == ':') s++;
+    if (end) *end = s;
+    return device << 16 | dmaspace;
+}
+
+/* backward compatibility only */
+int toscaDmaStrToSpace(const char* str)
+{
+    return toscaStrToDmaSpace(str, NULL);
 }
 
 struct dmaRequest

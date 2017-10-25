@@ -231,31 +231,32 @@ size_t toscaStrToSize(const char* str)
     return size;
 }
 
-unsigned int toscaStrToAddrSpace(const char* str, char** end)
+unsigned int toscaStrToAddrSpace(const char* str, const char** end)
 {
     unsigned int addrspace = 0;
     unsigned long device = 0;
-    char *s;
+    const char *s;
     
-    if (!str)
+    if (!str | !*str)
     {
 fault:
         errno = EINVAL;
-        if (end) *end = (char*)str;
+        if (end) *end = str;
         return 0;
     }
     
-    device = strtoul(str, &s, 0);
+    device = strtoul(str, (char**)&s, 0);
     if (*s == ':')
         s++;
     else
     {
         device = 0;
-        s = (char*) str;
+        s = str;
     }
+    if (strncasecmp(s, "TOSCA_", 6) == 0) s+=6;
+    
     if ((strncasecmp(s, "USR", 3) == 0 && (s+=3)) ||
-        (strncasecmp(s, "USER", 4) == 0 && (s+=4)) ||
-        (strncasecmp(s, "TOSCA_USER", 10) == 0 && (s+=10)))
+        (strncasecmp(s, "USER", 4) == 0 && (s+=4)))
     {
         if (*s == '2')
         {
@@ -272,8 +273,7 @@ fault:
     if ((strncasecmp(s, "SH_MEM", 6) == 0 && (s+=6)) ||
         (strncasecmp(s, "SHMEM", 5) == 0 && (s+=5)) ||
         (strncasecmp(s, "SMEM", 4) == 0 && (s+=4)) ||
-        (strncasecmp(s, "SHM", 3) == 0 && (s+=3)) ||
-        (strncasecmp(s, "TOSCA_SMEM", 10) == 0 && (s+=10)))
+        (strncasecmp(s, "SHM", 3) == 0 && (s+=3)))
     {
         if (*s == '2')
         {
@@ -288,27 +288,25 @@ fault:
     }
     else
     if ((strncasecmp(s, "TCSR", 4) == 0 && (s+=4)) ||
-        (strncasecmp(s, "TOSCA_CSR", 9) == 0 && (s+=9)))
+        (strncasecmp(s, "CSR", 9) == 0 && (s+=9)))
         addrspace |= TOSCA_CSR;
     else
     if ((strncasecmp(s, "TIO", 3) == 0 && (s+=3)) ||
-        (strncasecmp(s, "TOSCA_IO", 8) == 0 && (s+=8)))
+        (strncasecmp(s, "IO", 8) == 0 && (s+=8)))
         addrspace |= TOSCA_IO;
     else
-    if ((strncasecmp(s, "SRAM", 4) == 0 && (s+=4)) ||
-        (strncasecmp(s, "TOSCA_SRAM", 10) == 0 && (s+=10)))
+    if ((strncasecmp(s, "SRAM", 4) == 0 && (s+=4)))
         addrspace |= TOSCA_SRAM;
     else
     {
         if (strncasecmp(s, "VME_", 4) == 0) s+=4;
-        if ((strncasecmp(s, "CRCSR", 5) == 0 && (s+=5)) || 
-            (strncasecmp(s, "CSR", 3) == 0 && (s+=3)))
+        if (strncasecmp(s, "CRCSR", 5) == 0 && (s+=5))
             addrspace |= VME_CRCSR;
         else
         if (strncasecmp(s, "SLAVE", 5) == 0 && (s+=5))
         {
             addrspace |= VME_SLAVE;
-            switch (strtol(s, &s, 10))
+            switch (strtol(s, (char**)&s, 10))
             {
                 case 16:
                     addrspace |= VME_A16; break;
@@ -326,7 +324,7 @@ fault:
         else
         if (*s == 'A' || *s == 'a')
         {
-            switch (strtol(++s, &s, 10))
+            switch (strtol(++s, (char**)&s, 10))
             {
                 case 16:
                     addrspace |= VME_A16; break;
@@ -351,6 +349,7 @@ fault:
     }
     if (*s != 0 && *s !=':')
         goto fault;
+    if (*s == ':') s++;
     if (addrspace != 0)
         addrspace |= device << 16;
     else if (device != 0)
@@ -359,20 +358,19 @@ fault:
     return addrspace;
 }
 
-toscaMapAddr_t toscaStrToAddr(const char* str, char** end)
+toscaMapAddr_t toscaStrToAddr(const char* str, const char** end)
 {
     toscaMapAddr_t result = {0,0};
-    char *s;
+    const char *s;
     
     if (!str)
     {
         errno = EINVAL;
-        if (end) *end = (char*)str;
+        if (end) *end = str;
         return (toscaMapAddr_t) {0,0};
     }
     result.addrspace = toscaStrToAddrSpace(str, &s);
-    if (s > str && *s == ':') s++;
-    result.address = strToSize(s, &s);
+    result.address = strToSize(s, (char**)&s);
     if (end) (*end = s);
     else
     if (*s != 0)
@@ -556,13 +554,6 @@ check_existing_maps:
             goto fail;
         }
         if (size == 0) size = 1;
-        if ((address + size) > 0x10000000LL)
-        {
-            error("address 0x%"PRIx64" + size 0x%zx exceeds 256 MB",
-                address, size);
-            errno = EFAULT;
-            goto fail;
-        }
         /* Tosca requires mapping windows aligned to 1 MiB.
            Thus round down address to the full MiB and adjust size.
            Do not round up size to the the next full MiB! This makes A16 fail.

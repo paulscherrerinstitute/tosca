@@ -508,8 +508,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
 {
     int source = 0, dest = 0, swap = 0;
     size_t source_addr, dest_addr, size;
-    unsigned long device;
-    char *s, *p;
+    const char *s;
     
     if (!args[0].sval || !args[1].sval) 
     {
@@ -518,44 +517,24 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
         return;
     }
 
-    device = strtoul(args[0].sval, &s, 0);
-    if (*s == ':') s++;
-    p = strchr(s, ':');
-    if (p) *p++ = 0;
-    else p = args[0].sval;
-    source = toscaStrToDmaSpace(s);
-    if (source == -1)
+    source = toscaStrToDmaSpace(args[0].sval, &s);
+    source_addr = toscaStrToSize(s);
+    if (source == -1 && source_addr == -1)
     {
-        fprintf(stderr, "invalid DMA source %s\n",
-            args[0].sval);
+        fprintf(stderr, "invalid DMA source %s\n", args[0].sval);
         return;
     }
-    source_addr = toscaStrToSize(p);
-    if (source != 0)
-    {
-        if (source_addr == (size_t)-1) source_addr = 0;
-        source |= device << 16;
-    }
+    if (source == -1) source = 0;
 
-    device = strtoul(args[1].sval, &s, 0);
-    if (*s == ':') s++;
-    p = strchr(s, ':');
-    if (p) *p++ = 0;
-    else p = args[1].sval;
-    dest = toscaStrToDmaSpace(s);
-    if (dest == -1)
+    dest = toscaStrToDmaSpace(args[1].sval, &s);
+    dest_addr = toscaStrToSize(s);
+    if (dest == -1 && dest_addr == -1)
     {
-        fprintf(stderr, "invalid DMA dest %s\n",
-            args[1].sval);
+        fprintf(stderr, "invalid DMA dest %s\n", s);
         return;
     }
-    dest_addr = toscaStrToSize(p);
-    if (dest != 0)
-    {
-        if (dest_addr == (size_t)-1) dest_addr = 0;
-        dest |= device << 16;
-    }
-    
+    if (dest == -1) dest = 0;
+
     size = toscaStrToSize(args[2].sval);
 
     if (args[3].sval)
@@ -592,7 +571,7 @@ static const iocshFuncDef toscaStrToDmaSpaceDef =
 static void toscaStrToDmaSpaceFunc(const iocshArgBuf *args)
 {
     errno = 0;
-    int dmaspace = toscaStrToDmaSpace(args[0].sval);
+    int dmaspace = toscaStrToDmaSpace(args[0].sval, NULL);
     if (errno) perror(NULL);
     else printf("0x%x\n", dmaspace);
 }

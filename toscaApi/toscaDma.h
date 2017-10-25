@@ -25,7 +25,9 @@ extern int toscaDmaDebug;
 extern FILE* toscaDmaDebugFile;
 
 const char* toscaDmaSpaceToStr(unsigned int dmaspace);
-int toscaStrToDmaSpace(const char* str);
+int toscaStrToDmaSpace(const char* str, const char** end);
+/* backward compatibility only: */
+int toscaDmaStrToSpace(const char* str);
 
 typedef void (*toscaDmaCallback)(void* usr, int status);
 

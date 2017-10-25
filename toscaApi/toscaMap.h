@@ -83,7 +83,7 @@ toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);
 const char* toscaAddrSpaceToStr(unsigned int addrspace);
 /* Converts addrspace code string and back. */
 
-unsigned int toscaStrToAddrSpace(const char* str, char** end);
+unsigned int toscaStrToAddrSpace(const char* str, const char** end);
 /* Convert string to addrspace code. */
 /* Returns 0 and sets errno on error */
 /* If end != NULL, passes first mismatch char, else mismatch is an error */
@@ -92,7 +92,7 @@ size_t toscaStrToSize(const char* str);
 /* Converts (hex, dec, or "1M2k"-like) string to size. */
 /* returns (size_t)-1 and sets errno on error */
 
-toscaMapAddr_t toscaStrToAddr(const char* str, char** end);
+toscaMapAddr_t toscaStrToAddr(const char* str, const char** end);
 /* Converts addrspace:address string to address structure. */
 /* returns 0 addrspace and sets errno on error */
 /* If end != NULL, passes first mismatch char, else mismatch is an error */
