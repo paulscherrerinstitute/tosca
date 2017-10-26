@@ -1,0 +1,4 @@
+registrar(toscaInitRegistrar)
+variable(toscaInitDebug, int)
+variable(toscaIntrPrio, int)
+variable(toscaDmaPrio, int)

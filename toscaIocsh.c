@@ -16,7 +16,7 @@
 #include "toscaReg.h"
 #include "toscaIntr.h"
 #include "toscaDma.h"
-#include "toscaDevLib.h"
+#include "toscaInit.h"
 
 #include <epicsExport.h>
 
@@ -609,18 +609,13 @@ static void toscaAddrSpaceToStrFunc(const iocshArgBuf *args)
     printf("%s\n", toscaAddrSpaceToStr(args[0].ival));
 }
 
-volatile void* toscaAddrHandler(size_t address, size_t size, size_t addrspace)
-{
-    return toscaMap(addrspace, address, size, 0);
-}
-
 volatile void* toscaAddrTranslator(const char* addrstr, size_t offset, size_t size)
 {
     toscaMapAddr_t addr = toscaStrToAddr(addrstr, NULL);
     return toscaMap(addr.addrspace, addr.address+offset, size, 0);
 }
 
-static void toscaRegistrar(void)
+static void toscaIocshRegistrar(void)
 {
     /* register with 'md' command */
     memDisplayInstallAddrTranslator(toscaAddrTranslator);
@@ -655,7 +650,7 @@ static void toscaRegistrar(void)
     iocshRegister(&toscaAddrSpaceToStrDef, toscaAddrSpaceToStrFunc);
 }
 
-epicsExportRegistrar(toscaRegistrar);
+epicsExportRegistrar(toscaIocshRegistrar);
 
 epicsExportAddress(int, toscaMapDebug);
 epicsExportAddress(int, toscaIntrDebug);

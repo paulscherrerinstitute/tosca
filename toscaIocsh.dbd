@@ -1,4 +1,4 @@
-registrar(toscaRegistrar)
+registrar(toscaIocshRegistrar)
 variable(toscaMapDebug, int)
 variable(toscaIntrDebug, int)
 variable(toscaDmaDebug, int)

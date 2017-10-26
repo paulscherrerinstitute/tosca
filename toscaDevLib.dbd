@@ -1,4 +1,2 @@
 registrar(toscaDevLibRegistrar)
 variable(toscaDevLibDebug, int)
-variable(toscaIntrPrio, int)
-variable(toscaDmaPrio, int)

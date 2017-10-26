@@ -3,14 +3,10 @@
 #include <devLibVME.h>
 #include <epicsMutex.h>
 #include <epicsTypes.h>
-#include <epicsExit.h>
-#include <epicsThread.h>
-#include <initHooks.h>
 
 #include "toscaMap.h"
-#include "toscaReg.h"
 #include "toscaIntr.h"
-#include "toscaDma.h"
+#include "toscaReg.h"
 
 #include <epicsExport.h>
 
@@ -330,74 +326,11 @@ devLibVirtualOS toscaVirtualOS = {
 #endif
 };
 
-int toscaIntrPrio = 80;
-epicsExportAddress(int, toscaIntrPrio);
-
-int toscaDmaPrio = 80;
-epicsExportAddress(int, toscaDmaPrio);
-
-int toscaIntrLoopStart(void)
-{
-    epicsThreadId tid;
-
-    debug("starting interrupt handler thread");
-    tid = epicsThreadCreate("irq-TOSCA", toscaIntrPrio,
-        epicsThreadGetStackSize(epicsThreadStackMedium),
-        toscaIntrLoop, NULL);
-    if (!tid) {
-        debugErrno("starting irq-TOSCA thread"); 
-        return -1;
-    }
-    debug("irq-TOSCA tid = %p", tid);
-    return 0;
-}
-
-int toscaDmaLoopsStart(unsigned int n)
-{
-    epicsThreadId tid;
-    unsigned int i;
-    int status = 0;
-
-    debug("starting dma handler threads");
-    for (i = 1; i <= n; i++)
-    {
-        char name[32];
-        sprintf(name, "dma%d-TOSCA", i);
-        tid = epicsThreadCreate(name, toscaDmaPrio,
-            epicsThreadGetStackSize(epicsThreadStackMedium),
-            toscaDmaLoop, NULL);
-        if (!tid) {
-            debugErrno("starting %s thread", name);
-            status = -1;
-        }
-        else debug("%s tid = %p", name, tid);
-    }
-    return status;
-}
-
-void toscaInitHook(initHookState state)
-{
-    if (state != initHookAfterInitDrvSup) return;
-    
-    if (toscaNumDevices() == 0)
-    {
-        fprintf(stderr, "No Tosca device found. Kernel driver not loaded?\n");
-        return;
-    }
-    
-    toscaInstallSpuriousVMEInterruptHandler();
-    toscaIntrLoopStart();
-    epicsAtExit(toscaIntrLoopStop,NULL);
-
-    toscaDmaLoopsStart(2);
-    epicsAtExit(toscaDmaLoopsStop,NULL);
-}
-
 static void toscaDevLibRegistrar ()
 {
     probeMutex = epicsMutexMustCreate();
     pdevLibVirtualOS = &toscaVirtualOS;
-    initHookRegister(toscaInitHook);
+    toscaInstallSpuriousVMEInterruptHandler();
 }
 
 epicsExportRegistrar(toscaDevLibRegistrar);
