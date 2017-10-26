@@ -617,7 +617,7 @@ volatile void* toscaAddrHandler(size_t address, size_t size, size_t addrspace)
 volatile void* toscaAddrTranslator(const char* addrstr, size_t offset, size_t size)
 {
     toscaMapAddr_t addr = toscaStrToAddr(addrstr, NULL);
-    return toscaMap(addr.addrspace, addr.address, size, 0);
+    return toscaMap(addr.addrspace, addr.address+offset, size, 0);
 }
 
 static void toscaRegistrar(void)
