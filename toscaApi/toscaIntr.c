@@ -278,7 +278,11 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
         {
             if (intrmask & TOSCA_USER1_INTR(i))
             {
-                status |= toscaIntrMonitorFile(IX(USER, i), "/dev/toscauserevent*%u.%u", i > 15 ? 2 : 1, i & 15);
+                if (toscaIntrMonitorFile(IX(USER, i), "/dev/toscauserevent*%u.%u", i > 15 ? 2 : 1, i & 15) != 0)
+                {
+                    intrmask &= ~TOSCA_USER1_INTR(i);
+                    status = -1;
+                }
             }
         }
     }
@@ -287,17 +291,36 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
         for (i = 1; i <= 7; i++) if (intrmask & TOSCA_VME_INTR(i))
         {
             unsigned int ivec = (intrmask >> 16) & 0xff, ivec2 = (intrmask >> 24) & 0xff;
+            unsigned int connected = 0;
             do {
-                status |= toscaIntrMonitorFile(IX(VME, i, ivec), "/dev/toscavmeevent*%u.%u", i, ivec);
+                if (toscaIntrMonitorFile(IX(VME, i, ivec), "/dev/toscavmeevent*%u.%u", i, ivec) == 0)
+                    connected = 1;
             } while (++ivec <= ivec2);
+            if (!connected)
+            {
+                intrmask &= ~TOSCA_VME_INTR(i);
+                status = -1;
+            }
         }
     }
     if (intrmask & TOSCA_VME_SYSFAIL)
-        status |= toscaIntrMonitorFile(IX(SYSFAIL), "/dev/toscavmesysfail*");
+        if (toscaIntrMonitorFile(IX(SYSFAIL), "/dev/toscavmesysfail*") != 0)
+        {
+            intrmask &= ~TOSCA_VME_SYSFAIL;
+            status = -1;
+        }
     if (intrmask & TOSCA_VME_ACFAIL)
-        status |= toscaIntrMonitorFile(IX(ACFAIL), "/dev/toscavmeacfail*");
+        if (toscaIntrMonitorFile(IX(ACFAIL), "/dev/toscavmeacfail*") != 0)
+        {
+            intrmask &= ~TOSCA_VME_ACFAIL;
+            status = -1;
+        }
     if (intrmask & TOSCA_VME_ERROR)
-        status |= toscaIntrMonitorFile(IX(ERROR), "/dev/toscavmeerror*");
+        if (toscaIntrMonitorFile(IX(ERROR), "/dev/toscavmeerror*") != 0)
+        {
+            intrmask &= ~TOSCA_VME_ERROR;
+            status = -1;
+        }
 
     #define INSTALL_HANDLER(i, bit)                                                  \
     {                                                                                \
@@ -567,5 +590,6 @@ void toscaInstallSpuriousVMEInterruptHandler(void)
     static int first = 1;
     if (!first) return;
     first = 0;
-    toscaIntrConnectHandler(TOSCA_VME_INTR_ANY_VEC(255), toscaSpuriousVMEInterruptHandler, NULL);
+    if (toscaIntrConnectHandler(TOSCA_VME_INTR_ANY_VEC(255), toscaSpuriousVMEInterruptHandler, NULL) != 0)
+        debugErrno("");
 }
