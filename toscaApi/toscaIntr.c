@@ -17,13 +17,13 @@
 #include "symbolname.h"
 
 #ifndef O_CLOEXEC
-#define O_CLOEXEC 0
-#define pipe2(fds,flags) pipe(fds)
+#define O_CLOEXEC 02000000
+#define open(path,flags) ({int _fd=open(path,(flags)&~O_CLOEXEC); if ((flags)&O_CLOEXEC) fcntl(_fd, F_SETFD, fcntl(_fd, F_GETFD)|FD_CLOEXEC); _fd; })
+#define pipe2(fds,flags) ({int _st=pipe(fds); fcntl(fds[0], F_SETFD, fcntl(fds[0], F_GETFD) | FD_CLOEXEC); fcntl(fds[1], F_SETFD, fcntl(fds[1], F_GETFD)|FD_CLOEXEC); _st; })
 #endif
 
 #ifndef EPOLL_CLOEXEC
-#define EPOLL_CLOEXEC 1
-#define epoll_create1 epoll_create
+#define epoll_create1(F) ({int _fd=epoll_create(20); fcntl(_fd, F_SETFD, fcntl(_fd, F_GETFD) | FD_CLOEXEC); _fd; })
 #endif
 
 typedef uint64_t __u64;

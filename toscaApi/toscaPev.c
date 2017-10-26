@@ -13,8 +13,9 @@
 #include <malloc.h>
 
 #ifndef O_CLOEXEC
-#define O_CLOEXEC 0
-#define pipe2(fds,flags) pipe(fds)
+#define O_CLOEXEC 02000000
+#define open(path,flags) ({int _fd=open(path,(flags)&~O_CLOEXEC); if ((flags)&O_CLOEXEC) fcntl(_fd, F_SETFD, fcntl(_fd, F_GETFD)|FD_CLOEXEC); _fd; })
+#define pipe2(fds,flags) ({int _st=pipe(fds); fcntl(fds[0], F_SETFD, fcntl(fds[0], F_GETFD) | FD_CLOEXEC); fcntl(fds[1], F_SETFD, fcntl(fds[1], F_GETFD)|FD_CLOEXEC); _st; })
 #endif
 
 #include "toscaPev.h"

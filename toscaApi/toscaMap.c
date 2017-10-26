@@ -14,7 +14,8 @@
 #include <glob.h>
 
 #ifndef O_CLOEXEC
-#define O_CLOEXEC 0
+#define O_CLOEXEC 02000000
+#define open(path,flags) ({int _fd=open(path,(flags)&~O_CLOEXEC); if ((flags)&O_CLOEXEC) fcntl(_fd, F_SETFD, fcntl(_fd, F_GETFD)|FD_CLOEXEC); _fd; })
 #endif
 
 #include "sysfs.h"
@@ -120,14 +121,14 @@ void toscaInit()
         pthread_mutex_init(&toscaDevices[i].maplist_mutex, NULL);
 
         sprintf(filename, "%s/device", globresults.gl_pathv[i]);
-        fd = open(filename, O_RDONLY);
+        fd = open(filename, O_RDONLY|O_CLOEXEC);
         if (fd >= 0)
         {
             toscaDevices[i].type = sysfsReadULong(fd);
             close(fd);
         }
         sprintf(filename, "%s/ToscaBridgeNr", globresults.gl_pathv[i]);
-        fd = open(filename, O_RDONLY);
+        fd = open(filename, O_RDONLY|O_CLOEXEC);
         if (fd >= 0)
         {
             toscaDevices[i].bridgenum = sysfsReadULong(fd);
