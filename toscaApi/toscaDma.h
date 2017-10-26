@@ -9,7 +9,6 @@
 #define VME_BLT		0x2
 #define VME_MBLT	0x4
 #define VME_2eVME	0x8
-#define VME_2eVMEFast	0x40
 #define VME_2eSST160	0x100
 #define VME_2eSST267	0x200
 #define VME_2eSST320	0x400

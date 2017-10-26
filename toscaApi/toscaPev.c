@@ -639,7 +639,7 @@ static int pev_dmaspace_to_tosca_addrspace(int dmaspace)
         case DMA_SPACE_VME|DMA_VME_BLT:    return VME_BLT;
         case DMA_SPACE_VME|DMA_VME_MBLT:   return VME_MBLT;
         case DMA_SPACE_VME|DMA_VME_2eVME:  return VME_2eVME;
-        case DMA_SPACE_VME|DMA_VME_2eFAST: return VME_2eVMEFast;
+        case DMA_SPACE_VME|DMA_VME_2eFAST: return VME_2eVME;
         case DMA_SPACE_VME|DMA_VME_2e160:  return VME_2eSST160;
         case DMA_SPACE_VME|DMA_VME_2e233:  return VME_2eSST267;
         case DMA_SPACE_VME|DMA_VME_2e320:  return VME_2eSST320;

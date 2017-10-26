@@ -20,7 +20,7 @@ typedef uint32_t __u32;
 typedef uint64_t __u64;
 #include "vme_user.h"
 
-#define VME_BLOCKTRANSFER (VME_SCT|VME_MBLT|VME_BLT|VME_2eVMEFast|VME_2eVME|VME_2eSST320|VME_2eSST267|VME_2eSST160)
+#define VME_BLOCKTRANSFER (VME_SCT|VME_MBLT|VME_BLT|VME_2eVME|VME_2eSST320|VME_2eSST267|VME_2eSST160)
 
 #include <epicsExport.h>
 
@@ -355,7 +355,6 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
             if (strncasecmp(p, "BLT", l) == 0)       { device->dmaSpace = VME_BLT; continue; }
             if (strncasecmp(p, "MBLT", l) == 0)      { device->dmaSpace = VME_MBLT; continue; }
             if (strncasecmp(p, "2eVME", l) == 0)     { device->dmaSpace = VME_2eVME; continue; }
-            if (strncasecmp(p, "2eVMEFast", l) == 0) { device->dmaSpace = VME_2eVMEFast; continue; }
             if (strncasecmp(p, "2eSST160", l) == 0)  { device->dmaSpace = VME_2eSST160; continue; }
             if (strncasecmp(p, "2eSST233", l) == 0)  { device->dmaSpace = VME_2eSST267; continue; } /* typo in pev  */
             if (strncasecmp(p, "2eSST267", l) == 0)  { device->dmaSpace = VME_2eSST267; continue; }
@@ -370,6 +369,7 @@ int toscaRegDevConfigure(const char* name, unsigned int addrspace, size_t addres
         error("%s only possible on VME A32 address space",
             toscaDmaSpaceToStr(device->dmaSpace));
         free(device);
+        errno = EINVAL;
         return -1;
     }
     if (device->dmaSpace && blockmode & REGDEV_BLOCK_READ)
@@ -470,6 +470,10 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
 
     if (toscaRegDevConfigure(args[0].sval, addr.addrspace, addr.address, size, flags) != 0)
     {
+        if (errno)
+            fprintf(stderr, "toscaRegDevConfigure failed: %m\n");
+        else
+            fprintf(stderr, "toscaRegDevConfigure failed.\n");
         if (!interruptAccept) epicsExit(-1);
     }
 }
@@ -477,6 +481,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
 static void toscaRegDevRegistrar(void)
 {
     iocshRegister(&toscaRegDevConfigureDef, toscaRegDevConfigureFunc);
+    toscaRegDevDebug = 0;
 }
 
 epicsExportRegistrar(toscaRegDevRegistrar);
