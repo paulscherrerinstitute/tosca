@@ -42,46 +42,46 @@ pthread_cond_t dma_wakeup = PTHREAD_COND_INITIALIZER;
 #define UNLOCK_AND_SLEEP pthread_cond_wait(&dma_wakeup, &dma_mutex);
 #define WAKEUP pthread_cond_signal(&dma_wakeup);
 
-const char* toscaDmaRouteToStr(int route)
+static const char* toscaDmaRouteToStr(int route)
 {
     switch (route)
     {
-        case VME_DMA_VME_TO_MEM:      /* works with swap 0x400 0x800 0xc00, but 0x100 0x200 0x300 are like 0x400 0x400 0x000 */
+        case VME_DMA_VME_TO_MEM:
             return "VME->MEM";
-        case VME_DMA_MEM_TO_VME:      /* works with swap 0x400 0x800 0xc00, but 0x100 0x200 0x300 are like 0x400 0x400 0x000 */
+        case VME_DMA_MEM_TO_VME:
             return "MEM->VME";
-        case VME_DMA_VME_TO_VME:      /* copies, but ignores swap 0x400 0x800 0xc00 */
+        case VME_DMA_VME_TO_VME:
             return "VME->VME";
-        case VME_DMA_MEM_TO_MEM:      /* not implemented (EINVALID) */
+        case VME_DMA_MEM_TO_MEM:
             return "MEM->MEM";
-        case VME_DMA_PATTERN_TO_VME:  /* not implemented (EINVALID) */
+        case VME_DMA_PATTERN_TO_VME:
             return "PAT->VME";
-        case VME_DMA_PATTERN_TO_MEM:  /* not implemented (EINVALID) */
+        case VME_DMA_PATTERN_TO_MEM:
             return "PAT->MEM";
-        case VME_DMA_MEM_TO_USER1:    /* works */
+        case VME_DMA_MEM_TO_USER1:
             return "MEM->USER";
-        case VME_DMA_USER1_TO_MEM:    /* works */
+        case VME_DMA_USER1_TO_MEM:
             return "USER->MEM";
-        case VME_DMA_VME_TO_USER1:    /* copies, but ignores swap 0x400 0x800 0xc00 */
+        case VME_DMA_VME_TO_USER1:
             return "VME->USER";
-        case VME_DMA_USER1_TO_VME:    /* copies, but ignores swap 0x400 0x800 0xc00 */
+        case VME_DMA_USER1_TO_VME:
             return "USER->VME";
-        case VME_DMA_VME_TO_SHM1:     /* works */
+        case VME_DMA_VME_TO_SHM1:
             return "VME->SHM";
-        case VME_DMA_SHM1_TO_VME:     /* works */
+        case VME_DMA_SHM1_TO_VME:
             return "SHM->VME";
-        case VME_DMA_MEM_TO_SHM1:     /* copies, but ignores swap 0x400 0x800 0xc00 */
+        case VME_DMA_MEM_TO_SHM1:
             return "MEM->SHM";
-        case VME_DMA_SHM1_TO_MEM:     /* works */
+        case VME_DMA_SHM1_TO_MEM:
             return "SHM->MEM";
-        case VME_DMA_USER1_TO_SHM1:   /* works */
+        case VME_DMA_USER1_TO_SHM1:
             return "USER->SHM";
-        case VME_DMA_SHM1_TO_USER1:   /* works */
+        case VME_DMA_SHM1_TO_USER1:
             return "SHM->USER";
         case 0:
             return "none";
         default:
-            return "unknown";
+            return "????";
     }
 }
 
@@ -336,7 +336,7 @@ void toscaDmaLoop(void* dummy __attribute__((unused)))
             pending = r->next;
             r->next = NULL;
             UNLOCK;
-            if (r->fd <= 0) /* may have been canceled */
+            if (r->fd <= 0) /* may have been canceled while we handled other transfers */
             {
                 if (r->oneShot) toscaDmaRelease(r);
             }
