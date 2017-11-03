@@ -1,0 +1,179 @@
+epicsEnvSet D $(D=0)
+
+malloc 1k
+
+# RAM to ...
+memfill $(BUFFER) 0 1k 1 1
+toscaDmaTransfer $(BUFFER) $(D):USER1:1k 1k
+memcomp          $(BUFFER) $(D):USER1:1k 1k
+toscaDmaTransfer $(BUFFER) $(D):USER1:1k 1k WS
+memcomp          $(BUFFER) $(D):USER1:1k 1k -2
+toscaDmaTransfer $(BUFFER) $(D):USER1:1k 1k DS
+memcomp          $(BUFFER) $(D):USER1:1k 1k -4
+toscaDmaTransfer $(BUFFER) $(D):USER1:1k 1k QS
+memcomp          $(BUFFER) $(D):USER1:1k 1k -8
+toscaDmaTransfer $(BUFFER) $(D):USER2:1k 1k
+memcomp          $(BUFFER) $(D):USER2:1k 1k
+toscaDmaTransfer $(BUFFER) $(D):USER2:1k 1k WS
+memcomp          $(BUFFER) $(D):USER2:1k 1k -2
+toscaDmaTransfer $(BUFFER) $(D):USER2:1k 1k DS
+memcomp          $(BUFFER) $(D):USER2:1k 1k -4
+toscaDmaTransfer $(BUFFER) $(D):USER2:1k 1k QS
+memcomp          $(BUFFER) $(D):USER2:1k 1k -8
+toscaDmaTransfer $(BUFFER) $(D):SHM1:1M 1k
+memcomp          $(BUFFER) $(D):SHM1:1M 1k
+toscaDmaTransfer $(BUFFER) $(D):SHM1:1M 1k WS
+memcomp          $(BUFFER) $(D):SHM1:1M 1k -2
+toscaDmaTransfer $(BUFFER) $(D):SHM1:1M 1k DS
+memcomp          $(BUFFER) $(D):SHM1:1M 1k -4
+toscaDmaTransfer $(BUFFER) $(D):SHM1:1M 1k QS
+memcomp          $(BUFFER) $(D):SHM1:1M 1k -8
+toscaDmaTransfer $(BUFFER) $(D):SHM2:1M 1k
+memcomp          $(BUFFER) $(D):SHM2:1M 1k
+toscaDmaTransfer $(BUFFER) $(D):SHM2:1M 1k WS
+memcomp          $(BUFFER) $(D):SHM2:1M 1k -2
+toscaDmaTransfer $(BUFFER) $(D):SHM2:1M 1k DS
+memcomp          $(BUFFER) $(D):SHM2:1M 1k -4
+toscaDmaTransfer $(BUFFER) $(D):SHM2:1M 1k QS
+memcomp          $(BUFFER) $(D):SHM2:1M 1k -8
+
+# SHM1 to ...
+memfill $(D):SHM1:1M 0 1k 1 1
+toscaDmaTransfer $(D):SHM1:1M $(BUFFER) 1k
+memcomp          $(D):SHM1:1M $(BUFFER) 1k
+toscaDmaTransfer $(D):SHM1:1M $(BUFFER) 1k WS
+memcomp          $(D):SHM1:1M $(BUFFER) 1k -2
+toscaDmaTransfer $(D):SHM1:1M $(BUFFER) 1k DS
+memcomp          $(D):SHM1:1M $(BUFFER) 1k -4
+toscaDmaTransfer $(D):SHM1:1M $(BUFFER) 1k QS
+memcomp          $(D):SHM1:1M $(BUFFER) 1k -8
+toscaDmaTransfer $(D):SHM1:1M $(D):SHM2:1M 1k
+memcomp          $(D):SHM1:1M $(D):SHM2:1M 1k
+toscaDmaTransfer $(D):SHM1:1M $(D):SHM2:1M 1k WS
+memcomp          $(D):SHM1:1M $(D):SHM2:1M 1k -2
+toscaDmaTransfer $(D):SHM1:1M $(D):SHM2:1M 1k DS
+memcomp          $(D):SHM1:1M $(D):SHM2:1M 1k -4
+toscaDmaTransfer $(D):SHM1:1M $(D):SHM2:1M 1k QS
+memcomp          $(D):SHM1:1M $(D):SHM2:1M 1k -8
+toscaDmaTransfer $(D):SHM1:1M $(D):USER1:1k 1k
+memcomp          $(D):SHM1:1M $(D):USER1:1k 1k
+toscaDmaTransfer $(D):SHM1:1M $(D):USER1:1k 1k WS
+memcomp          $(D):SHM1:1M $(D):USER1:1k 1k -2
+toscaDmaTransfer $(D):SHM1:1M $(D):USER1:1k 1k DS
+memcomp          $(D):SHM1:1M $(D):USER1:1k 1k -4
+toscaDmaTransfer $(D):SHM1:1M $(D):USER1:1k 1k QS
+memcomp          $(D):SHM1:1M $(D):USER1:1k 1k -8
+toscaDmaTransfer $(D):SHM1:1M $(D):USER2:1k 1k
+memcomp          $(D):SHM1:1M $(D):USER2:1k 1k
+toscaDmaTransfer $(D):SHM1:1M $(D):USER2:1k 1k WS
+memcomp          $(D):SHM1:1M $(D):USER2:1k 1k -2
+toscaDmaTransfer $(D):SHM1:1M $(D):USER2:1k 1k DS
+memcomp          $(D):SHM1:1M $(D):USER2:1k 1k -4
+toscaDmaTransfer $(D):SHM1:1M $(D):USER2:1k 1k QS
+memcomp          $(D):SHM1:1M $(D):USER2:1k 1k -8
+
+# SHM2 to ...
+memfill $(D):SHM2:1M 0 1k 1 1
+toscaDmaTransfer $(D):SHM2:1M $(BUFFER) 1k
+memcomp          $(D):SHM2:1M $(BUFFER) 1k
+toscaDmaTransfer $(D):SHM2:1M $(BUFFER) 1k WS
+memcomp          $(D):SHM2:1M $(BUFFER) 1k -2
+toscaDmaTransfer $(D):SHM2:1M $(BUFFER) 1k DS
+memcomp          $(D):SHM2:1M $(BUFFER) 1k -4
+toscaDmaTransfer $(D):SHM2:1M $(BUFFER) 1k QS
+memcomp          $(D):SHM2:1M $(BUFFER) 1k -8
+toscaDmaTransfer $(D):SHM2:1M $(D):SHM1:1M 1k
+memcomp          $(D):SHM2:1M $(D):SHM1:1M 1k
+toscaDmaTransfer $(D):SHM2:1M $(D):SHM1:1M 1k WS
+memcomp          $(D):SHM2:1M $(D):SHM1:1M 1k -2
+toscaDmaTransfer $(D):SHM2:1M $(D):SHM1:1M 1k DS
+memcomp          $(D):SHM2:1M $(D):SHM1:1M 1k -4
+toscaDmaTransfer $(D):SHM2:1M $(D):SHM1:1M 1k QS
+memcomp          $(D):SHM2:1M $(D):SHM1:1M 1k -8
+toscaDmaTransfer $(D):SHM2:1M $(D):USER1:1k 1k
+memcomp          $(D):SHM2:1M $(D):USER1:1k 1k
+toscaDmaTransfer $(D):SHM2:1M $(D):USER1:1k 1k WS
+memcomp          $(D):SHM2:1M $(D):USER1:1k 1k -2
+toscaDmaTransfer $(D):SHM2:1M $(D):USER1:1k 1k DS
+memcomp          $(D):SHM2:1M $(D):USER1:1k 1k -4
+toscaDmaTransfer $(D):SHM2:1M $(D):USER1:1k 1k QS
+memcomp          $(D):SHM2:1M $(D):USER1:1k 1k -8
+toscaDmaTransfer $(D):SHM2:1M $(D):USER2:1k 1k
+memcomp          $(D):SHM2:1M $(D):USER2:1k 1k
+toscaDmaTransfer $(D):SHM2:1M $(D):USER2:1k 1k WS
+memcomp          $(D):SHM2:1M $(D):USER2:1k 1k -2
+toscaDmaTransfer $(D):SHM2:1M $(D):USER2:1k 1k DS
+memcomp          $(D):SHM2:1M $(D):USER2:1k 1k -4
+toscaDmaTransfer $(D):SHM2:1M $(D):USER2:1k 1k QS
+memcomp          $(D):SHM2:1M $(D):USER2:1k 1k -8
+
+# USER1 to ...
+memfill $(D):USER1:1k 0 1k 1 1
+toscaDmaTransfer $(D):USER1:1k $(BUFFER) 1k
+memcomp          $(D):USER1:1k $(BUFFER) 1k
+toscaDmaTransfer $(D):USER1:1k $(BUFFER) 1k WS
+memcomp          $(D):USER1:1k $(BUFFER) 1k -2
+toscaDmaTransfer $(D):USER1:1k $(BUFFER) 1k DS
+memcomp          $(D):USER1:1k $(BUFFER) 1k -4
+toscaDmaTransfer $(D):USER1:1k $(BUFFER) 1k QS
+memcomp          $(D):USER1:1k $(BUFFER) 1k -8
+toscaDmaTransfer $(D):USER1:1k $(D):SHM1:1M 1k
+memcomp          $(D):USER1:1k $(D):SHM1:1M 1k
+toscaDmaTransfer $(D):USER1:1k $(D):SHM1:1M 1k WS
+memcomp          $(D):USER1:1k $(D):SHM1:1M 1k -2
+toscaDmaTransfer $(D):USER1:1k $(D):SHM1:1M 1k DS
+memcomp          $(D):USER1:1k $(D):SHM1:1M 1k -4
+toscaDmaTransfer $(D):USER1:1k $(D):SHM1:1M 1k QS
+memcomp          $(D):USER1:1k $(D):SHM1:1M 1k -8
+toscaDmaTransfer $(D):USER1:1k $(D):SHM2:1M 1k
+memcomp          $(D):USER1:1k $(D):SHM2:1M 1k
+toscaDmaTransfer $(D):USER1:1k $(D):SHM2:1M 1k WS
+memcomp          $(D):USER1:1k $(D):SHM2:1M 1k -2
+toscaDmaTransfer $(D):USER1:1k $(D):SHM2:1M 1k DS
+memcomp          $(D):USER1:1k $(D):SHM2:1M 1k -4
+toscaDmaTransfer $(D):USER1:1k $(D):SHM2:1M 1k QS
+memcomp          $(D):USER1:1k $(D):SHM2:1M 1k -8
+toscaDmaTransfer $(D):USER1:1k $(D):USER2:1k 1k
+memcomp          $(D):USER1:1k $(D):USER2:1k 1k
+toscaDmaTransfer $(D):USER1:1k $(D):USER2:1k 1k WS
+memcomp          $(D):USER1:1k $(D):USER2:1k 1k -2
+toscaDmaTransfer $(D):USER1:1k $(D):USER2:1k 1k DS
+memcomp          $(D):USER1:1k $(D):USER2:1k 1k -4
+toscaDmaTransfer $(D):USER1:1k $(D):USER2:1k 1k QS
+memcomp          $(D):USER1:1k $(D):USER2:1k 1k -8
+
+# USER2 to ...
+memfill $(D):USER2:1k 0 1k 1 1
+toscaDmaTransfer $(D):USER2:1k $(BUFFER) 1k
+memcomp          $(D):USER2:1k $(BUFFER) 1k
+toscaDmaTransfer $(D):USER2:1k $(BUFFER) 1k WS
+memcomp          $(D):USER2:1k $(BUFFER) 1k -2
+toscaDmaTransfer $(D):USER2:1k $(BUFFER) 1k DS
+memcomp          $(D):USER2:1k $(BUFFER) 1k -4
+toscaDmaTransfer $(D):USER2:1k $(BUFFER) 1k QS
+memcomp          $(D):USER2:1k $(BUFFER) 1k -8
+toscaDmaTransfer $(D):USER2:1k $(D):SHM1:1M 1k
+memcomp          $(D):USER2:1k $(D):SHM1:1M 1k
+toscaDmaTransfer $(D):USER2:1k $(D):SHM1:1M 1k WS
+memcomp          $(D):USER2:1k $(D):SHM1:1M 1k -2
+toscaDmaTransfer $(D):USER2:1k $(D):SHM1:1M 1k DS
+memcomp          $(D):USER2:1k $(D):SHM1:1M 1k -4
+toscaDmaTransfer $(D):USER2:1k $(D):SHM1:1M 1k QS
+memcomp          $(D):USER2:1k $(D):SHM1:1M 1k -8
+toscaDmaTransfer $(D):USER2:1k $(D):SHM2:1M 1k
+memcomp          $(D):USER2:1k $(D):SHM2:1M 1k
+toscaDmaTransfer $(D):USER2:1k $(D):SHM2:1M 1k WS
+memcomp          $(D):USER2:1k $(D):SHM2:1M 1k -2
+toscaDmaTransfer $(D):USER2:1k $(D):SHM2:1M 1k DS
+memcomp          $(D):USER2:1k $(D):SHM2:1M 1k -4
+toscaDmaTransfer $(D):USER2:1k $(D):SHM2:1M 1k QS
+memcomp          $(D):USER2:1k $(D):SHM2:1M 1k -8
+toscaDmaTransfer $(D):USER2:1k $(D):USER1:1k 1k
+memcomp          $(D):USER2:1k $(D):USER1:1k 1k
+toscaDmaTransfer $(D):USER2:1k $(D):USER1:1k 1k WS
+memcomp          $(D):USER2:1k $(D):USER1:1k 1k -2
+toscaDmaTransfer $(D):USER2:1k $(D):USER1:1k 1k DS
+memcomp          $(D):USER2:1k $(D):USER1:1k 1k -4
+toscaDmaTransfer $(D):USER2:1k $(D):USER1:1k 1k QS
+memcomp          $(D):USER2:1k $(D):USER1:1k 1k -8
+
