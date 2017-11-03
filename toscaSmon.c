@@ -3,6 +3,7 @@
 
 #include <epicsTypes.h>
 #include <iocsh.h>
+#include <epicsStdioRedirect.h>
 #include <regDev.h>
 #include "toscaReg.h"
 #include <epicsExport.h>
@@ -78,7 +79,7 @@ static void smonShow(unsigned int addr, unsigned int val)
 {
     if (val == 0xffffffff && errno != 0)
     {
-        perror(NULL);
+        fprintf(stderr, "%m\n");
         return;
     }
     printf("%-11s 0x%04x", smonAddrToStr(addr), val);
@@ -302,17 +303,17 @@ int toscaSmonDevConfigure(const char* name)
     device = malloc(sizeof(regDevice));
     if (!device)
     {
-        perror("malloc regDevice");
+        fprintf(stderr, "malloc regDevice failed: %m\n");
         goto fail;
     }
     if (regDevRegisterDevice(name, &smonDev, device, 0x100) != SUCCESS)
     {
-        perror("regDevRegisterDevice() failed");
+        fprintf(stderr, "regDevRegisterDevice() failed: %m\n");
         goto fail;
     }
     if (regDevInstallWorkQueue(device, 100) != SUCCESS)
     {
-        perror("regDevInstallWorkQueue() failed");
+        fprintf(stderr, "regDevInstallWorkQueue() failed: %m\n");
         return -1;
     }
     return 0;

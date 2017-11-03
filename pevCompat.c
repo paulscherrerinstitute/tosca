@@ -9,6 +9,7 @@
 #include "toscaMap.h"
 
 #include <iocsh.h>
+#include <epicsStdioRedirect.h>
 #include <epicsExport.h>
 
 #define TOSCA_EXTERN_DEBUG
@@ -84,7 +85,7 @@ static void pevConfigureFunc(const iocshArgBuf *args)
         args[1].sval, cardstr, toscaAddrSpaceToStr(addrspace), args[3].ival, args[6].ival, flags);
     if (toscaRegDevConfigure(args[1].sval, addrspace, args[3].ival, args[6].ival, flags) != 0)
     {
-        perror("toscaRegDevConfigure failed");
+        fprintf(stderr, "toscaRegDevConfigure failed: %m");
     }
 }
 

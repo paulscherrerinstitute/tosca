@@ -7,6 +7,7 @@
 #include <ellLib.h>
 #include <dbAccess.h>
 #include <iocsh.h>
+#include <epicsStdioRedirect.h>
 
 #include <regDev.h>
 

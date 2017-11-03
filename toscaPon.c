@@ -6,6 +6,7 @@
 #include <regDev.h>
 
 #include <iocsh.h>
+#include <epicsStdioRedirect.h>
 #include <epicsExport.h>
 
 #include "toscaReg.h"
@@ -111,19 +112,19 @@ int toscaPonDevConfigure(const char* name)
     device = malloc(sizeof(regDevice));
     if (!device)
     {
-        perror("malloc regDevice failed");
+        fprintf(stderr, "malloc regDevice failed: %m\n");
         return -1;
     }
     errno = 0;
     if (regDevRegisterDevice(name, &toscaPonDevRegDev, device, 0x44) != SUCCESS)
     {
-        if (errno) perror("regDevRegisterDevice failed");
+        if (errno) fprintf(stderr, "regDevRegisterDevice failed: %m\n");
         free(device);
         return -1;
     }
     if (regDevInstallWorkQueue(device, 100) != SUCCESS)
     {
-        perror("regDevInstallWorkQueue() failed");
+        fprintf(stderr, "regDevInstallWorkQueue() failed: %m\n");
         return -1;
     }
     return 0;
@@ -163,7 +164,7 @@ static void toscaPonWriteFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaPonWrite(args[0].ival, args[1].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -179,7 +180,7 @@ static void toscaPonWriteMaskedFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaPonWriteMasked(args[0].ival, args[1].ival,  args[2].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -194,7 +195,7 @@ static void toscaPonSetFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaPonSet(args[0].ival, args[1].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -214,7 +215,7 @@ static void toscaPonClearFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaPonClear(args[0].ival, args[1].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 

@@ -13,6 +13,7 @@
 #include "toscaDma.h"
 
 #include <iocsh.h>
+#include <epicsStdioRedirect.h>
 #include <epicsExport.h>
 
 #define TOSCA_EXTERN_DEBUG
@@ -92,7 +93,7 @@ static void memfillFunc(const iocshArgBuf *args)
         address = (volatile void*)(size_t)addr.address;
     if (!address)
     {
-        error("cannot map address %s", args[0].sval);
+        fprintf(stderr, "cannot map address %s\n", args[0].sval);
         return;
     }
 
@@ -123,7 +124,7 @@ static void memfillFunc(const iocshArgBuf *args)
             }
             break;
         default:
-            error("Illegal width %d: must be 1, 2, or 4", width);
+            fprintf(stderr, "Illegal width %d: must be 1, 2, or 4\n", width);
     }
 
     sigaction(SIGSEGV, &oldsa, NULL);
@@ -160,7 +161,7 @@ void memcopyFunc(const iocshArgBuf *args)
         sourceptr = (volatile void*)(size_t)addr.address;
     if (!sourceptr)
     {
-        error("cannot map source address %s", args[0].sval);
+        fprintf(stderr, "cannot map source address %s\n", args[0].sval);
         return;
     }
 
@@ -171,7 +172,7 @@ void memcopyFunc(const iocshArgBuf *args)
         destptr = (volatile void*)toscaStrToSize(args[1].sval);
     if (!destptr)
     {
-        error("cannot map dest address %s", args[1].sval);
+        fprintf(stderr, "cannot map dest address %s\n", args[1].sval);
         return;
     }
 
@@ -228,7 +229,7 @@ void memcopyFunc(const iocshArgBuf *args)
             }
             break;
         default:
-            error("Illegal width %d: must be 1, 2, 4, 8, -2, -4, -8", width);
+            fprintf(stderr, "Illegal width %d: must be 1, 2, 4, 8, -2, -4, -8\n", width);
             return;
     }
     if (toscaDmaDebug)
@@ -247,7 +248,6 @@ void memcopyFunc(const iocshArgBuf *args)
             size >= 0x00100000 ? "Mi" : size >= 0x00000400 ? "Ki" : "",
             sec * 1000, size/sec/0x00100000, size/sec/1000000);
     }
-    
 }
 
 static const iocshFuncDef memcompDef =
@@ -260,11 +260,12 @@ static const iocshFuncDef memcompDef =
 
 static void memcompFunc(const iocshArgBuf *args)
 {
-    volatile uint32_t* sourceptr;
-    volatile uint32_t* destptr;
+    volatile void* sourceptr;
+    volatile void* destptr;
     toscaMapAddr_t addr;
     size_t size, i;
     int width;
+    unsigned long long s, d;
 
     if (!args[0].sval || !args[1].sval || !args[2].sval)
     {
@@ -280,7 +281,7 @@ static void memcompFunc(const iocshArgBuf *args)
         sourceptr = (volatile void*)(size_t)addr.address;
     if (!sourceptr)
     {
-        error("cannot map source address %s", args[0].sval);
+        fprintf(stderr, "cannot map source address %s\n", args[0].sval);
         return;
     }
 
@@ -288,10 +289,10 @@ static void memcompFunc(const iocshArgBuf *args)
     if (addr.addrspace)
         destptr = toscaMap(addr.addrspace, addr.address, size, 0);
     else
-        destptr = (volatile void*)toscaStrToSize(args[1].sval);
+        destptr = (volatile void*)(size_t)addr.address;
     if (!destptr)
     {
-        error("cannot map dest address %s", args[1].sval);
+        fprintf(stderr, "cannot map dest address %s\n", args[1].sval);
         return;
     }
 
@@ -304,51 +305,65 @@ static void memcompFunc(const iocshArgBuf *args)
         case -1:
             for (i = 0; i < size; i++)
             {
-                if (((uint8_t*)destptr)[i] != ((uint8_t*)sourceptr)[i]) break;
+                s = ((volatile uint8_t*)sourceptr)[i];
+                d = ((volatile uint8_t*)destptr)[i];
+                if (s != d) break;
             }
             break;
         case 2:
             for (i = 0; i < size; i+=2)
             {
-                if (((uint16_t*)destptr)[i/2] != ((uint16_t*)sourceptr)[i/2]) break;
+                s = ((volatile uint16_t*)sourceptr)[i/2];
+                d = ((volatile uint16_t*)destptr)[i/2];
+                if (s != d) break;
             }
             break;
         case 4:
             for (i = 0; i < size; i+=4)
             {
-                if (((uint32_t*)destptr)[i/4] != ((uint32_t*)sourceptr)[i/4]) break;
+                s = ((volatile uint32_t*)sourceptr)[i/4];
+                d = ((volatile uint32_t*)destptr)[i/4];
+                if (s != d) break;
             }
             break;
         case 8:
             for (i = 0; i < size; i+=8)
             {
-                if (((uint64_t*)destptr)[i/8] != ((uint64_t*)sourceptr)[i/8]) break;
+                s = ((volatile uint64_t*)sourceptr)[i/8];
+                d = ((volatile uint64_t*)destptr)[i/8];
+                if (s != d) break;
             }
             break;
         case -2:
             for (i = 0; i < size; i+=2)
             {
-                if (((uint16_t*)destptr)[i/2] != bswap_16(((uint16_t*)sourceptr)[i/2])) break;
+                s = bswap_16(((volatile uint16_t*)sourceptr)[i/2]);
+                d = ((volatile uint16_t*)destptr)[i/2];
+                if (s != d) break;
             }
             break;
         case -4:
             for (i = 0; i < size; i+=4)
             {
-                if (((uint32_t*)destptr)[i/4] != bswap_32(((uint32_t*)sourceptr)[i/4])) break;
+                s = bswap_32(((volatile uint32_t*)sourceptr)[i/4]);
+                d = ((volatile uint32_t*)destptr)[i/4];
+                if (s != d) break;
             }
             break;
         case -8:
             for (i = 0; i < size; i+=8)
             {
-                if (((uint64_t*)destptr)[i/8] != bswap_64(((uint64_t*)sourceptr)[i/8])) break;
+                s = bswap_64(((volatile uint64_t*)sourceptr)[i/8]);
+                d = ((volatile uint64_t*)destptr)[i/8];
+                if (s != d) break;
             }
             break;
         default:
-            error("Illegal width %d: must be 1, 2, 4, 8, -2, -4, -8", width);
+            fprintf(stderr, "Illegal width %d: must be 1, 2, 4, 8, -2, -4, -8\n", width);
             return;
     }
     if (i < size)
-        printf("Mismatch at offset 0x%zx\n", i);
+        fprintf(stderr, "Mismatch: %s+0x%zx = 0x%0*llx but %s+0x%zx = 0x%0*llx\n", args[0].sval, i, abs(width)*2, s, args[1].sval, i, abs(width)*2, d);
     else
         printf("OK\n");
 }
