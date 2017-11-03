@@ -18,6 +18,7 @@
 #include "toscaDma.h"
 #include "toscaInit.h"
 
+#include <epicsStdioRedirect.h>
 #include <epicsExport.h>
 
 #define TOSCA_DEBUG_NAME toscaIocsh
@@ -52,7 +53,7 @@ static void toscaDeviceTypeFunc(const iocshArgBuf *args __attribute__((unused)))
     if (type)
         printf("%04x\n", type);
     else
-        perror(NULL);
+        fprintf(stderr, "%m\n");
 }
 
 static const iocshFuncDef toscaMapDef =
@@ -77,14 +78,14 @@ static void toscaMapFunc(const iocshArgBuf *args)
     addr = toscaStrToAddr(args[0].sval, NULL);
     if (!addr.addrspace)
     {
-        fprintf(stderr, "invalid Tosca address %s\n",
+        fprintf(stderr, "Invalid Tosca address \"%s\"\n",
             args[0].sval);
         return;
     }
     size = toscaStrToSize(args[1].sval);
     if (size == (size_t)-1)
     {
-        fprintf(stderr, "invalid size %s\n",
+        fprintf(stderr, "Invalid size \"%s\"\n",
             args[1].sval);
         return;
     }
@@ -92,7 +93,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
     {
         if (!(addr.addrspace & VME_SLAVE))
         {
-            fprintf(stderr, "invalid argument %s: no SLAVE address space\n",
+            fprintf(stderr, "Invalid argument \"%s\": no SLAVE address space\n",
                 args[2].sval);
             return;
         }
@@ -105,13 +106,13 @@ static void toscaMapFunc(const iocshArgBuf *args)
                 res_addr = toscaStrToAddr(args[2].sval, NULL);
                 if (!res_addr.addrspace)
                 {
-                    fprintf(stderr, "invalid Tosca address %s\n",
+                    fprintf(stderr, "Invalid Tosca address %s\n",
                         args[2].sval);
                     return;
                 }
                 if (res_addr.addrspace >> 16)
                 {
-                    fprintf(stderr, "invalid use of device number in %s\n",
+                    fprintf(stderr, "Invalid use of device number in %s\n",
                         args[2].sval);
                     return;
                 }
@@ -122,7 +123,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
                         addr.addrspace |= VME_SWAP;
                     else
                     {
-                        fprintf(stderr, "invalid argument %s: SWAP expected\n",
+                        fprintf(stderr, "Invalid argument \"%s\": SWAP expected\n",
                             args[3].sval);
                         return;
                     }
@@ -134,7 +135,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
     ptr = toscaMap(addr.addrspace, addr.address, size, res_addr.address);
     if (!ptr)
     {
-        perror(NULL);
+        fprintf(stderr, "%m\n");
         return;
     }
     printf("%p\n", ptr);
@@ -217,7 +218,7 @@ static void toscaGetVmeErrFunc(const iocshArgBuf *args)
     toscaMapVmeErr_t err = toscaGetVmeErr(args[0].ival);
     if (errno)
     {
-        perror(NULL);
+        fprintf(stderr, "%m\n");
         return;
     }
     printf("0x%08"PRIx64",0x%"PRIx32" (%s %s%c%s %s id=%d len=%d %s:0x%"PRIx64")\n",
@@ -245,7 +246,7 @@ static void toscaCsrReadFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaCsrRead(args[0].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -260,7 +261,7 @@ static void toscaCsrWriteFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaCsrWrite(args[0].ival, args[1].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -275,7 +276,7 @@ static void toscaCsrSetFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaCsrSet(args[0].ival, args[1].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -290,7 +291,7 @@ static void toscaCsrClearFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaCsrClear(args[0].ival, args[1].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -304,7 +305,7 @@ static void toscaIoReadFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaIoRead(args[0].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -319,7 +320,7 @@ static void toscaIoWriteFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaIoWrite(args[0].ival, args[1].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -334,7 +335,7 @@ static void toscaIoSetFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaIoSet(args[0].ival, args[1].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -349,7 +350,7 @@ static void toscaIoClearFunc(const iocshArgBuf *args)
     epicsUInt32 val;
     errno = 0;
     val = toscaIoClear(args[0].ival, args[1].ival);
-    if (val == 0xffffffff && errno != 0) perror(NULL);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
 }
 
@@ -439,6 +440,37 @@ static void toscaIntrLoopStopFunc(const iocshArgBuf *args __attribute__((unused)
     toscaIntrLoopStop();
 }
 
+static const char maskhelp[] = "mask: USER[1|2][-(0-15)]|VME[-(1-7)].(0-255)|VME-(SYSFAIL|ACFAIL|ERROR|FAIL)\n";
+
+static const iocshFuncDef toscaStrToIntrMaskDef =
+    { "toscaStrToIntrMask", 1, (const iocshArg *[]) {
+    &(iocshArg) { "intstr", iocshArgArgv },
+}};
+
+static void toscaStrToIntrMaskFunc(const iocshArgBuf *args __attribute__((unused)))
+{
+    intrmask_t mask;
+    if (!args[0].aval.av[1])
+    {
+        iocshCmd("help toscaStrToIntrMask");
+        printf(maskhelp);
+        return;
+    }
+    if (args[0].aval.av[2])
+    {
+        fprintf(stderr, "Too many args \"%s\": Did you use unquoted comma?\n", args[0].aval.av[2]);
+        return;
+    }
+    mask = toscaStrToIntrMask(args[0].aval.av[1]);
+    if (!mask)
+    {
+        fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].aval.av[1]);
+        return;
+    }
+    printf("0x%016"PRIx64"\n", mask);
+}
+
+
 static const iocshFuncDef toscaIntrConnectHandlerDef =
     { "toscaIntrConnectHandler", 3, (const iocshArg *[]) {
     &(iocshArg) { "intmask", iocshArgString },
@@ -448,31 +480,76 @@ static const iocshFuncDef toscaIntrConnectHandlerDef =
 
 static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
 {
-    intrmask_t mask = toscaIntrStrToBit(args[0].sval);
+    intrmask_t mask = toscaStrToIntrMask(args[0].sval);
     void (*function)() = symbolAddr(args[1].sval);
     void* arg = args[2].sval;
     
     if (!args[0].sval)
     {
         iocshCmd("help toscaIntrConnectHandler");
+        printf(maskhelp);
         return;
     }
     if (!mask)
     {
-        printf("invalid mask");
+        fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].sval);
         return;
     }
     if (!function)
     {
-        printf("invalid function");
+        fprintf(stderr, "Invalid function \"%s\"\n", args[1].sval);
         return;
     }
-    toscaIntrConnectHandler(mask, function, arg);
+    if (toscaIntrConnectHandler(mask, function, arg) != 0) fprintf(stderr, "%m\n");
 }
 
 void toscaDebugIntrHandler(void* param, unsigned int inum, unsigned int ivec)
 {
-    printf("param %s level %u vector %u\n", (char*)param, inum, ivec);
+    printf("interrupt: param %s level %u vector %u\n", (char*)param, inum, ivec);
+}
+
+static const iocshFuncDef toscaIntrEnableDef =
+    { "toscaIntrEnable", 1, (const iocshArg *[]) {
+    &(iocshArg) { "intmask", iocshArgString },
+}};
+
+static void toscaIntrEnableFunc(const iocshArgBuf *args)
+{
+    intrmask_t mask = toscaStrToIntrMask(args[0].sval);
+    if (!args[0].sval) 
+    {
+        iocshCmd("help toscaIntrDisable");
+        printf(maskhelp);
+        return;
+    }
+    if (!mask)
+    {
+        fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].sval);
+        return;
+    }
+    if (toscaIntrEnable(mask) != 0) fprintf(stderr, "%m\n");
+}
+
+static const iocshFuncDef toscaIntrDisableDef =
+    { "toscaIntrDisable", 1, (const iocshArg *[]) {
+    &(iocshArg) { "intmask", iocshArgString },
+}};
+
+static void toscaIntrDisableFunc(const iocshArgBuf *args)
+{
+    intrmask_t mask = toscaStrToIntrMask(args[0].sval);
+    if (!args[0].sval) 
+    {
+        iocshCmd("help toscaIntrDisable");
+        printf(maskhelp);
+        return;
+    }
+    if (!mask)
+    {
+        fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].sval);
+        return;
+    }
+    if (toscaIntrDisable(mask) != 0) fprintf(stderr, "%m\n");
 }
 
 static const iocshFuncDef toscaSendVMEIntrDef =
@@ -483,7 +560,7 @@ static const iocshFuncDef toscaSendVMEIntrDef =
 
 static void toscaSendVMEIntrFunc(const iocshArgBuf *args)
 {
-    if (toscaSendVMEIntr(args[0].ival, args[1].ival) == -1) perror(NULL);
+    if (toscaSendVMEIntr(args[0].ival, args[1].ival) == -1) fprintf(stderr, "%m\n");
 }
 
 static const iocshFuncDef toscaInstallSpuriousVMEInterruptHandlerDef =
@@ -521,7 +598,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     source_addr = toscaStrToSize(s);
     if (source == -1 && source_addr == -1)
     {
-        fprintf(stderr, "invalid DMA source %s\n", args[0].sval);
+        fprintf(stderr, "Invalid DMA source \"%s\"\n", args[0].sval);
         return;
     }
     if (source == -1) source = 0;
@@ -530,7 +607,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     dest_addr = toscaStrToSize(s);
     if (dest == -1 && dest_addr == -1)
     {
-        fprintf(stderr, "invalid DMA dest %s\n", s);
+        fprintf(stderr, "Invalid DMA dest \"%s\"\n", s);
         return;
     }
     if (dest == -1) dest = 0;
@@ -552,7 +629,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
             swap = 8;
         else
         {
-            fprintf(stderr, "invalid swap %s, must be WS, DS, or QS\n",
+            fprintf(stderr, "Invalid swap \"%s\", must be WS, DS, or QS\n",
                 args[3].sval);
             return;
         }
@@ -560,7 +637,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     
     errno = 0;
     toscaDmaTransfer(source, source_addr, dest, dest_addr, size, swap, args[4].ival, NULL, NULL);
-    perror(NULL);
+    printf("%m\n");
 }
 
 static const iocshFuncDef toscaStrToDmaSpaceDef =
@@ -572,7 +649,7 @@ static void toscaStrToDmaSpaceFunc(const iocshArgBuf *args)
 {
     errno = 0;
     int dmaspace = toscaStrToDmaSpace(args[0].sval, NULL);
-    if (errno) perror(NULL);
+    if (errno) fprintf(stderr, "%m\n");
     else printf("0x%x\n", dmaspace);
 }
 
@@ -595,7 +672,7 @@ static void toscaStrToAddrFunc(const iocshArgBuf *args)
 {
     errno = 0;
     toscaMapAddr_t addr = toscaStrToAddr(args[0].sval, NULL);
-    if (errno) perror(NULL);
+    if (errno) fprintf(stderr, "%m\n");
     else printf("0x%x:0x%"PRIx64"\n", addr.addrspace, addr.address);
 }
 
@@ -640,7 +717,10 @@ static void toscaIocshRegistrar(void)
     iocshRegister(&toscaIntrLoopStartDef, toscaIntrLoopStartFunc);
     iocshRegister(&toscaIntrLoopIsRunningDef, toscaIntrLoopIsRunningFunc);
     iocshRegister(&toscaIntrLoopStopDef, toscaIntrLoopStopFunc);
+    iocshRegister(&toscaStrToIntrMaskDef, toscaStrToIntrMaskFunc);
     iocshRegister(&toscaIntrConnectHandlerDef, toscaIntrConnectHandlerFunc);
+    iocshRegister(&toscaIntrEnableDef, toscaIntrEnableFunc);
+    iocshRegister(&toscaIntrDisableDef, toscaIntrDisableFunc);
     iocshRegister(&toscaSendVMEIntrDef, toscaSendVMEIntrFunc);
     iocshRegister(&toscaInstallSpuriousVMEInterruptHandlerDef, toscaInstallSpuriousVMEInterruptHandlerFunc);
     iocshRegister(&toscaDmaTransferDef, toscaDmaTransferFunc);

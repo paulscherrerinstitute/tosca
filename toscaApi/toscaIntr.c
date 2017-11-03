@@ -141,16 +141,61 @@ const char* toscaIntrBitToStr(intrmask_t intrmaskbit)
     }  
 }
 
-intrmask_t toscaIntrStrToBit(const char* str)
+static unsigned int toscaStrToRangeMask(unsigned int min, unsigned int max, const char* s, const char** end)
 {
-    char *s = (char*) str;
-    intrmask_t mask;
-    long n = 0, v;
+    unsigned long n;
+    unsigned int mask = 0;
+    const char* p;
+    int range = -1;
+
+    if (!s || !*s) return 0;
+    while(*s) {
+        n = strtoul(s, (char**)&p, 0);
+        if (p == s) break;
+        s = p;
+        if (n < (unsigned long)min || n > (unsigned long)max)
+        {
+            error("%ld out of range %d-%d", n, min, max);
+            mask = 0;
+            break;
+        }
+        if (range != -1)
+        {
+            if (range > n)
+            {
+                error("range %d-%ld backwards", range, n);
+                mask = 0;
+                break;
+            }
+            while (range < n)
+                mask |= 1 << range++;
+        }
+        mask |= 1 << n;
+        if (*s == '-')
+        {
+            s++;
+            range = n;
+            continue;
+        }
+        if (*s != ',' && *s != ';') break;
+        s++;
+        range = -1;
+    }
+    if (end) *end = s;
+    return mask;
+}
+
+intrmask_t toscaStrToIntrMask(const char* str)
+{
+    const char *s = str;
+    intrmask_t mask = 0;
+    uint32_t v;
+
     if (!s || !s[0]) return 0;
     
+    if (strncasecmp(s, "TOSCA_", 6) == 0) s+=6;
     if ((strncasecmp(s, "USR", 3) == 0 && (s+=3)) ||
-        (strncasecmp(s, "USER", 4) == 0 && (s+=4)) ||
-        (strncasecmp(s, "TOSCA_USER", 10) == 0 && (s+=10)))
+        (strncasecmp(s, "USER", 4) == 0 && (s+=4)))
     {
         if (*s == '2')
         {
@@ -158,8 +203,8 @@ intrmask_t toscaIntrStrToBit(const char* str)
             if (*s == 0) return TOSCA_USER2_INTR_ANY;
             if (*s == '-')
             {
-                n += strtoul(s, &s, 0);
-                if (n < 16) return TOSCA_USER2_INTR(n);
+                mask = toscaStrToRangeMask(0, 15, s+1, &s);
+                if (mask && *s == 0) return mask << 48;
             }
         }
         else
@@ -168,46 +213,77 @@ intrmask_t toscaIntrStrToBit(const char* str)
             if (*s == 0) return TOSCA_USER1_INTR_ANY;
             if (*s == '-')
             {
-                n += strtoul(s, &s, 0);
-                if (n < 16) return TOSCA_USER1_INTR(n);
+                mask = toscaStrToRangeMask(0, 15, s+1, &s);
+                if (mask && *s == 0) return mask << 32;
             }
         }
     }
     else
-    if ((strncasecmp(s, "VME", 3) == 0 && (s+=3)) ||
-        (strncasecmp(s, "TOSCA_VME", 9) == 0 && (s+=9)))
+    if ((strncasecmp(s, "VME", 3) == 0 && (s+=3)))
     {
         if (*s == '-')
         {
-            s++;
-            if (strcasecmp(s, "SYSFAIL") == 0)
+            if (strcasecmp(s+1, "SYSFAIL") == 0)
                 return TOSCA_VME_SYSFAIL;
-            if (strcasecmp(s, "ACFAIL") == 0)
+            if (strcasecmp(s+1, "ACFAIL") == 0)
                 return TOSCA_VME_ACFAIL;
-            if (strcasecmp(s, "ERROR") == 0)
+            if (strcasecmp(s+1, "ERROR") == 0)
                 return TOSCA_VME_ERROR;
-            if (strcasecmp(s, "FAIL") == 0)
+            if (strcasecmp(s+1, "FAIL") == 0)
                 return TOSCA_VME_FAIL_ANY;
             
-            n = strtoul(s, &s, 0);
-            if (n >= 1 && n <= 7 && *s++ == '.')
+            mask = toscaStrToRangeMask(1, 7, s+1, &s);
+        }
+        else
+        {
+            mask = TOSCA_VME_INTR_ANY;
+        }
+        if (*s == '.')
+        {
+            const char* e;
+            v = strtoul(s+1, (char**)&e, 0);
+            if (e == s+1)
             {
-                v = strtoul(s, &s, 0);
-                return TOSCA_VME_INTR_VEC(n, v);
+                error("vector number expected");
+            }
+            else
+            {
+                s = e;
+                mask |= v << 16;
+                if (*s == '-')
+                {
+                    v = strtoul(s+1, (char**)&e, 0);
+                    if (e == s+1)
+                    {
+                        error("vector number expected");
+                    }
+                    else
+                    {
+                        if (v < (uint8_t)(mask >> 16))
+                        {
+                            error("range %d-%d backwards", (uint8_t)(mask >> 16), v);
+                        }
+                        else
+                        {
+                            s = e;
+                            mask |= v << 24;
+                        }
+                    }
+                }
             }
         }
-        if (*s++ == '.')
+        else
         {
-            v = strtoul(s, &s, 0);
-            return TOSCA_VME_INTR_ANY_VEC(v);
+            /* all vectors */
+            mask |= 255UL << 24;
         }
     }
     else
     {
-        mask = strtoull(s, &s, 0);
-        if (*s == 0) return mask;
+        mask = strtoull(s, (char**)&s, 0);
     }
-    debug("invalid interrupt string");
+    if (*s == 0) return mask;
+    error("invalid mask string: \"%s\"", s);
     errno = EINVAL;
     return 0;
 }
@@ -230,7 +306,7 @@ int toscaIntrMonitorFile(int index, const char* filepattern, ...)
     debug("%s glob(%s)", toscaIntrIndexToStr(index), filename);
     if (glob(filename, 0, NULL, &globresults) != 0)
     {
-        debug("cannot find %s", filename);
+        error("cannot find %s", filename);
         free(filename);
         errno = ENOENT;
         return -1;
@@ -582,7 +658,7 @@ int toscaSendVMEIntr(unsigned int level, unsigned int ivec)
 
 void toscaSpuriousVMEInterruptHandler(void* param __attribute__((unused)), unsigned int inum, unsigned int ivec)
 {
-    debug("level %u vector %u", inum, ivec);
+    fprintf(stderr, "Spurious VME interrupt level %u vector %u\n", inum, ivec);
 }
 
 void toscaInstallSpuriousVMEInterruptHandler(void)
@@ -591,5 +667,5 @@ void toscaInstallSpuriousVMEInterruptHandler(void)
     if (!first) return;
     first = 0;
     if (toscaIntrConnectHandler(TOSCA_VME_INTR_ANY_VEC(255), toscaSpuriousVMEInterruptHandler, NULL) != 0)
-        debugErrno("");
+        error("%m");
 }

@@ -42,7 +42,7 @@ typedef uint64_t intrmask_t;
 
 const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
 
-intrmask_t toscaIntrStrToBit(const char* s);
+intrmask_t toscaStrToIntrMask(const char* s);
 
 int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* parameter);
 /* Returns 0 on success. */
