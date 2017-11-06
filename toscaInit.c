@@ -58,7 +58,7 @@ int toscaDmaLoopsStart(unsigned int n)
 
 void toscaInitHook(initHookState state)
 {
-    int n; 
+    unsigned int n; 
 
     if (state != initHookAfterInitDrvSup) return;
     

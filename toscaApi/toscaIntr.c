@@ -161,13 +161,13 @@ static unsigned int toscaStrToRangeMask(unsigned int min, unsigned int max, cons
         }
         if (range != -1)
         {
-            if (range > n)
+            if (range > (int)n)
             {
                 error("range %d-%ld backwards", range, n);
                 mask = 0;
                 break;
             }
-            while (range < n)
+            while (range < (int)n)
                 mask |= 1 << range++;
         }
         mask |= 1 << n;

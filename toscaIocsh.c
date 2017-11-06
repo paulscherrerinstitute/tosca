@@ -67,7 +67,7 @@ static const iocshFuncDef toscaMapDef =
 static void toscaMapFunc(const iocshArgBuf *args)
 {
     toscaMapAddr_t addr, res_addr = {0,0};
-    size_t size;
+    ssize_t size;
     volatile void* ptr;
 
     if (!args[0].sval)
@@ -83,7 +83,7 @@ static void toscaMapFunc(const iocshArgBuf *args)
         return;
     }
     size = toscaStrToSize(args[1].sval);
-    if (size == (size_t)-1)
+    if (size == -1)
     {
         fprintf(stderr, "Invalid size \"%s\"\n",
             args[1].sval);
@@ -148,7 +148,7 @@ static const iocshFuncDef toscaMapLookupAddrDef =
 
 static void toscaMapLookupAddrFunc(const iocshArgBuf *args)
 {
-    size_t addr = toscaStrToSize(args[0].sval);
+    ssize_t addr = toscaStrToSize(args[0].sval);
     toscaMapAddr_t vme_addr = toscaMapLookupAddr((void*)addr);
     if (!vme_addr.addrspace)
         printf("%p is not a TOSCA address\n", (void*)addr);
@@ -199,7 +199,7 @@ static const iocshFuncDef toscaMapFindDef =
 
 static void toscaMapFindFunc(const iocshArgBuf *args)
 {
-    size_t addr = toscaStrToSize(args[0].sval);
+    ssize_t addr = toscaStrToSize(args[0].sval);
     toscaMapInfo_t info = toscaMapFind((void*)addr);
     if (!info.addrspace)
         printf("%p is not a TOSCA address\n", (void*)addr);
@@ -584,7 +584,7 @@ static const iocshFuncDef toscaDmaTransferDef =
 static void toscaDmaTransferFunc(const iocshArgBuf *args)
 {
     int source = 0, dest = 0, swap = 0;
-    size_t source_addr, dest_addr, size;
+    ssize_t source_addr, dest_addr, size;
     const char *s;
     
     if (!args[0].sval || !args[1].sval) 
@@ -613,6 +613,11 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     if (dest == -1) dest = 0;
 
     size = toscaStrToSize(args[2].sval);
+    if (size == -1)
+    {
+        fprintf(stderr, "Invalid size \"%s\"\n", args[2].sval);
+        return;
+    }
 
     if (args[3].sval)
     {

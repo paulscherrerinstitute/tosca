@@ -213,7 +213,7 @@ const char* toscaAddrSpaceToStr(unsigned int addrspace)
     }
 }
 
-size_t toscaStrToSize(const char* str)
+ssize_t toscaStrToSize(const char* str)
 {
     char *q;
     if (!str) return 0;

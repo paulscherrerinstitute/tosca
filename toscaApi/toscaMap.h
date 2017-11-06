@@ -2,6 +2,7 @@
 #define toscaMap_h
 
 #include <stdio.h>
+#include <unistd.h>
 #include <inttypes.h>
 
 #include "memDisplay.h"
@@ -88,9 +89,9 @@ unsigned int toscaStrToAddrSpace(const char* str, const char** end);
 /* Returns 0 and sets errno on error */
 /* If end != NULL, passes first mismatch char, else mismatch is an error */
 
-size_t toscaStrToSize(const char* str);
+ssize_t toscaStrToSize(const char* str);
 /* Converts (hex, dec, or "1M2k"-like) string to size. */
-/* returns (size_t)-1 and sets errno on error */
+/* returns -1 and sets errno on error */
 
 toscaMapAddr_t toscaStrToAddr(const char* str, const char** end);
 /* Converts addrspace:address string to address structure. */
