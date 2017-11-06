@@ -101,6 +101,7 @@ static void memfillFunc(const iocshArgBuf *args)
     {
         case 0:
         case 1:
+        case -1:
             for (i = 0; i < size; i++)
             {
                 ((uint8_t*)address)[i] = pattern;
@@ -123,8 +124,24 @@ static void memfillFunc(const iocshArgBuf *args)
                 pattern += increment;
             }
             break;
+        case -2:
+            size >>= 1;
+            for (i = 0; i < size; i++)
+            {
+                ((uint16_t*)address)[i] = bswap_16(pattern);
+                pattern += increment;
+            }
+            break;
+        case -4:
+            size >>= 2;
+            for (i = 0; i < size; i++)
+            {
+                ((uint32_t*)address)[i] = bswap_32(pattern);
+                pattern += increment;
+            }
+            break;
         default:
-            fprintf(stderr, "Illegal width %d: must be 1, 2, or 4\n", width);
+            fprintf(stderr, "Illegal width %d: must be 1, 2, 4, -2, -4\n", width);
     }
 
     sigaction(SIGSEGV, &oldsa, NULL);
