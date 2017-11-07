@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <glob.h>
@@ -54,9 +54,10 @@ static int intrFd[TOSCA_NUM_INTR];
 static unsigned long long totalIntrCount, intrCount[TOSCA_NUM_INTR];
 static struct intr_handler* handlers[TOSCA_NUM_INTR];
 
-#define TOSCA_INTR_INDX_USER(i)   (i)                            
-#define TOSCA_INTR_INDX_USER1(i)  TOSCA_INTR_INDX_USER(i)
-#define TOSCA_INTR_INDX_USER2(i)  TOSCA_INTR_INDX_USER((i)+16)
+#define TOSCA_USER_INTR(n)        TOSCA_USER1_INTR(n)
+#define TOSCA_INTR_DEVICE(m)      (m>>24&&0xff)
+
+#define TOSCA_INTR_INDX_USER(i)   (i)
 #define TOSCA_INTR_INDX_VME(l,v)  (32+(((l)-1)*256)+(v))
 #define TOSCA_INTR_INDX_ERR(i)    (32+7*256+(i))
 #define TOSCA_INTR_INDX_SYSFAIL() TOSCA_INTR_INDX_ERR(0)
@@ -87,8 +88,8 @@ static struct intr_handler* handlers[TOSCA_NUM_INTR];
         while (++ivec <= ivec2);                                                        \
     }                                                                                   \
     /* handle USER */                                                                   \
-    if ((mask) & (TOSCA_USER1_INTR_ANY | TOSCA_USER2_INTR_ANY))                         \
-        FOR_BITS_IN_MASK(0, 31, IX(USER, i), TOSCA_USER1_INTR(i), (mask), action)       \
+    if ((mask) & TOSCA_USER_INTR_ANY)                                                   \
+        FOR_BITS_IN_MASK(0, 31, IX(USER, i), TOSCA_USER_INTR(i), (mask), action)        \
 }
 
 const char* toscaIntrBitToStr(intrmask_t intrmaskbit)
@@ -189,93 +190,130 @@ intrmask_t toscaStrToIntrMask(const char* str)
 {
     const char *s = str;
     intrmask_t mask = 0;
-    uint32_t v;
+    unsigned int device = 0;
 
     if (!s || !s[0]) return 0;
+    
+    if (strchr(s, ':')) {
+        const char* e;
+        device = strtoul(s, (char**)&e, 0);
+        if (e == s)
+        {
+            error("device number expected");
+        }
+        else if (device >= toscaNumDevices())
+        {
+            error("device=%u but only %u tosca devices found", device, toscaNumDevices());
+        }
+        else s = e+1;
+    }
     
     if (strncasecmp(s, "TOSCA_", 6) == 0) s+=6;
     if ((strncasecmp(s, "USR", 3) == 0 && (s+=3)) ||
         (strncasecmp(s, "USER", 4) == 0 && (s+=4)))
     {
-        if (*s == '2')
+        if (*s == '*')
         {
             s++;
-            if (*s == 0) return TOSCA_USER2_INTR_ANY;
+            if (*s == 0) return TOSCA_DEV_USER_INTR_ANY(device);
+        }
+        else if (*s == '2')
+        {
+            s++;
+            if (*s == 0) return TOSCA_DEV_USER2_INTR_ANY(device);
             if (*s == '-')
             {
                 mask = toscaStrToRangeMask(0, 15, s+1, &s);
-                if (mask && *s == 0) return mask << 48;
+                if (mask && *s == 0) return TOSCA_DEV_USER2_INTR_MASK(device, mask);
             }
         }
         else
         {
             if (*s == '1') s++;
-            if (*s == 0) return TOSCA_USER1_INTR_ANY;
+            if (*s == 0) return TOSCA_DEV_USER1_INTR_ANY(device);
             if (*s == '-')
             {
                 mask = toscaStrToRangeMask(0, 15, s+1, &s);
-                if (mask && *s == 0) return mask << 32;
+                if (mask && *s == 0) return TOSCA_DEV_USER1_INTR_MASK(device, mask);
             }
         }
     }
     else
     if ((strncasecmp(s, "VME", 3) == 0 && (s+=3)))
     {
-        if (*s == '-')
+        if (device != 0)
         {
-            if (strcasecmp(s+1, "SYSFAIL") == 0)
-                return TOSCA_VME_SYSFAIL;
-            if (strcasecmp(s+1, "ACFAIL") == 0)
-                return TOSCA_VME_ACFAIL;
-            if (strcasecmp(s+1, "ERROR") == 0)
-                return TOSCA_VME_ERROR;
-            if (strcasecmp(s+1, "FAIL") == 0)
-                return TOSCA_VME_FAIL_ANY;
-            
-            mask = toscaStrToRangeMask(1, 7, s+1, &s);
+            error("VME interrupts only possible on device 0");
         }
         else
         {
-            mask = TOSCA_VME_INTR_ANY;
-        }
-        if (*s == '.')
-        {
-            const char* e;
-            v = strtoul(s+1, (char**)&e, 0);
-            if (e == s+1)
+            if (*s == '-')
             {
-                error("vector number expected");
+                if (strcasecmp(s+1, "SYSFAIL") == 0)
+                    return TOSCA_VME_SYSFAIL;
+                if (strcasecmp(s+1, "ACFAIL") == 0)
+                    return TOSCA_VME_ACFAIL;
+                if (strcasecmp(s+1, "ERROR") == 0)
+                    return TOSCA_VME_ERROR;
+                if (strcasecmp(s+1, "FAIL") == 0)
+                    return TOSCA_VME_FAIL_ANY;
+
+                mask = toscaStrToRangeMask(1, 7, s+1, &s);
             }
             else
             {
-                s = e;
-                mask |= v << 16;
-                if (*s == '-')
+                mask = TOSCA_VME_INTR_ANY;
+            }
+            if (*s == '.')
+            {
+                const char* e;
+                unsigned long vec = strtoul(s+1, (char**)&e, 0);
+                if (e == s+1)
                 {
-                    v = strtoul(s+1, (char**)&e, 0);
-                    if (e == s+1)
+                    error("vector number expected");
+                }
+                else if (vec > 255)
+                {
+                    error("vector %lu out of range 0-255", vec);
+                }
+                else
+                {
+                    s = e;
+                    if (*s == '-')
                     {
-                        error("vector number expected");
-                    }
-                    else
-                    {
-                        if (v < (uint8_t)(mask >> 16))
+                        unsigned long vec2 = strtoul(s+1, (char**)&e, 0);
+                        if (e == s+1)
                         {
-                            error("range %d-%d backwards", (uint8_t)(mask >> 16), v);
+                            error("vector number expected");
+                        }
+                        else if (vec2 > 255)
+                        {
+                            error("vector %lu out of range 0-255", vec2);
                         }
                         else
                         {
-                            s = e;
-                            mask |= v << 24;
+                            if (vec < (uint8_t)(mask >> 16))
+                            {
+                                error("range %ld-%ld backwards", vec, vec2);
+                            }
+                            else
+                            {
+                                s = e;
+                                mask = TOSCA_VME_INTR_MASK_VECS(mask, vec, vec2);
+                            }
                         }
+                    }
+                    else
+                    {
+                        mask = TOSCA_VME_INTR_MASK_VEC(mask,vec);
                     }
                 }
             }
-        }
-        else
-        {
-            /* all vectors */
-            mask |= 255UL << 24;
+            else
+            {
+                /* all vectors */
+                mask |= 255UL << 24;
+            }
         }
     }
     else
@@ -295,6 +333,7 @@ int toscaIntrMonitorFile(int index, const char* filepattern, ...)
     va_list ap;
     glob_t globresults;
 
+    if (intrFd[index] > 0) return 0;
     va_start(ap, filepattern);
     vasprintf(&filename, filepattern, ap);
     va_end(ap);
@@ -348,15 +387,18 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
 
     LOCK; /* only need to lock installation, not calling of handlers */
 
+    /* We should handle device numbers. Skipped for now because there is always only 1 VME and 1 USER device */
+    /* Older tosca driver for IFC1210 has only 1 device, newer driver has device number in file names. */
+    /* Using * in the fine name patterns makes it easier to handle both cases assuming only 1 device of each type. */
     if (intrmask & TOSCA_USER_INTR_ANY)
     {
         for (i = 0; i < 32; i++)
         {
-            if (intrmask & TOSCA_USER1_INTR(i))
+            if (intrmask & TOSCA_USER_INTR(i))
             {
                 if (toscaIntrMonitorFile(IX(USER, i), "/dev/toscauserevent*%u.%u", i > 15 ? 2 : 1, i & 15) != 0)
                 {
-                    intrmask &= ~TOSCA_USER1_INTR(i);
+                    intrmask &= ~TOSCA_USER_INTR(i);
                     status = -1;
                 }
             }
@@ -445,7 +487,8 @@ int toscaIntrDisconnectHandler(intrmask_t intrmask, void (*function)(), void* pa
 int toscaIntrDisable(intrmask_t intrmask)
 {
     struct epoll_event ev;
-
+    
+    debug("intrmask=0x%016"PRIx64"", intrmask);
     ev.events = 0;
     ev.data.u32 = 0;
     #define DISABLE_INTR(i, bit)                                       \
@@ -467,6 +510,7 @@ int toscaIntrEnable(intrmask_t intrmask)
 {
     struct epoll_event ev;
 
+    debug("intrmask=0x%016"PRIx64"", intrmask);
     ev.events = EPOLLIN;
     #define ENABLE_INTR(i, bit)                                        \
     {                                                                  \
