@@ -68,11 +68,13 @@ static void memfillFunc(const iocshArgBuf *args)
     struct sigaction sa = {
         .sa_sigaction = memfillSigAction,
         .sa_flags = SA_SIGINFO | SA_NODEFER, /* Do not block signal */
-    }, oldsa;
-    sigaction(SIGSEGV, &sa, &oldsa);
+    }, oldsasegv, oldsabus;
+    sigaction(SIGSEGV, &sa, &oldsasegv);
+    sigaction(SIGBUS, &sa, &oldsabus);
     if (setjmp(memfillFail) != 0)
     {
-        sigaction(SIGSEGV, &oldsa, NULL);
+        sigaction(SIGSEGV, &oldsasegv, NULL);
+        sigaction(SIGBUS, &oldsabus, NULL);
         return;
     }
 
@@ -144,7 +146,8 @@ static void memfillFunc(const iocshArgBuf *args)
             fprintf(stderr, "Illegal width %d: must be 1, 2, 4, -2, -4\n", width);
     }
 
-    sigaction(SIGSEGV, &oldsa, NULL);
+    sigaction(SIGSEGV, &oldsasegv, NULL);
+    sigaction(SIGBUS, &oldsabus, NULL);
 }
 
 static const iocshFuncDef memcopyDef =
