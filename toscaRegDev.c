@@ -46,12 +46,14 @@ struct regDevice
     IOSCANPVT ioscanpvt[256];
 };
 
+#define VME_DMA_MODES (VME_BLT|VME_MBLT|VME_2eVME|VME_2eSST160|VME_2eSST267|VME_2eSST320)
+
 void toscaRegDevReport(regDevice *device, int level __attribute__((unused)))
 {
     printf("Tosca %s%s%s:0x%zx",
         device->baseptr ? toscaAddrSpaceToStr(device->addrspace) : "",
-        device->baseptr && device->dmaSpace & ~(TOSCA_USER|TOSCA_SMEM) ? "/" : "",
-        device->dmaSpace & ~(TOSCA_USER|TOSCA_SMEM) ? toscaDmaSpaceToStr(device->dmaSpace) : "",
+        device->baseptr && device->dmaSpace & VME_DMA_MODES ? "/" : "",
+        device->dmaSpace & VME_DMA_MODES || !device->baseptr ? toscaDmaSpaceToStr(device->dmaSpace) : "",
         device->baseaddr);
     if (device->swap)
         printf(", swap=%s",
