@@ -1,0 +1,2 @@
+runScript Map.test,D=0
+runScript Map.test,D=1

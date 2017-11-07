@@ -1,0 +1,14 @@
+epicsEnvSet D $(D=0)
+
+#ifc1211: 0:USER1 and 0:SHM2 don't exist
+md $(D):USER1 -4 0x80
+md $(D):TCSR -4 0x80
+md $(D):TIO -4 0x80
+
+#ifc1211 and 1410: first 0x80 bytes are immutable
+memfill $(D):SHM1 0xdeadbeef 128k 4
+md $(D):SHM1:0 4 0x100
+memfill $(D):SHM2 0xdeadbeef 128k 4
+md $(D):SHM2:0 4 0x100
+
+toscaMapShow

@@ -43,6 +43,9 @@ DBDS    += toscaDevLib.dbd
 SOURCES += toscaUtils.c
 DBDS    += toscaUtils.dbd
 
+# Test scripts (optional)
+SCRIPTS += $(wildcard *.test)
+
 # Backward compatibility to pev driver (optional)
 # requires toscaRegDev
 USR_CFLAGS += -I /opt/eldk-5.2/ifc/include/
