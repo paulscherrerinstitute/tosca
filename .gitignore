@@ -3,5 +3,7 @@ O.*
 *.o
 *.a
 *.so
+*.so.*
 toscaApi/*/
 toscaApi/tosca
+toscaApi/toscaShowIntr

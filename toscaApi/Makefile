@@ -66,9 +66,11 @@ clean:
 
 install: build
 	mkdir -p include bin lib
-	rm -rf includ/* bin/* lib/*
+	rm -rf include/* bin/* lib/*
 	cp $(PROGS) bin
 	cp $(LIBNAME) $(SHLIBNAME) lib
+ifeq ($(SHLIBNAME),$(subst -,!,$(SHLIBNAME)))
 	ln -s $(SHLIBNAME) lib/lib$(LIB).so
+endif
 	cp $(HEADERS) include
 	tar cfz - bin lib include | ssh -q root@gfa-eldk tar xfz - -C $(ROOTFS)/$(INSTALLDIR) 
