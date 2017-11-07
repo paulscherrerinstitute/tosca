@@ -371,7 +371,7 @@ size_t toscaIntrPrintInfo(toscaIntrHandlerInfo_t info, void* user)
     printf(" count=%llu (+%llu)", count, delta);
     if (level > 0)
     {
-        printf(" %s (%s)",
+        printf(" %s(%s)",
             fname=symbolName(info.function, (level - 1)| F_SYMBOL_NAME_DEMANGE_FULL),
             pname=symbolName(info.parameter, (level - 1)| F_SYMBOL_NAME_DEMANGE_FULL)),
             free(fname),
@@ -440,7 +440,7 @@ static void toscaIntrLoopStopFunc(const iocshArgBuf *args __attribute__((unused)
     toscaIntrLoopStop();
 }
 
-static const char maskhelp[] = "mask: USER[1|2][-(0-15)]|VME[-(1-7)].(0-255)|VME-(SYSFAIL|ACFAIL|ERROR|FAIL)\n";
+static const char maskhelp[] = "mask: USER[1|2][-(0-15)]|VME[-(1-7)](.0-255)|VME-(SYSFAIL|ACFAIL|ERROR|FAIL)\n";
 
 static const iocshFuncDef toscaStrToIntrMaskDef =
     { "toscaStrToIntrMask", 1, (const iocshArg *[]) {
@@ -482,7 +482,7 @@ static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
 {
     intrmask_t mask = toscaStrToIntrMask(args[0].sval);
     void (*function)() = symbolAddr(args[1].sval);
-    void* arg = args[2].sval;
+    void* arg = args[2].sval ? strdup(args[2].sval) : strdup(args[0].sval);
     
     if (!args[0].sval)
     {
@@ -503,9 +503,45 @@ static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
     if (toscaIntrConnectHandler(mask, function, arg) != 0) fprintf(stderr, "%m\n");
 }
 
+static const iocshFuncDef toscaIntrDisconnectHandlerDef =
+    { "toscaIntrDisconnectHandler", 2, (const iocshArg *[]) {
+    &(iocshArg) { "intmask", iocshArgString },
+    &(iocshArg) { "function", iocshArgString },
+}};
+
+static void toscaIntrDisconnectHandlerFunc(const iocshArgBuf *args)
+{
+    intrmask_t mask = toscaStrToIntrMask(args[0].sval);
+    void (*function)() = symbolAddr(args[1].sval);
+    int n;
+    
+    if (!args[0].sval)
+    {
+        iocshCmd("help toscaIntrDisconnectHandler");
+        printf(maskhelp);
+        return;
+    }
+    if (!mask)
+    {
+        fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].sval);
+        return;
+    }
+    if (!function)
+    {
+        fprintf(stderr, "Invalid function \"%s\"\n", args[1].sval);
+        return;
+    }
+    n = toscaIntrDisconnectHandler(mask, function, NULL);
+    printf("%d handlers disconnected\n", n);
+}
+
 void toscaDebugIntrHandler(void* param, unsigned int inum, unsigned int ivec)
 {
     printf("interrupt: param %s level %u vector %u\n", (char*)param, inum, ivec);
+}
+
+void toscaDummyIntrHandler(void* param, unsigned int inum, unsigned int ivec)
+{
 }
 
 static const iocshFuncDef toscaIntrEnableDef =
@@ -724,6 +760,7 @@ static void toscaIocshRegistrar(void)
     iocshRegister(&toscaIntrLoopStopDef, toscaIntrLoopStopFunc);
     iocshRegister(&toscaStrToIntrMaskDef, toscaStrToIntrMaskFunc);
     iocshRegister(&toscaIntrConnectHandlerDef, toscaIntrConnectHandlerFunc);
+    iocshRegister(&toscaIntrDisconnectHandlerDef, toscaIntrDisconnectHandlerFunc);
     iocshRegister(&toscaIntrEnableDef, toscaIntrEnableFunc);
     iocshRegister(&toscaIntrDisableDef, toscaIntrDisableFunc);
     iocshRegister(&toscaSendVMEIntrDef, toscaSendVMEIntrFunc);
