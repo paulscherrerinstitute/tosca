@@ -81,7 +81,7 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     if (card) sprintf(cardstr, "%u:", card);
     
     printf("Compatibility mode! pev[Asyn]Configure replaced by:\n"
-        "toscaRegDevConfigure %s, %s%s:0x%x, 0x%x %s\n",
+        "toscaRegDevConfigure %s \"%s%s:0x%x\" 0x%x %s\n",
         args[1].sval, cardstr, toscaAddrSpaceToStr(addrspace), args[3].ival, args[6].ival, flags);
     if (toscaRegDevConfigure(args[1].sval, addrspace, args[3].ival, args[6].ival, flags) != 0)
     {
@@ -150,7 +150,7 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
         addrspace |= VME_SWAP;
     
     printf("Compatibility mode! pevVmeSlaveMainConfig and pevVmeSlaveTargetConfig replaced by:\n"
-        "toscaMap SLAVE:0x%x, 0x%x, %s:0x%x%s\n",
+        "toscaMap SLAVE:0x%x 0x%x %s:0x%x%s\n",
         mainBase+winBase, winSize,
         toscaAddrSpaceToStr(addrspace & ~(VME_SLAVE|VME_SWAP)),
         targetOffset,  
@@ -188,7 +188,7 @@ static void pevI2cConfigureFunc(const iocshArgBuf *args)
     /* pev i2c adapters are the ones on localbus/pon */
     sprintf(sysfspattern, "/sys/devices/{,*/}*.localbus/*%05x.pon-i2c/i2c-*", pon_addr);
     printf("Compatibility mode! pev[Asyn]I2cConfigure replaced by:\n"
-        "i2cDevConfigure %s,%s, 0x%x\n", name, sysfspattern, i2c_addr);
+        "i2cDevConfigure %s \"%s\" 0x%x\n", name, sysfspattern, i2c_addr);
     i2cDevConfigure(name, sysfspattern, i2c_addr, NULL);
 }
 
