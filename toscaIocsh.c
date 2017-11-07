@@ -19,6 +19,7 @@
 #include "toscaInit.h"
 
 #include <epicsStdioRedirect.h>
+#include <epicsTime.h>
 #include <epicsExport.h>
 
 #define TOSCA_DEBUG_NAME toscaIocsh
@@ -386,11 +387,14 @@ void toscaIntrShow(int level)
     static unsigned long long prevIntrTotalCount;
     unsigned long long count, delta;
     int rep = 0;
+    epicsTimeStamp sched, now;
+    int wait;
 
     if (level < 0)
     {
         printf("\e[7mPress any key to stop periodic output \e[0m\n");
     }
+    epicsTimeGetCurrent(&sched);
     do
     {
         if (rep) printf("\n");
@@ -400,7 +404,11 @@ void toscaIntrShow(int level)
         printf("total number of interrupts: %llu (+%llu)\n", count, delta);
         toscaIntrForeachHandler(toscaIntrPrintInfo, &level);
         rep = 1;
-    } while (level < 0 && !waitForKeypress(-1000*level));
+        epicsTimeAddSeconds(&sched, -level);
+        epicsTimeGetCurrent(&now);
+        wait=1000*(epicsTimeDiffInSeconds(&sched, &now));
+        if (wait<0) wait=0;
+    } while (level < 0 && !waitForKeypress(wait));
 }
 
 static const iocshFuncDef toscaIntrShowDef =
@@ -440,7 +448,7 @@ static void toscaIntrLoopStopFunc(const iocshArgBuf *args __attribute__((unused)
     toscaIntrLoopStop();
 }
 
-static const char maskhelp[] = "mask: USER[1|2][-(0-15)]|VME[-(1-7)](.0-255)|VME-(SYSFAIL|ACFAIL|ERROR|FAIL)\n";
+static const char maskhelp[] = "mask: USER[1|2|*][-(0-15)]|VME[-(1-7)](.0-255)|VME-(SYSFAIL|ACFAIL|ERROR|FAIL)\n";
 
 static const iocshFuncDef toscaStrToIntrMaskDef =
     { "toscaStrToIntrMask", 1, (const iocshArg *[]) {
