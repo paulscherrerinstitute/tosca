@@ -151,7 +151,7 @@ int toscaOpen(unsigned int device, const char* resource)
     debug("device=%u resource=%s", device, resource);
     if (device >= numDevices)
     {
-        debug("device=%u but only %u tosca devices found", device, numDevices);
+        error("device=%u but only %u tosca devices found", device, numDevices);
         errno = ENODEV;
         return -1;
     }
