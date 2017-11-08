@@ -237,6 +237,89 @@ static void toscaGetVmeErrFunc(const iocshArgBuf *args)
         );
 }
 
+static const iocshFuncDef toscaReadDef =
+    { "toscaRead", 1, (const iocshArg *[]) {
+    &(iocshArg) { "[device:]addrspace:address", iocshArgString },
+}};
+
+static void toscaReadFunc(const iocshArgBuf *args)
+{
+    toscaMapAddr_t addr = toscaStrToAddr(args[0].sval, NULL);
+    if (!addr.addrspace)
+    {
+        fprintf(stderr, "Invalid Tosca address \"%s\"\n",
+            args[0].sval);
+        return;
+    }
+    epicsUInt32 val;
+    val = toscaRead(addr.addrspace, addr.address);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
+    else printf("0x%08x\n", val);
+}
+
+static const iocshFuncDef toscaWriteDef =
+    { "toscaWrite", 2, (const iocshArg *[]) {
+    &(iocshArg) { "[device:]addrspace:address", iocshArgString },
+    &(iocshArg) { "value", iocshArgInt },
+}};
+
+static void toscaWriteFunc(const iocshArgBuf *args)
+{
+    toscaMapAddr_t addr = toscaStrToAddr(args[0].sval, NULL);
+    if (!addr.addrspace)
+    {
+        fprintf(stderr, "Invalid Tosca address \"%s\"\n",
+            args[0].sval);
+        return;
+    }
+    epicsUInt32 val = args[1].ival;
+    val = toscaWrite(addr.addrspace, addr.address, val);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
+    else printf("0x%08x\n", val);
+}
+
+static const iocshFuncDef toscaSetDef =
+    { "toscaSet", 2, (const iocshArg *[]) {
+    &(iocshArg) { "[device:]addrspace:address", iocshArgString },
+    &(iocshArg) { "setbits", iocshArgInt },
+}};
+
+static void toscaSetFunc(const iocshArgBuf *args)
+{
+    toscaMapAddr_t addr = toscaStrToAddr(args[0].sval, NULL);
+    if (!addr.addrspace)
+    {
+        fprintf(stderr, "Invalid Tosca address \"%s\"\n",
+            args[0].sval);
+        return;
+    }
+    epicsUInt32 val = args[1].ival;
+    val = toscaSet(addr.addrspace, addr.address, val);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
+    else printf("0x%08x\n", val);
+}
+
+static const iocshFuncDef toscaClearDef =
+    { "toscaClear", 2, (const iocshArg *[]) {
+    &(iocshArg) { "[device:]addrspace:address", iocshArgString },
+    &(iocshArg) { "clearbits", iocshArgInt },
+}};
+
+static void toscaClearFunc(const iocshArgBuf *args)
+{
+    toscaMapAddr_t addr = toscaStrToAddr(args[0].sval, NULL);
+    if (!addr.addrspace)
+    {
+        fprintf(stderr, "Invalid Tosca address \"%s\"\n",
+            args[0].sval);
+        return;
+    }
+    epicsUInt32 val = args[1].ival;
+    val = toscaClear(addr.addrspace, addr.address, val);
+    if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
+    else printf("0x%08x\n", val);
+}
+
 static const iocshFuncDef toscaCsrReadDef =
     { "toscaCsrRead", 1, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
@@ -245,7 +328,6 @@ static const iocshFuncDef toscaCsrReadDef =
 static void toscaCsrReadFunc(const iocshArgBuf *args)
 {
     epicsUInt32 val;
-    errno = 0;
     val = toscaCsrRead(args[0].ival);
     if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
@@ -260,7 +342,6 @@ static const iocshFuncDef toscaCsrWriteDef =
 static void toscaCsrWriteFunc(const iocshArgBuf *args)
 {
     epicsUInt32 val;
-    errno = 0;
     val = toscaCsrWrite(args[0].ival, args[1].ival);
     if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
@@ -275,7 +356,6 @@ static const iocshFuncDef toscaCsrSetDef =
 static void toscaCsrSetFunc(const iocshArgBuf *args)
 {
     epicsUInt32 val;
-    errno = 0;
     val = toscaCsrSet(args[0].ival, args[1].ival);
     if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
@@ -290,7 +370,6 @@ static const iocshFuncDef toscaCsrClearDef =
 static void toscaCsrClearFunc(const iocshArgBuf *args)
 {
     epicsUInt32 val;
-    errno = 0;
     val = toscaCsrClear(args[0].ival, args[1].ival);
     if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
@@ -304,7 +383,6 @@ static const iocshFuncDef toscaIoReadDef =
 static void toscaIoReadFunc(const iocshArgBuf *args)
 {
     epicsUInt32 val;
-    errno = 0;
     val = toscaIoRead(args[0].ival);
     if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
@@ -319,7 +397,6 @@ static const iocshFuncDef toscaIoWriteDef =
 static void toscaIoWriteFunc(const iocshArgBuf *args)
 {
     epicsUInt32 val;
-    errno = 0;
     val = toscaIoWrite(args[0].ival, args[1].ival);
     if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
@@ -334,7 +411,6 @@ static const iocshFuncDef toscaIoSetDef =
 static void toscaIoSetFunc(const iocshArgBuf *args)
 {
     epicsUInt32 val;
-    errno = 0;
     val = toscaIoSet(args[0].ival, args[1].ival);
     if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
@@ -349,7 +425,6 @@ static const iocshFuncDef toscaIoClearDef =
 static void toscaIoClearFunc(const iocshArgBuf *args)
 {
     epicsUInt32 val;
-    errno = 0;
     val = toscaIoClear(args[0].ival, args[1].ival);
     if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
@@ -754,6 +829,10 @@ static void toscaIocshRegistrar(void)
     iocshRegister(&toscaMapShowDef, toscaMapShowFunc);
     iocshRegister(&toscaMapFindDef, toscaMapFindFunc);
     iocshRegister(&toscaGetVmeErrDef, toscaGetVmeErrFunc);
+    iocshRegister(&toscaReadDef, toscaReadFunc);
+    iocshRegister(&toscaWriteDef, toscaWriteFunc);
+    iocshRegister(&toscaSetDef, toscaSetFunc);
+    iocshRegister(&toscaClearDef, toscaClearFunc);
     iocshRegister(&toscaCsrReadDef, toscaCsrReadFunc);
     iocshRegister(&toscaCsrWriteDef, toscaCsrWriteFunc);
     iocshRegister(&toscaCsrSetDef, toscaCsrSetFunc);

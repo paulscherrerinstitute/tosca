@@ -3,24 +3,24 @@ epicsEnvSet D $(D=0)
 # Interrupts are not delivered before iocInit
 iocInit
 
-memfill $(D):TCSR:0x1184 0 4 -4
+toscaWrite $(D):TCSR:0x1184 0
 toscaIntrConnectHandler USER1 toscaDummyIntrHandler
 
 # Set  2 kHz: (125000000/2000) = 62500
 #    ( 3 kHz: (125000000/3000) = 41667 )
 #    ( 4 kHz: (125000000/4000) = 31250 )
 #    ( 5 kHz: (125000000/5000) = 25000 )
-memfill $(D):USER1:0x30c 62500 4 -4
+toscaWrite $(D):USER1:0x30c 62500
 # Set pulse width
-memfill $(D):USER1:0x310 100 4 -4
+toscaWrite $(D):USER1:0x310 100
 # Enable interrupts
-memfill $(D):TCSR:0x1184 0x00ff00ff 4 -4
+toscaWrite $(D):TCSR:0x1184 0x00ff00ff
 
 # This should show approx (+2000) on each of USER1-0 ... USER1-7 
 toscaIntrShow -1
 
 #Switch off interrupts
-memfill $(D):TCSR:0x1184 0 4 -4
+toscaWrite $(D):TCSR:0x1184 0
 
 # All of USER1-0 ... USER1-7 should have the same (+/-1) total count
 toscaIntrShow

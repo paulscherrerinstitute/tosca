@@ -17,17 +17,18 @@ extern FILE* toscaRegDebugFile;
 /* TOSCA CSR ACCESS */
 
 /* Access to the configuration space registers (CSR) of TOSCA.
-   Values are automatically converted to and from host byte order.
+   All values use 32 bit access and are automaticaly converted
+   from or to little endian if host byte order differs.
    Address should be a multiple of 4.
-   On success these functions return the new value, which may be different
+   On success these functions return a read back value, which may be different
    from the value set if some or all bits of the register are read-only.
    On error they set errno and return (unsigned int)-1.
    An invalid address sets errno to EINVAL.
    Other errors may come from open() and mmap() on first use.
    Be aware that (unsigned int)-1 can be a valid result.
-   First clear errno and later check it if (unsigned int)-1 was returned.
-   Setting inappropriate registers may crash the system! Be careful!
-   If using more than one Tosca, use address|(tosca<<16).
+   The functions set errno to 0 on success.
+   Caution: Setting inappropriate registers or using invalid addresses may crash the system!
+   If using more than one Tosca device, use (first argument)|(device<<16).
 */
 unsigned int toscaCsrRead(unsigned int address);
 unsigned int toscaCsrWrite(unsigned int address, unsigned int value);
@@ -40,7 +41,14 @@ unsigned int toscaIoWrite(unsigned int address, unsigned int value);
 unsigned int toscaIoSet(unsigned int address, unsigned int value);
 unsigned int toscaIoClear(unsigned int address, unsigned int value);
 
+/* And the same generic for any mapable address space. */
+unsigned int toscaRead(unsigned int addrspace, unsigned int address);
+unsigned int toscaWrite(unsigned int addrspace, unsigned int address, unsigned int value);
+unsigned int toscaSet(unsigned int addrspace, unsigned int address, unsigned int value);
+unsigned int toscaClear(unsigned int addrspace, unsigned int address, unsigned int value);
+
 /* Access to Virtex-6 System Monitor via toscaCsr */
+/* Address range is 0x00 to 0x7c but only addresses from 0x40 on are writable. */
 unsigned int toscaSmonRead(unsigned int address);
 unsigned int toscaSmonWrite(unsigned int address, unsigned int value);
 unsigned int toscaSmonWriteMasked(unsigned int address, unsigned int mask, unsigned int value);
