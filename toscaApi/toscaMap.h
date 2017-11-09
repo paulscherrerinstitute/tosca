@@ -42,6 +42,7 @@ unsigned int toscaNumDevices();
 unsigned int toscaListDevices();
 unsigned int toscaDeviceType(unsigned int device);
 
+#define toscaMapMaster(addrspace, address, size) toscaMap(addrspace, address, size, NULL)
 volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, uint64_t res_address);
 /* Maps a Tosca resource to user space (or to VME SLAVE). */
 /* Re-uses existing maps if possible. */
