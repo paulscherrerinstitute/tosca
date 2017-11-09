@@ -32,28 +32,28 @@ extern FILE* toscaRegDebugFile;
 */
 unsigned int toscaCsrRead(unsigned int address);
 unsigned int toscaCsrWrite(unsigned int address, unsigned int value);
-unsigned int toscaCsrSet(unsigned int address, unsigned int value);
-unsigned int toscaCsrClear(unsigned int address, unsigned int value);
+unsigned int toscaCsrSet(unsigned int address, unsigned int bitsToSet);
+unsigned int toscaCsrClear(unsigned int address, unsigned int bitsToClear);
 
 /* The same for TOSCA IO Registers */
 unsigned int toscaIoRead(unsigned int address);
 unsigned int toscaIoWrite(unsigned int address, unsigned int value);
-unsigned int toscaIoSet(unsigned int address, unsigned int value);
-unsigned int toscaIoClear(unsigned int address, unsigned int value);
+unsigned int toscaIoSet(unsigned int address, unsigned int bitsToSet);
+unsigned int toscaIoClear(unsigned int address, unsigned int bitsToClear);
 
 /* And the same generic for any mapable address space. */
 unsigned int toscaRead(unsigned int addrspace, unsigned int address);
 unsigned int toscaWrite(unsigned int addrspace, unsigned int address, unsigned int value);
-unsigned int toscaSet(unsigned int addrspace, unsigned int address, unsigned int value);
-unsigned int toscaClear(unsigned int addrspace, unsigned int address, unsigned int value);
+unsigned int toscaSet(unsigned int addrspace, unsigned int address, unsigned int bitsToSet);
+unsigned int toscaClear(unsigned int addrspace, unsigned int address, unsigned int bitsToClear);
 
 /* Access to Virtex-6 System Monitor via toscaCsr */
 /* Address range is 0x00 to 0x7c but only addresses from 0x40 on are writable. */
 unsigned int toscaSmonRead(unsigned int address);
 unsigned int toscaSmonWrite(unsigned int address, unsigned int value);
 unsigned int toscaSmonWriteMasked(unsigned int address, unsigned int mask, unsigned int value);
-unsigned int toscaSmonSet(unsigned int address, unsigned int value);
-unsigned int toscaSmonClear(unsigned int address, unsigned int value);
+unsigned int toscaSmonSet(unsigned int address, unsigned int bitsToSet);
+unsigned int toscaSmonClear(unsigned int address, unsigned int bitsToClear);
 
 /* If you prefer to access Tosca CSR or IO directly using
    toscaMap instead of using functions above,
@@ -66,8 +66,8 @@ const char* toscaPonAddrToRegname(unsigned int address);
 unsigned int toscaPonRead(unsigned int address);
 unsigned int toscaPonWrite(unsigned int address, unsigned int value);
 unsigned int toscaPonWriteMasked(unsigned int address, unsigned int mask, unsigned int value);
-unsigned int toscaPonSet(unsigned int address, unsigned int value);
-unsigned int toscaPonClear(unsigned int address, unsigned int value);
+unsigned int toscaPonSet(unsigned int address, unsigned int bitsToSet);
+unsigned int toscaPonClear(unsigned int address, unsigned int bitsToClear);
 
 /* Read (and clear) VME error status. Error is latched and not overwritten until read. */
 typedef struct {
