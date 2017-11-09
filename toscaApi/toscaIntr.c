@@ -160,11 +160,12 @@ static unsigned int toscaStrToRangeMask(unsigned int min, unsigned int max, cons
             mask = 0;
             break;
         }
+        n -= min;
         if (range != -1)
         {
             if (range > (int)n)
             {
-                error("range %d-%ld backwards", range, n);
+                error("range %d-%ld backwards", range+min, n+min);
                 mask = 0;
                 break;
             }
@@ -557,7 +558,7 @@ unsigned long long toscaIntrCount()
 static int toscaIntrLoopRunning = 0;
 static int intrLoopStopEvent[2];
 
-void toscaIntrLoop(void* dummy __attribute__((unused)))
+void* toscaIntrLoop()
 {
     unsigned int i, n, index, inum, ivec;
     
@@ -568,7 +569,7 @@ void toscaIntrLoop(void* dummy __attribute__((unused)))
     if (toscaIntrLoopRunning)
     {
         debug("interrupt loop already running");
-        return;
+        return NULL;
     }
     toscaIntrLoopRunning = 1;
 
@@ -625,11 +626,15 @@ void toscaIntrLoop(void* dummy __attribute__((unused)))
         }
     }
     debug("interrupt handling ended");
+    return NULL;
 }
 
 int toscaIntrLoopIsRunning(void)
 {
     return (toscaIntrLoopRunning);
+    
+    pthread_t tid;
+    pthread_create(&tid, NULL, toscaIntrLoop, NULL);
 }
 
 void toscaIntrInit () __attribute__((constructor));

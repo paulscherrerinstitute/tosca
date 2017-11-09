@@ -79,7 +79,7 @@ int toscaIntrDisable(intrmask_t intrmask);
 int toscaIntrEnable(intrmask_t intrmask);
 /* Temporarily suspends interrupt handling but keeps interrupts in queue. */
 
-void toscaIntrLoop(void*);
+void* toscaIntrLoop();
 /* Handles incoming interrupt and calls installed handlers. */
 /* To be started in a worker thread. */
 /* The ignored void* argument is for compatibility with pthread_create. */

@@ -24,7 +24,7 @@ int toscaIntrLoopStart(void)
     debug("starting interrupt handler thread");
     tid = epicsThreadCreate("irq-TOSCA", toscaIntrPrio,
         epicsThreadGetStackSize(epicsThreadStackMedium),
-        toscaIntrLoop, NULL);
+        (EPICSTHREADFUNC)toscaIntrLoop, NULL);
     if (!tid) {
         debugErrno("starting irq-TOSCA thread"); 
         return -1;
@@ -46,7 +46,7 @@ int toscaDmaLoopsStart(unsigned int n)
         sprintf(name, "dma%d-TOSCA", i);
         tid = epicsThreadCreate(name, toscaDmaPrio,
             epicsThreadGetStackSize(epicsThreadStackMedium),
-            toscaDmaLoop, NULL);
+            (EPICSTHREADFUNC)toscaDmaLoop, NULL);
         if (!tid) {
             debugErrno("starting %s thread", name);
             status = -1;

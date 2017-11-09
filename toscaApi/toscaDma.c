@@ -317,7 +317,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
 static int loopsRunning = 0;
 static int stopLoops = 0;
 
-void toscaDmaLoop(void* dummy __attribute__((unused)))
+void* toscaDmaLoop()
 {
     struct dmaRequest* r;
     int status;
@@ -356,6 +356,7 @@ void toscaDmaLoop(void* dummy __attribute__((unused)))
     debug("DMA loop %d stopped", loopnumber);
     loopsRunning--;
     UNLOCK;
+    return NULL;
 }
 
 int toscaDmaLoopsRunning(void)
@@ -373,6 +374,9 @@ void toscaDmaLoopsStop()
         usleep(10);
     }
     debug("DMA loops stopped");
+    
+    pthread_t tid;
+    pthread_create(&tid, NULL, toscaDmaLoop, NULL);
 }
 
 int toscaDmaExecute(struct dmaRequest* r)
