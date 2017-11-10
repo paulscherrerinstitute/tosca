@@ -247,14 +247,14 @@ long toscaDevLibWriteProbe(
 long toscaDevLibDisableInterruptLevelVME(unsigned int level)
 {
     if (level < 1 || level > 7) return S_dev_intEnFail;
-    toscaIntrDisable(TOSCA_VME_INTR_VECS(level, 0, 255));
+    toscaIntrDisable(TOSCA_VME_INTR(level));
     return S_dev_success;
 }
 
 long toscaDevLibEnableInterruptLevelVME(unsigned int level)
 {
     if (level < 1 || level > 7) return S_dev_intDissFail;
-    toscaIntrEnable(TOSCA_VME_INTR_VECS(level, 0, 255));
+    toscaIntrEnable(TOSCA_VME_INTR(level));
     return S_dev_success;
 }
 

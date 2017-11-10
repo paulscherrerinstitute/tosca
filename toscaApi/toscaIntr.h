@@ -21,14 +21,10 @@ extern FILE* toscaIntrDebugFile;
 typedef uint64_t intrmask_t;
 
 #define TOSCA_VME_INTR(l)                 (0x1ULL<<((l)-1))
-#define TOSCA_VME_INTR_MASK_VECS(m,v1,v2) ((uint16_t)(m) | (uint32_t)(v1)<<16 | (uint32_t)(v2)<<24)
-#define TOSCA_VME_INTR_MASK_VEC(m,v)      TOSCA_VME_INTR_MASK_VECS(m,v,0)
-#define TOSCA_VME_INTR_VECS(l,v1,v2)      TOSCA_VME_INTR_MASK_VECS(0x1<<((l)-1),v1,v2)   /* level = 1...7, v1,v2 = 0...255 */
-#define TOSCA_VME_INTR_VEC(l,v)           TOSCA_VME_INTR_VECS(l,(v),0)
-#define TOSCA_VME_INTR_VEC(l,v)           TOSCA_VME_INTR_VECS(l,(v),0)
-#define TOSCA_VME_INTR_ANY                0x7fULL 
-#define TOSCA_VME_INTR_ANY_VECS(v1,v2)    (TOSCA_VME_INTR_ANY | (uint32_t)(v1)<<16 | (uint32_t)(v2)<<24)
-#define TOSCA_VME_INTR_ANY_VEC(v)         TOSCA_VME_INTR_ANY_VECS((v),0)
+#define TOSCA_VME_INTR_MASK_VEC(m,v)      ((uint16_t)(m) | (uint32_t)(v)<<16)
+#define TOSCA_VME_INTR_VEC(l,v)           TOSCA_VME_INTR_MASK_VEC(0x1<<((l)-1),v)   /* level = 1...7, v1,v2 = 0...255 */
+#define TOSCA_VME_INTR_ANY                0x7fULL
+#define TOSCA_VME_INTR_ANY_VEC(v)         (TOSCA_VME_INTR_ANY | (uint32_t)(v)<<16)
 #define TOSCA_VME_SYSFAIL                 0x100ULL
 #define TOSCA_VME_ACFAIL                  0x200ULL
 #define TOSCA_VME_ERROR                   0x400ULL
@@ -54,7 +50,9 @@ typedef uint64_t intrmask_t;
 #define TOSCA_DEV_USER2_INTR_ANY(d)       (0xffff000000000000ULL | (uint32_t)(d)<<24)
 #define TOSCA_DEV_USER_INTR_ANY(d)        (TOSCA_USER1_INTR_ANY|TOSCA_USER2_INTR_ANY | (uint32_t)(d)<<24)
 
-#define TOSCA_INTR_ANY                    (TOSCA_USER1_INTR_ANY|TOSCA_USER2_INTR_ANY|TOSCA_VME_INTR_ANY_VECS(0,255))
+#define TOSCA_DEV_VME_INTR_MASK_VEC(d,m,v) ((uint16_t)(m) | (uint32_t)(v)<<16 | (uint32_t)(d)<<24)
+
+#define TOSCA_INTR_ANY                    (TOSCA_USER1_INTR_ANY|TOSCA_USER2_INTR_ANY|TOSCA_VME_INTR_ANY)
 
 const char* toscaIntrBitToStr(intrmask_t intrmaskbit);
 
@@ -94,6 +92,7 @@ void toscaIntrLoopStop();
 
 typedef struct {
     intrmask_t intrmaskbit;    /* one of the mask bits */
+    unsigned int device;       /* tosca device number */
     unsigned int index;        /* 0...TOSCA_NUM_INTR-1, unique for each intr bit (and VME vector) */
     unsigned int vec;          /* 0...255 for intr bits in TOSCA_VME_INTR_ANY, else device number */
     void (*function)();
@@ -101,7 +100,7 @@ typedef struct {
     unsigned long long count;  /* number of times the interrupt has been received */
 } toscaIntrHandlerInfo_t;
 
-size_t toscaIntrForeachHandler(size_t (*callback)(toscaIntrHandlerInfo_t, void* user), void* user);
+size_t toscaIntrForEachHandler(size_t (*callback)(const toscaIntrHandlerInfo_t* info, void* user), void* user);
 /* Calls callback for each installed handler until a callback returns something else than 0. */
 /* Returns what the last callback had returned. */
 /* (The return type is large enough to hold a pointer if necessary.) */

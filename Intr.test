@@ -4,7 +4,7 @@ epicsEnvSet D $(D=0)
 iocInit
 
 toscaWrite $(D):TCSR:0x1184 0
-toscaIntrConnectHandler USER1 toscaDummyIntrHandler
+toscaIntrConnectHandler $(D):USER1 toscaDummyIntrHandler
 
 # Set  2 kHz: (125000000/2000) = 62500
 #    ( 3 kHz: (125000000/3000) = 41667 )

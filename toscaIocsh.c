@@ -430,26 +430,30 @@ static void toscaIoClearFunc(const iocshArgBuf *args)
     else printf("0x%08x\n", val);
 }
 
-size_t toscaIntrPrintInfo(toscaIntrHandlerInfo_t info, void* user)
+size_t toscaIntrPrintInfo(const toscaIntrHandlerInfo_t* info, void* user)
 {
     static unsigned long long prevIntrCount[TOSCA_NUM_INTR];
     unsigned long long count, delta;
     char* fname, *pname;
     int level = *(int*) user;
+    int n=12;
 
-    debug("index=%d", info.index);
-    count = info.count;
-    delta = count - prevIntrCount[info.index];
+    debug("index=%d", info->index);
+    count = info->count;
+    delta = count - prevIntrCount[info->index];
     if (delta == 0 && level < 0) return 0;
-    prevIntrCount[info.index] = count;
-    printf(" %s", toscaIntrBitToStr(info.intrmaskbit));
-    if (info.intrmaskbit & TOSCA_VME_INTR_ANY) printf(".%-3d ", info.vec);
-    printf(" count=%llu (+%llu)", count, delta);
+    prevIntrCount[info->index] = count;
+    if (info->device != 0)
+        n -= printf(" %d:%s", info->device, toscaIntrBitToStr(info->intrmaskbit));
+    else
+        n -= printf(" %s", toscaIntrBitToStr(info->intrmaskbit));
+    if (info->intrmaskbit & TOSCA_VME_INTR_ANY) n -= printf(".%-3d", info->vec);
+    printf("%*ccount=%llu (+%llu)", n, ' ', count, delta);
     if (level > 0)
     {
         printf(" %s(%s)",
-            fname=symbolName(info.function, (level - 1)| F_SYMBOL_NAME_DEMANGE_FULL),
-            pname=symbolName(info.parameter, (level - 1)| F_SYMBOL_NAME_DEMANGE_FULL)),
+            fname=symbolName(info->function, (level - 1)| F_SYMBOL_NAME_DEMANGE_FULL),
+            pname=symbolName(info->parameter, (level - 1)| F_SYMBOL_NAME_DEMANGE_FULL)),
             free(fname),
             free(pname);
     }
@@ -477,7 +481,7 @@ void toscaIntrShow(int level)
         delta = count - prevIntrTotalCount;
         prevIntrTotalCount = count;
         printf("total number of interrupts: %llu (+%llu)\n", count, delta);
-        toscaIntrForeachHandler(toscaIntrPrintInfo, &level);
+        toscaIntrForEachHandler(toscaIntrPrintInfo, &level);
         rep = 1;
         epicsTimeAddSeconds(&sched, -level);
         epicsTimeGetCurrent(&now);
