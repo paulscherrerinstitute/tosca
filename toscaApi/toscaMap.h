@@ -72,7 +72,7 @@ typedef struct {
     unsigned int addrspace;
 } toscaMapAddr_t;
 
-toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void *usr), void *usr);
+toscaMapInfo_t toscaMapForEach(int(*func)(toscaMapInfo_t info, void *usr), void *usr);
 /* Iterates over all maps (while func returns 0). */
 /* Returns info of map for which func returned not 0. */
 

@@ -313,12 +313,12 @@ the following values:
 #### Map lookup functions
 
 ```C
-toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void *usr), void *usr);
+toscaMapInfo_t toscaMapForEach(int(*func)(toscaMapInfo_t info, void *usr), void *usr);
 toscaMapInfo_t toscaMapFind(const volatile void* ptr);
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr);
 ```
 
-The _toscaMapForeach()_ function calls a user specified callback function
+The _toscaMapForEach()_ function calls a user specified callback function
 for each installed map until the callback returns a value other than 0.
 The result describes the map for which the callback returned the non 0
 value.
@@ -334,7 +334,7 @@ volatile void* baseptr;
 ```
 
 The _toscaMapFind()_ function returns the description of the map in which the
-passed `ptr` lies. (It uses _toscaMapForeach()_.)
+passed `ptr` lies. (It uses _toscaMapForEach()_.)
 The _toscaMapLookupAddr()_ function translates the passed `ptr` to the
 following structure describing to which Tosca resource and address the
 pointer refers. (It uses _toscaMapFind()_.)
@@ -1036,7 +1036,7 @@ the previous settings.
 
 All memory maps installed by the running IOC can be listed with
 `toscaMapShow`.
-It uses _[toscaMapForeach()](#map-lookup-functions)_ with a function that
+It uses _[toscaMapForEach()](#map-lookup-functions)_ with a function that
 prints the map description.
 
 ```

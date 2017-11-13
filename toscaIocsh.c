@@ -189,7 +189,7 @@ static const iocshFuncDef toscaMapShowDef =
 static void toscaMapShowFunc(const iocshArgBuf *args __attribute__((unused)))
 {
     printf("\e[4maddrspace:baseaddr         size         pointer%*c\e[0m\n", (int)sizeof(void*)-3, ' ');
-    toscaMapForeach(toscaMapPrintInfo, NULL);
+    toscaMapForEach(toscaMapPrintInfo, NULL);
 }
 
 static const iocshFuncDef toscaMapFindDef =

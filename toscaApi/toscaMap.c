@@ -751,7 +751,7 @@ fail:
     return NULL;
 }
 
-toscaMapInfo_t toscaMapForeach(int(*func)(toscaMapInfo_t info, void* usr), void* usr)
+toscaMapInfo_t toscaMapForEach(int(*func)(toscaMapInfo_t info, void* usr), void* usr)
 {
     struct map *map;
     unsigned int device;
@@ -774,7 +774,7 @@ int toscaMapPtrCompare(toscaMapInfo_t info, void* ptr)
 
 toscaMapInfo_t toscaMapFind(const volatile void* ptr)
 {
-    return toscaMapForeach(toscaMapPtrCompare, (void*)ptr);
+    return toscaMapForEach(toscaMapPtrCompare, (void*)ptr);
 }
 
 toscaMapAddr_t toscaMapLookupAddr(const volatile void* ptr)
