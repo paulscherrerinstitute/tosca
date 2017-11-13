@@ -8,7 +8,6 @@
 #include <iocsh.h>
 
 #include "memDisplay.h"
-#include "i2cDev.h"
 #include "symbolname.h"
 #include "keypress.h"
 
