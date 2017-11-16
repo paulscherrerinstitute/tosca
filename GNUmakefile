@@ -44,7 +44,7 @@ SOURCES += toscaUtils.c
 DBDS    += toscaUtils.dbd
 
 # Test scripts (optional)
-SCRIPTS += $(wildcard *.test)
+SCRIPTS += $(wildcard tests/*)
 
 # Backward compatibility to pev driver (optional)
 # requires toscaRegDev
