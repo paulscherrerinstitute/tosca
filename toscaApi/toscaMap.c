@@ -411,6 +411,7 @@ volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, u
     }
 
     /* Quick access to TCSR, CIO and SRAM (we have max one full range map of each) */
+/* Problem with multiple tosca devices
     if (((addrspace == TOSCA_CSR) && (map = toscaDevices[device].csr) != NULL) ||
         ((addrspace == TOSCA_IO) && (map = toscaDevices[device].io) != NULL) ||
         ((addrspace == TOSCA_SRAM) && (map = toscaDevices[device].sram) != NULL))
@@ -424,7 +425,7 @@ volatile void* toscaMap(unsigned int addrspace, uint64_t address, size_t size, u
         }
         return map->info.baseptr + address;
     }
-
+*/
     /* Lookup can be lock free because we only ever append to list. */
     pmap = &toscaDevices[device].maps;
 check_existing_maps:
@@ -726,9 +727,11 @@ check_existing_maps:
         return NULL;
     }
         
+/*
     if (addrspace == TOSCA_CSR) toscaDevices[device].csr = map;
     else if (addrspace == TOSCA_IO) toscaDevices[device].io = map;
     else if (addrspace == TOSCA_SRAM) toscaDevices[device].sram = map;
+*/
     
     if (offset + size > mapsize)
     {
