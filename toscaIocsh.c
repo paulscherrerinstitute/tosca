@@ -280,7 +280,7 @@ static void toscaWriteFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaSetDef =
     { "toscaSet", 2, (const iocshArg *[]) {
     &(iocshArg) { "[device:]addrspace:address", iocshArgString },
-    &(iocshArg) { "setbits", iocshArgInt },
+    &(iocshArg) { "bitsToSet", iocshArgInt },
 }};
 
 static void toscaSetFunc(const iocshArgBuf *args)
@@ -301,7 +301,7 @@ static void toscaSetFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaClearDef =
     { "toscaClear", 2, (const iocshArg *[]) {
     &(iocshArg) { "[device:]addrspace:address", iocshArgString },
-    &(iocshArg) { "clearbits", iocshArgInt },
+    &(iocshArg) { "bitsToClear", iocshArgInt },
 }};
 
 static void toscaClearFunc(const iocshArgBuf *args)
@@ -349,7 +349,7 @@ static void toscaCsrWriteFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaCsrSetDef =
     { "toscaCsrSet", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "setbits", iocshArgInt },
+    &(iocshArg) { "bitsToSet", iocshArgInt },
 }};
 
 static void toscaCsrSetFunc(const iocshArgBuf *args)
@@ -363,7 +363,7 @@ static void toscaCsrSetFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaCsrClearDef =
     { "toscaCsrClear", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "clearbits", iocshArgInt },
+    &(iocshArg) { "bitsToClear", iocshArgInt },
 }};
 
 static void toscaCsrClearFunc(const iocshArgBuf *args)
@@ -404,7 +404,7 @@ static void toscaIoWriteFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaIoSetDef =
     { "toscaIoSet", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "setbits", iocshArgInt },
+    &(iocshArg) { "bitsToSet", iocshArgInt },
 }};
 
 static void toscaIoSetFunc(const iocshArgBuf *args)
@@ -418,7 +418,7 @@ static void toscaIoSetFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaIoClearDef =
     { "toscaIoClear", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "clearbits", iocshArgInt },
+    &(iocshArg) { "bitsToClear", iocshArgInt },
 }};
 
 static void toscaIoClearFunc(const iocshArgBuf *args)

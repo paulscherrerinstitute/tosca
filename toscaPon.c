@@ -130,6 +130,16 @@ int toscaPonDevConfigure(const char* name)
     return 0;
 }
 
+static const iocshFuncDef toscaPonDevConfigureDef =
+    { "toscaPonDevConfigure", 1, (const iocshArg *[]) {
+    &(iocshArg) { "name", iocshArgString },
+}};
+
+static void toscaPonDevConfigureFunc(const iocshArgBuf *args)
+{
+    toscaPonDevConfigure(args[0].sval);
+}
+
 static const iocshFuncDef toscaPonReadDef =
     { "toscaPonRead", 1, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgString },
@@ -187,7 +197,7 @@ static void toscaPonWriteMaskedFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaPonSetDef =
     { "toscaPonSet", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "value", iocshArgInt },
+    &(iocshArg) { "bitsToSet", iocshArgInt },
 }};
 
 static void toscaPonSetFunc(const iocshArgBuf *args)
@@ -199,15 +209,10 @@ static void toscaPonSetFunc(const iocshArgBuf *args)
     else printf("0x%08x\n", val);
 }
 
-static const iocshFuncDef toscaPonDevConfigureDef =
-    { "toscaPonDevConfigure", 1, (const iocshArg *[]) {
-    &(iocshArg) { "name", iocshArgString },
-}};
-
 static const iocshFuncDef toscaPonClearDef =
     { "toscaPonClear", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "value", iocshArgInt },
+    &(iocshArg) { "bitsToClear", iocshArgInt },
 }};
 
 static void toscaPonClearFunc(const iocshArgBuf *args)
@@ -217,11 +222,6 @@ static void toscaPonClearFunc(const iocshArgBuf *args)
     val = toscaPonClear(args[0].ival, args[1].ival);
     if (val == 0xffffffff && errno != 0) fprintf(stderr, "%m\n");
     else printf("0x%08x\n", val);
-}
-
-static void toscaPonDevConfigureFunc(const iocshArgBuf *args)
-{
-    toscaPonDevConfigure(args[0].sval);
 }
 
 static void toscaPonRegistrar(void)
