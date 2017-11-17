@@ -23,17 +23,21 @@ DBDS    += toscaInit.dbd
 SOURCES += toscaIocsh.c
 DBDS    += toscaIocsh.dbd
 
-# iocsh access to system monitoring (optional)
-SOURCES += toscaSmon.c
-DBDS    += toscaSmon.dbd
-
 # regDev device support (optional)
 SOURCES += toscaRegDev.c
 DBDS    += toscaRegDev.dbd
 
+# regDev and iocsh access to system monitoring (optional)
+SOURCES += toscaSmon.c
+DBDS    += toscaSmon.dbd
+
 # regDev and iocsh access to PON FPGA registers (optional)
 SOURCES += toscaPon.c
 DBDS    += toscaPon.dbd
+
+# regDev and iocsh access to FMC registers (optional)
+SOURCES += toscaSbc.c
+DBDS    += toscaSbc.dbd
 
 # EPICS VME support (optional, not needed for non-VME boards)
 SOURCES += toscaDevLib.c

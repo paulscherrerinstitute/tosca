@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
 #include <epicsTypes.h>
 #include <iocsh.h>
 #include <epicsStdioRedirect.h>
 #include <regDev.h>
 #include "toscaReg.h"
+#include "toscaMap.h"
 #include <epicsExport.h>
 
 #define TOSCA_EXTERN_DEBUG
@@ -75,20 +77,15 @@ static const char* smonAddrToStr(unsigned int addr)
     }
 }
 
-static void smonShow(unsigned int addr, unsigned int val)
+static void smonFormat(unsigned int addr, unsigned int val)
 {
-    if (val == 0xffffffff && errno != 0)
-    {
-        fprintf(stderr, "%m\n");
-        return;
-    }
-    printf("%-11s 0x%04x", smonAddrToStr(addr), val);
+    printf("0x%04x", val);
     switch (addr)
     {
         case 0x00: /* Temp */
         case 0x20: /* Temp Max */
         case 0x24: /* Temp Min */
-            printf(" = %.2f C\n", (val>>6) * 503.975 / 1024 - 273.15);
+            printf(" =% .2f C            ", (val>>6) * 503.975 / 1024 - 273.15);
             return;
         case 0x01: /* Vccint */
         case 0x21: /* Vccint Max */
@@ -118,32 +115,60 @@ static void smonShow(unsigned int addr, unsigned int val)
         case 0x1d:
         case 0x1e:
         case 0x1f:
-            printf(" = %.3f V\n", (val>>6) * 3.0 / 1024);
+            printf(" =% .3f V            ", (val>>6) * 3.0 / 1024);
             return;
         case 0x3f:
         case 0x40:
         case 0x41:
         case 0x42:
-            printf(" = %u%u%u%u:%u%u%u%u:%u%u%u%u:%u%u%u%u\n",
+            printf(" = %u%u%u%u:%u%u%u%u:%u%u%u%u:%u%u%u%u",
                 (val>>15)&1, (val>>14)&1, (val>>13)&1, (val>>12)&1,
                 (val>>11)&1, (val>>10)&1, (val>>9)&1, (val>>8)&1,
                 (val>>7)&1, (val>>6)&1, (val>>5)&1, (val>>4)&1,
                 (val>>3)&1, (val>>2)&1, (val>>1)&1, val&1);
             return;
+        default:
+            printf("                      ");
     }
+}
+
+static void smonShow(unsigned int addr, unsigned int val)
+{
+    if (val == 0xffffffff && errno != 0)
+    {
+        fprintf(stderr, "%m\n");
+        return;
+    }
+    printf("%-11s ", smonAddrToStr(addr));
+    smonFormat(addr, val);
     printf("\n");
 }
 
 static const iocshFuncDef toscaSmonReadDef =
     { "toscaSmonRead", 1, (const iocshArg *[]) {
-    &(iocshArg) { "address", iocshArgString },
+    &(iocshArg) { "[device:][address]", iocshArgString },
 }};
 
 static void toscaSmonReadFunc(const iocshArgBuf *args)
 {
-    unsigned int addr;
-    if (!args[0].sval)
+    unsigned int addr, dev=-1;
+    char* addrstr = args[0].sval;
+    char *p;
+
+    if (addrstr && strchr(addrstr, ':'))
     {
+        dev = strtol(addrstr, &p, 0);
+        printf("device %d\n", dev);
+        if (p == addrstr)
+        {
+            fprintf(stderr, "invalid address %s\n", addrstr);
+            return;
+        }
+        addrstr = p+1;
+    }
+    if (!addrstr || !*addrstr)
+    {
+        unsigned int d, devs = toscaNumDevices();
         for (addr = 0; addr < 0x43; addr++)
         {
             if (addr == 0x06) addr = 0x08;
@@ -151,13 +176,29 @@ static void toscaSmonReadFunc(const iocshArgBuf *args)
             if (addr == 0x23) addr = 0x24;
             if (addr == 0x27) addr = 0x3f;
             printf("0x%02x ", addr);
-            errno = 0;
-            smonShow(addr, toscaSmonRead(addr));
+            printf("%-11s ", smonAddrToStr(addr));
+            if (dev != -1)
+            {
+                smonFormat(addr, toscaSmonRead(addr|dev<<16));
+            }
+            else
+            {
+                for (d = 0; d < devs; d++)
+                {
+                    if (d) printf(" | ");
+                    smonFormat(addr, toscaSmonRead(addr|d<<16));
+                }
+            }
+            printf("\n");
         }
         return;
     }
-    addr = strtol(args[0].sval, NULL, 0);
-    errno = 0;
+    addr = strtol(args[0].sval, &p, 0);
+    if (p == addrstr)
+    {
+        fprintf(stderr, "invalid address %s\n", addrstr);
+        return;
+    }
     smonShow(addr, toscaSmonRead(addr));
 }
 
@@ -194,7 +235,7 @@ static void toscaSmonWriteMaskedFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaSmonSetDef =
     { "toscaSmonSet", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "value", iocshArgInt },
+    &(iocshArg) { "bitsToSet", iocshArgInt },
 }};
 
 static void toscaSmonSetFunc(const iocshArgBuf *args)
@@ -208,7 +249,7 @@ static void toscaSmonSetFunc(const iocshArgBuf *args)
 static const iocshFuncDef toscaSmonClearDef =
     { "toscaSmonClear", 2, (const iocshArg *[]) {
     &(iocshArg) { "address", iocshArgInt },
-    &(iocshArg) { "value", iocshArgInt },
+    &(iocshArg) { "bitsToClear", iocshArgInt },
 }};
 
 static void toscaSmonClearFunc(const iocshArgBuf *args)

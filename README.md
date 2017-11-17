@@ -210,6 +210,9 @@ Also `TOSCA_SMEM2` on device 0 is not accessible.
 The IFC1410 does not implement VME.
 The function will fail and return `NULL` if you try an unsupported map.
 
+In EPICS memory maps can be accessed using the
+[regDev interface](#regdev-interface).
+
 #### Master maps
 
 Master maps give access to Tosca resources like VME, USER or SMEM to the
@@ -375,13 +378,21 @@ unsigned int toscaIoClear(unsigned int address, unsigned int bitsToClear);
 
 unsigned int toscaSmonRead(unsigned int address);
 unsigned int toscaSmonWrite(unsigned int address, unsigned int value);
+unsigned int toscaSmonWriteMasked(unsigned int address, unsigned int mask, unsigned int value);
 unsigned int toscaSmonSet(unsigned int address, unsigned int bitsToSet);
 unsigned int toscaSmonClear(unsigned int address, unsigned int bitsToClear);
 
 unsigned int toscaPonRead(unsigned int address);
 unsigned int toscaPonWrite(unsigned int address, unsigned int value);
+unsigned int toscaPonWriteMasked(unsigned int address, unsigned int mask, unsigned int value);
 unsigned int toscaPonSet(unsigned int address, unsigned int bitsToSet);
 unsigned int toscaPonClear(unsigned int address, unsigned int bitsToClear);
+
+unsigned int toscaSbcRead(unsigned int fmc_slot, unsigned int reg);
+unsigned int toscaSbcWrite(unsigned int fmc_slot, unsigned int reg, unsigned int value);
+unsigned int toscaSbcWriteMasked(unsigned int fmc_slot, unsigned int reg, unsigned int mask, unsigned int value);
+unsigned int toscaSbcSet(unsigned int fmc_slot, unsigned int reg, unsigned int bitsToSet);
+unsigned int toscaSbcClear(unsigned int fmc_slot, unsigned int reg, unsigned int bitsToClear);
 
 toscaMapVmeErr_t toscaGetVmeErr(unsigned int device);
 ```
@@ -392,39 +403,126 @@ Internally they use the [memory maps](#memory-maps) described above but
 simplify the usage.
 They assume 32 bit registers and little endian byte order on the Tosca
 resources.
-The passed `address` should be a multiple of 4.
-They take care of swapping from and to host byte order if necessary.
-
-The specific _toscaCsr*()_ and _toscaIo*()_ functions are simply shortcuts
-for using `TOSCA_CSR` or `TOSCA_IO` as `addrspace` in the generic
-functions.
-The generic functions can be used as well with USER or SMEM address spaces.
-
-The _tosca_Smon*()_ and _toscaPon*()_ functions are more specific and the
-generic functions cannot be used instead.
-The _toscaSmon*()_ functions access the Virtex (Central) FPGA system monitor
-registers through TCSR and the _toscaPon*_ functions access PON FPGA
-registers over the processor local bus.
-The `address` range of the Smon registers is limited to `0x00` to
-`0x7c` and only registers above `0x40` are writable.
-The `address` range of the PON registers is limited to `0x00` to
-`0x24` plus `0x40`.
+They take care of swapping from and to host byte order if necessary
+and assure atomicy of read-modify-write actions (for concurrent access
+from different threads in the same process, atomicy across process could
+only be provided by the kernel).
 
 In case more than one Tosca device is available, combine (bitwise _or_)
 the first argument with `device<<16`. Not all resources are available on
 all devices.
 
-The _*Set()_ and _*Clear()_ functions atomically set the given bits to 1
-or 0 respectively and leave the other bits untouched.
-The _*Write()_, _*Set()_, and _*Clear()_ functions return the new register
-value, which may be different from the value written due to read-only bits
-in the register.
+The _*Set()_, _*Clear()_ and _*WriteMasked()_ functions atomically set the
+given bits to 1 or 0 respectively and leave the other bits untouched.
+The _*Write()_,_*WriteMasked()_,  _*Set()_, and _*Clear()_ functions return
+the new register value, which may be different from the value written due to
+read-only bits in the register.
 
 In case of errors these functions return `(unsigned int)-1` and set
 `errno`. On success they set `errno` to 0.
 
-The function _toscaGetVmeErr()_ returns and re-arms the VME Error registers
-in the TCSR address space.
+In EPICS the registers can be accessed using the
+[regDev interface](#regdev-interface).
+
+**Debugging:** The global variable `toscaRegDebug` can be set to enable
+debug output, either to stderr or to `toscaRegDebugFile` if that global
+`FILE*` variable is set.
+
+#### Generic Tosca Register Access
+
+The functions _toscaRead()_, _toscaWrite()_, _toscaSet()_ and _toscaClear()_
+can access all toscaResources that can be [mapped](#memory-maps).
+That is `TOSCA_CSR`, `TOSCA_IO`, `TOSCA_USER1`, `TOSCA_USER2`,
+`TOSCA_SMEM1`,  `TOSCA_SMEM2`, `SRAM` and and VME map.
+(However it makes not much sense to use VME here because these functions
+assume little endian byte order while VME uses big endian.)
+
+The passed `address` should be a multiple of 4, at least for the CSR, IO
+and USER address spaces.
+
+#### Tosca CSR and IO Registers
+
+The specific _toscaCsr*()_ and _toscaIo*()_ functions are simply shortcuts
+for using `TOSCA_CSR` or `TOSCA_IO` as `addrspace` in the generic
+functions and exist mainly for backward compatibility.
+
+On the IFC1210 the register set on CSR and IO space are different while
+on IFC1211 and IFC1410 they contain the same registers.
+
+Access to addresses up to 0x1000 should be well considered because it may
+interface with the internal functions of the device and may cause system
+crash or other unexpected behaviour. You have been warned.
+
+#### PON Registers
+
+The _toscaPon*_ functions access PON FPGA registers over the processor local
+bus. These cannot be accessed with the generic access functions.
+The `address` range of the PON registers is limited to `0x00` to
+`0x24` plus `0x40`.
+
+The register map is as follows:
+
+address | register name
+--------|-----------------
+  0x00  | vendor
+  0x04  | static_options
+  0x08  | vmectl
+  0x0c  | mezzanine
+  0x10  | general
+  0x14  | pciectl
+  0x18  | user
+  0x1c  | signature
+  0x20  | cfgctl
+  0x24  | cfgdata
+  0x40  | bmrctl
+
+For details see the IFC hardware documentation.
+
+#### Virtex System Monitor Registers
+
+The _toscaSmon*()_ functions access the Virtex (Central) FPGA system monitor
+using the register pair TCSR:0x40/0x44.
+These should not be accessed with the generic access functions or directly
+using the CSR memory map because two registers are involved and atomicy cannot
+be ensured when not using the _toscaSmon*()_ functions.
+
+The `address` range of the Smon registers is limited to `0x00` to
+`0x7c` and only registers above `0x40` are writable.
+
+For more information refer to the Virtex documentation.
+
+#### FMC device registers 
+
+The _toscaSbc*()_ functions access registers on FMC 1 or 2 using the serial
+bus controller register pairs TCSR:0x120c/0x1210 and TCSR:0x130c/0x1310.
+These should not be accessed with the generic access functions or directly
+using the CSR memory map because two registers are involved and atomicy cannot
+be ensured when not using the toscaSbc*()_ functions.
+
+The `address` is a 30 bit combination of component id and register number on that
+component. The register part is usually the lower 8 bits.
+Details depend on the FMC plugged in.
+
+For the ADC/DAC 311x family the components addresses are as follows:
+
+ address    | ADC3110/1 | ACD3112 | DAC311x
+------------|-----------|---------|---------
+ 0x01000000 | ads01     | ads01   | ads
+ 0x01010000 | ads23     | ads23   | ad9783
+ 0x01020000 | ads45     | xra01   |
+ 0x01030000 | ads67     | xra02   |
+ 0x02000000 | lmk       | lmk     |
+ 0x02010000 |           | sy      |
+ 0x03000000 |           | dac     | dacadj0
+ 0x03010000 |           | xratrig | dacadj1
+ 0x03020000 |           |         | daccmp0
+ 
+For details refer to the hardware documentation.
+
+#### VME error registers
+
+The function _toscaGetVmeErr()_ returns and re-arms the VME Error register
+pair TCSR:0x418/0x41c.
 These registers store address and status of the first VME error after it
 had been re-armed.
 
@@ -449,11 +547,6 @@ typedef struct {
    };
 } toscaMapVmeErr_t;
 ```
-
-**Debugging:** The global variable `toscaRegDebug` can be set to enable
-debug output, either to stderr or to `toscaRegDebugFile` if that global
-`FILE*` variable is set.
-
 **Pev compatibility note:** When converting from pev functions
 _pev_csr_rd()_ and _pev_csr_wr()_ to Tosca functions, be aware that the pev
 functions could access both, the TIO and TCSR address space and used the
@@ -985,8 +1078,8 @@ To select "Supervisory" mode add a `*`, to select "Program" mode add a
 `#` (`A16*`, `A16#`, `A16*#` or `A16#*`, ...).
 For VME slave maps use `SLAVE`.
 
-Any address or size can be written in decimal, hexadecimal with leading
-`0x` or in more human readable form with suffixes `k`, `M`, `G`
+Any resource address or size can be written in decimal, hexadecimal with
+leading `0x` or in more human readable form with suffixes `k`, `M`, `G`
 (for powers of 1024, not case sensitive).
 Also sums and differences are supported.
 E.g. `1M` meaning `0x100000` or `1M3k-80` meaning `0x100bb0`.
@@ -1273,16 +1366,48 @@ total number of interrupts: 0 (+0)
 ```
 > toscaIoRead 0
 0x805d0910
-
 > toscaCsrRead 0
 0x805d0910
-
+> toscaRead CSR:0
+0x805d0910
 > md TCSR -4 16
 0000: 805d0910 000000ba 00000000 00030000 .]..............
+> toscaRead USER:4
+0x20160523
+> toscaRead SHM:1M
+0xdd580115
+> toscaWrite SHM:1M 0xdeadbeef
+0xdeadbeef
+> toscaClear SHM:1M 0xff0000ff
+0x00adbe00
+> toscaSet SHM:1M 0x5555aaaa
+0x55fdbeaa
+```
 
+[Read PON registers](#pon-registers):
+
+```
+> toscaPonRead 0x1c
+signature      0x04042016
+> toscaPonRead
+0x00 vendor         0x73571210
+0x04 static_options 0x00000910
+0x08 vmectl         0x3000ff7e
+0x0c mezzanine      0xc077f703
+0x10 general        0xffffff98
+0x14 pciectl        0x00010201
+0x18 user           0x00000000
+0x1c signature      0x04042016
+0x20 cfgctl         0x80010707
+0x24 cfgdata        0x00000000
+0x40 bmrctl         0x00000000
+```
+
+[Read Virtex system monitor registers](#virtex-system-monitor-registers):
+
+```
 >toscaSmonRead 0x08
 Supply offs 0xfe67 = 2.979 V
-
 >toscaSmonRead
 0x00 Temp        0xb341 = 79.73 C
 0x01 Vccint      0x55b0 = 1.002 V
@@ -1318,22 +1443,12 @@ Supply offs 0xfe67 = 2.979 V
 0x40 Config #0   0x0000 = 0000:0000:0000:0000
 0x41 Config #1   0x0000 = 0000:0000:0000:0000
 0x42 Config #2   0x0800 = 0000:1000:0000:0000
+```
 
-> toscaPonRead 0x1c
-signature      0x04042016
-
-> toscaPonRead
-0x00 vendor         0x73571210
-0x04 static_options 0x00000910
-0x08 vmectl         0x3000ff7e
-0x0c mezzanine      0xc077f703
-0x10 general        0xffffff98
-0x14 pciectl        0x00010201
-0x18 user           0x00000000
-0x1c signature      0x04042016
-0x20 cfgctl         0x80010707
-0x24 cfgdata        0x00000000
-0x40 bmrctl         0x00000000
+[Read FMC registers](#fmc-device-registers) over serial bus:
+```
+> toscaSbcRead 1 0x1000000
+0x44469758
 ```
 
 ## DevLibVME interface
@@ -1425,22 +1540,23 @@ only 32 bit accesses to the A32 address space. It is also the slowest mode.
 Measured VME transfer speeds in MB/sec using VME SLAVE map on the same
 IFC1210.
 
-| VME DMA mode      | read | write |
-|:------------------|-----:|------:|
-| memory map 32 bit |    2 |    14 |
-| SCT               |    7 |    19 |
-| BLT               |   25 |    36 |
-| MBLT              |   48 |    61 |
-| 2eVME             |  100 |    93 |
-| 2eSST160          |  110 |    95 |
-| 2eSST267          |  149 |   119 |
-| 2eSST320          |  169 |   137 |
+ VME DMA mode      | read | write 
+-------------------|-----:|------:
+ memory map 32 bit |    2 |    14 
+ SCT               |    7 |    19 
+ BLT               |   25 |    36 
+ MBLT              |   48 |    61 
+ 2eVME             |  100 |    93 
+ 2eSST160          |  110 |    95 
+ 2eSST267          |  149 |   119 
+ 2eSST320          |  169 |   137 
 
 ### Startup script
 
 ```
 require "tosca"
 toscaRegDevConfigure name addrspace:address size flags
+toscaSbcDevConfigure name fmc_slot address size
 toscaSmonDevConfigure name
 toscaPonDevConfigure name
 ```
@@ -1505,6 +1621,13 @@ Setting the limit to 1 uses DMA for any transfer.
 If both limits are 1 (e.g. using `dmaonly`) no memory map is created.
 If both limits are 0 (e.g. using `nodma`) DMA is never used.
 
+To access to FMC registers over the serial bus interface
+use _toscaSbcDevConfigure()_ with the FMC number (1 or 2) and the base
+address of the FMC component.
+For the ADC/DAC 311x family base addresses are listed in the
+[FMC device registers](#fmc-device-registers) chapter.
+For details refer to the documentation of the FMC module in use.
+
 SMON and PON [register access](#register-access-functions) need no
 configuration parameters and have fixed size,
 thus the only parameter to pass to _toscaSmonDevConfigure_ and
@@ -1552,7 +1675,12 @@ field (OUT, "@name:offset[:initoffset] T=datatype [flags]")
 ```
 
 Most Tosca resouces assume a 32 bit `datatype` like `int32` or `uint32`.
+The Virtex Smon registers use `uint16`.
 For other choices and `flags` see the regDev documentation.
+
+For calculating human readable values from register readings
+(in particular scaling from integer to floating point) refer to
+the respective hardware documentation.
 
 #### Interrupt triggered processing
 
@@ -1568,6 +1696,68 @@ USER1 or USER2 respectively are used.
 
 Output records can be triggered by interrupts as well but this is quite
 uncommon.
+
+### RegDev Examples
+
+In the startup script define some devices:
+```
+toscaRegDevConfigure user USER1:0
+toscaSmonDevConfigure virtex
+toscaRegDevConfigure sharedmem SHM:1M 64k DL
+toscaSbcDevConfigure fmc1-lmk 1 0x02000000 256
+```
+
+Create some records
+```
+record (longin, "$(PREFIX)USER-BUILDDATE)
+{
+    field(DTYP, "regDev")
+    field(INP,  "@user:4 T=uint32")
+    field(PINI, "YES")
+}
+record (stringin, "$(PREFIX)USER-LABEL")
+{
+    field(DTYP, "regDev")
+    field(INP,  "@user:0x08 L=32")
+    field(PINI, "YES")
+}
+record (ai, "$(PREFIX)VIRTEX-Temp")
+{
+    field(DTYP, "regDev")
+    field(INP,  "@virtex:0 T=uint16")
+    field(LINR, "LINEAR")
+    field(EGUF, "230.825")
+    field(EGUL, "-273.15")
+    field(PREC, "2")
+    field(EGU,  "C")
+    field(SCAN, "1 second")
+}
+record (ai, "$(PREFIX)VIRTEX-VccInt")
+{
+    field(DTYP, "regDev")
+    field(INP,  "@virtex:1 T=uint16")
+    field(LINR, "LINEAR")
+    field(EGUF, "3")
+    field(PREC, "3")
+    field(EGU,  "V")
+    field(SCAN, "1 second")
+}
+record (aai, "$(PREFIX)DATA")
+{
+    field(DTYP, "regDev")
+    field(INP,  "@smem:0 T=uint32 V=5")
+    field(SCAN, "I/O Intr") # trigger with intr USER1-5 
+    field(NELM, "4096")
+    field(LOPR, "-10")
+    field(HOPR, "10")
+    field(PREC, "6")
+}
+record (longout, "$(PREFIX)FMC1-ADC3110-ClkOut_3")
+{
+    field(DTYP, "regDev")
+    field(OUT,  "fmc1-lmk:0x03 T=uint32")
+}
+```
 
 ### Transition from PEV to Tosca
 
@@ -1636,15 +1826,15 @@ See the [I²C API](#ic-bus-access) for possible sysfs patterns.
 The bus sysfs pattern can be derived from the highest hex digit of the
 control word:
 
-|  i2cControlWord         |  sysfspattern                                  | connected hardware      |
-|-------------------------|------------------------------------------------|-------------------------|
-| 0x00000000 - 0x1FFFFFFF | `/sys/devices/{,*/}*localbus/*80.pon-i2c/i2c*` | temperature sensors     |
-| 0x40000000 - 0x5FFFFFFF | `/sys/devices/{,*/}*localbus/*a0.pon-i2c/i2c*` | power monitoring        |
-| 0x60000000 - 0x7FFFFFFF | `/sys/devices/{,*/}*localbus/*b0.pon-i2c/i2c*` | transition card over P0 |
-| 0x80000000 - 0x9FFFFFFF | `/sys/devices/{,*/}*localbus/*c0.pon-i2c/i2c*` | XMC1/FMC1 slot          |
-| 0xA0000000 - 0xBFFFFFFF | `/sys/devices/{,*/}*localbus/*d0.pon-i2c/i2c*` | XMC2/FMC2 slot          |
-| 0xC0000000 - 0xDFFFFFFF | `/sys/devices/{,*/}*localbus/*e0.pon-i2c/i2c*` | PCIe switch             |
-| 0xE0000000 - 0xFFFFFFFF | `/sys/devices/{,*/}*localbus/*f0.pon-i2c/i2c*` | programmable oscillator |
+  i2cControlWord         |  sysfspattern                                  | connected hardware      
+-------------------------|------------------------------------------------|-------------------------
+ 0x00000000 - 0x1FFFFFFF | `/sys/devices/{,*/}*localbus/*80.pon-i2c/i2c*` | temperature sensors     
+ 0x40000000 - 0x5FFFFFFF | `/sys/devices/{,*/}*localbus/*a0.pon-i2c/i2c*` | power monitoring        
+ 0x60000000 - 0x7FFFFFFF | `/sys/devices/{,*/}*localbus/*b0.pon-i2c/i2c*` | transition card over P0 
+ 0x80000000 - 0x9FFFFFFF | `/sys/devices/{,*/}*localbus/*c0.pon-i2c/i2c*` | XMC1/FMC1 slot          
+ 0xA0000000 - 0xBFFFFFFF | `/sys/devices/{,*/}*localbus/*d0.pon-i2c/i2c*` | XMC2/FMC2 slot          
+ 0xC0000000 - 0xDFFFFFFF | `/sys/devices/{,*/}*localbus/*e0.pon-i2c/i2c*` | PCIe switch             
+ 0xE0000000 - 0xFFFFFFFF | `/sys/devices/{,*/}*localbus/*f0.pon-i2c/i2c*` | programmable oscillator 
 
 The _i2cDevConfigure_ function allows definition of multiplexer (mux)
 settings.

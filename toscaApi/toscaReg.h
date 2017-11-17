@@ -47,7 +47,7 @@ unsigned int toscaWrite(unsigned int addrspace, unsigned int address, unsigned i
 unsigned int toscaSet(unsigned int addrspace, unsigned int address, unsigned int bitsToSet);
 unsigned int toscaClear(unsigned int addrspace, unsigned int address, unsigned int bitsToClear);
 
-/* Access to Virtex-6 System Monitor via toscaCsr */
+/* Access to Virtex-6 System Monitor via TCSR */
 /* Address range is 0x00 to 0x7c but only addresses from 0x40 on are writable. */
 unsigned int toscaSmonRead(unsigned int address);
 unsigned int toscaSmonWrite(unsigned int address, unsigned int value);
@@ -87,6 +87,13 @@ typedef struct {
    };
 } toscaMapVmeErr_t;
 toscaMapVmeErr_t toscaGetVmeErr(unsigned int device);
+
+/* Access to FMC 1 or 2 via TSCR Serial Bus Controller registers */
+unsigned int toscaSbcRead(unsigned int fmc_slot, unsigned int reg);
+unsigned int toscaSbcWrite(unsigned int fmc_slot, unsigned int reg, unsigned int value);
+unsigned int toscaSbcWriteMasked(unsigned int fmc_slot, unsigned int reg, unsigned int mask, unsigned int value);
+unsigned int toscaSbcSet(unsigned int fmc_slot, unsigned int reg, unsigned int bitsToSet);
+unsigned int toscaSbcClear(unsigned int fmc_slot, unsigned int reg, unsigned int bitsToClear);
 
 #ifdef __cplusplus
 }

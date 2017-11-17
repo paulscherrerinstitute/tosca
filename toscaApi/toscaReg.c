@@ -106,6 +106,9 @@ unsigned int toscaClear(unsigned int addrspace, unsigned int address, unsigned i
     return le32toh(*ptr);
 }
 
+
+/* Access to Virtex-6 System Monitor via toscaCsr */
+
 pthread_mutex_t smon_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define CSR_SMON_REG 0x40
 
@@ -131,7 +134,7 @@ unsigned int toscaSmonWriteMasked(unsigned int address, unsigned int mask, unsig
 {
     errno = 0;
     volatile uint32_t* ptr = toscaMap((address & 0xffff0000)|TOSCA_CSR, CSR_SMON_REG, 12, 0);
-    debug("address=0x%02x value=0x%x ptr=%p", address, value, ptr);
+    debug("address=0x%02x mask=0x%x value=0x%x ptr=%p", address, mask, value, ptr);
     if (!ptr) return (unsigned int)-1;
     address &= 0xffff;
     if (address < 0x40) { errno = EACCES; return (unsigned int)-1; }
@@ -166,6 +169,9 @@ unsigned int toscaSmonClear(unsigned int address, unsigned int bitsToClear)
     return toscaSmonWriteMasked(address, bitsToClear, 0);
 }
 
+
+/* Read (and clear) VME error status. Error is latched and not overwritten until read. */
+
 #define CSR_VMEERR_REG 0x418
 
 toscaMapVmeErr_t toscaGetVmeErr(unsigned int device)
@@ -174,6 +180,9 @@ toscaMapVmeErr_t toscaGetVmeErr(unsigned int device)
     if (!vmeerr) return (toscaMapVmeErr_t) { .address = -1 };
     return (toscaMapVmeErr_t) { .address = le32toh(vmeerr[0]), {.status = le32toh(vmeerr[1])} };
 }
+
+
+/* Access to PON registers via ELB */
 
 const char* toscaPonAddrToRegname(unsigned int address)
 {
@@ -252,4 +261,79 @@ unsigned int toscaPonSet(unsigned int address, unsigned int bitsToSet)
 unsigned int toscaPonClear(unsigned int address, unsigned int bitsToClear)
 {
     return toscaPonWriteMasked(address, bitsToClear, 0);
+}
+
+
+/* Access to FMCs via TSCR Serial Bus Controller registers */
+
+
+#define CSR_SERIAL_BUS_CONTROLER 0x120c /* 2 regs: address and value */
+#define FMC_MAX 2
+
+unsigned int toscaSbcWriteMasked(unsigned int fmc, unsigned int reg, unsigned int mask, unsigned int value)
+{
+    static pthread_mutex_t sbc_mutex[FMC_MAX] = {PTHREAD_MUTEX_INITIALIZER,PTHREAD_MUTEX_INITIALIZER};
+    static volatile uint32_t* csr = (void*)-1;
+    int tries_left = 1000;
+    int addr;
+
+    if (fmc-1 >= FMC_MAX)
+    {
+        errno = ENODEV;
+        return -1;
+    }
+    errno = 0;
+    if (csr == (void*)-1) csr = toscaMap((toscaDeviceType(0) == 0x1211 ? 0x10000 : 0)|TOSCA_CSR, 0, 0, 0);
+    if (!csr) return (unsigned int)-1;
+    debug("fmc=%i, reg=0x%x, mask=0x%x, value=0x%x", fmc, reg, mask, value);
+    addr = (CSR_SERIAL_BUS_CONTROLER + --fmc * 0x100)/4;
+    pthread_mutex_lock(&sbc_mutex[fmc]);
+    if (mask != 0xffffffff)
+    {
+        csr[addr] = htole32(reg | 0x8000000); /* read cmd */
+        while ((le32toh(csr[addr]) & 0x80000000) && tries_left--); /* wait for read complete */
+        value &= mask;
+        value |= le32toh(csr[addr+1]) & ~mask;
+    }
+    if (mask != 0)
+    {
+        csr[addr+1] = htole32(value);
+        (void) csr[addr+1]; /* read back to flush */
+        csr[addr] = htole32(reg | 0xc000000); /* write cmd */
+        while ((le32toh(csr[addr]) & 0x80000000) && tries_left--); /* wait for write complete */
+        
+        /* read back value */
+        csr[addr] = htole32(reg | 0x8000000); /* read cmd */
+        while ((le32toh(csr[addr]) & 0x80000000) && tries_left--); /* wait for read complete */
+        value = le32toh(csr[addr+1]);
+    }
+    debug("fmc=%i, reg=0x%x, readback=0x%x", fmc, reg, value);
+    debugLvl(3, "tries_left: %i", tries_left);
+    pthread_mutex_unlock(&sbc_mutex[fmc]);
+    if (tries_left == 0)
+    {
+        errno = EIO;
+        return (unsigned int)-1;
+    }
+    return value;
+}
+
+unsigned int toscaSbcWrite(unsigned int fmc, unsigned int reg, unsigned int value)
+{
+    return toscaSbcWriteMasked(fmc, reg, 0xffffffff, value);
+}
+
+unsigned int toscaSbcSet(unsigned int fmc, unsigned int reg, unsigned int bitsToSet)
+{
+    return toscaSbcWriteMasked(fmc, reg, bitsToSet, 0xffffffff);
+}
+
+unsigned int toscaSbcClear(unsigned int fmc, unsigned int reg, unsigned int bitsToClear)
+{
+    return toscaSbcWriteMasked(fmc, reg, bitsToClear, 0);
+}
+
+unsigned int toscaSbcRead(unsigned int fmc, unsigned int reg)
+{
+    return toscaSbcWriteMasked(fmc, reg, 0, 0);
 }
