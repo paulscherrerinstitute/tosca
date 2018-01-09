@@ -107,10 +107,10 @@ int toscaRegDevRead(
         return -1;
     }
     assert(pdata != NULL);
-    if (device->swap)
+    if (device->swap && nelem > 1)
         regDevCopy(device->swap, nelem*dlen/device->swap, device->baseptr + offset, pdata, NULL, REGDEV_DO_SWAP);
     else
-        regDevCopy(dlen, nelem, device->baseptr + offset, pdata, NULL, REGDEV_NO_SWAP);
+        regDevCopy(dlen, nelem, device->baseptr + offset, pdata, NULL, device->swap ? REGDEV_DO_SWAP : REGDEV_NO_SWAP);
     return SUCCESS;
 };
 
@@ -166,10 +166,10 @@ int toscaRegDevWrite(
     }
     assert(device->baseptr != NULL);
     assert(pdata != NULL);
-    if (device->swap)
+    if (device->swap && nelem > 1)
         regDevCopy(device->swap, nelem*dlen/device->swap, pdata, device->baseptr + offset, pmask, REGDEV_DO_SWAP);
     else
-        regDevCopy(dlen, nelem, pdata, device->baseptr + offset, pmask, REGDEV_NO_SWAP);
+        regDevCopy(dlen, nelem, pdata, device->baseptr + offset, pmask, device->swap ? REGDEV_DO_SWAP : REGDEV_NO_SWAP);
     return SUCCESS;
 };
 
@@ -443,7 +443,7 @@ static void toscaRegDevConfigureFunc(const iocshArgBuf *args)
                "   address and size can use k,M,G suffix for powers of 1024\n"
                "flags:\n"
                "   - swap: NS (none), WS (word), DS (double word) QS (quad word)\n"
-               "           WL, WB, DL, DB, QB, QB (convert to/from little/big endian)\n"
+               "           WL, WB, DL, DB, QL, QB (convert to/from little/big endian)\n"
                "           (Default for TCSR, TIO and USER* is DL, for others NS)\n"
                "   - DMA:  dmaReadLimit= (default 100), dmaWriteLimit= (default 2k)\n"
                "           (Minimum number of array elements to use DMA)\n"
