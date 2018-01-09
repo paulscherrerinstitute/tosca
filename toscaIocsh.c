@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <epicsTypes.h>
 #include <epicsStdio.h>
@@ -188,7 +189,9 @@ static const iocshFuncDef toscaMapShowDef =
 
 static void toscaMapShowFunc(const iocshArgBuf *args __attribute__((unused)))
 {
-    printf("\e[4maddrspace:baseaddr         size         pointer%*c\e[0m\n", (int)sizeof(void*)-3, ' ');
+    int istty = isatty(fileno(stdout));
+    printf("%saddrspace:baseaddr         size         pointer%*c%s\n",
+        istty?"\e[4m":"", (int)sizeof(void*)-3, ' ', istty?"\e[0m":"");
     toscaMapForEach(toscaMapPrintInfo, NULL);
 }
 
@@ -432,22 +435,40 @@ static void toscaIoClearFunc(const iocshArgBuf *args)
 size_t toscaIntrPrintInfo(const toscaIntrHandlerInfo_t* info, void* user)
 {
     static unsigned long long prevIntrCount[TOSCA_NUM_INTR];
+    static int lastdevice = 0;
+    static intrmask_t lastmaskbit = 0;
+    static int lastvec = 0;
+    static int lastn=0;
     unsigned long long count, delta;
     char* fname, *pname;
     int level = *(int*) user;
-    int n=12;
+    int n;
 
     debug("index=%d", info->index);
     count = info->count;
     delta = count - prevIntrCount[info->index];
     if (delta == 0 && level < 0) return 0;
-    prevIntrCount[info->index] = count;
-    if (info->device != 0)
-        n -= printf(" %d:%s", info->device, toscaIntrBitToStr(info->intrmaskbit));
+    if (delta == 0 &&
+        info->device == lastdevice &&
+        info->intrmaskbit == lastmaskbit &&
+        info->vec == lastvec)
+    {
+        if (level == 0) return 0;
+        n = printf("%*c", lastn, ' ');
+    }
     else
-        n -= printf(" %s", toscaIntrBitToStr(info->intrmaskbit));
-    if (info->intrmaskbit & TOSCA_VME_INTR_ANY) n -= printf(".%-3d", info->vec);
-    printf("%*ccount=%llu (+%llu)", n, ' ', count, delta);
+    {
+        if (info->device != 0)
+            n = printf(" %d:%s", info->device, toscaIntrBitToStr(info->intrmaskbit));
+        else
+            n = printf(" %s", toscaIntrBitToStr(info->intrmaskbit));
+        if (info->intrmaskbit & TOSCA_VME_INTR_ANY) n -= printf(".%-3d", info->vec);
+        n += printf("%*ccount=%llu (+%llu)", 12-n, ' ', count, delta);
+    }
+    lastdevice = info->device;
+    lastmaskbit = info->intrmaskbit;
+    lastvec = info->vec;
+    lastn = n;
     if (level > 0)
     {
         printf(" %s(%s)",
@@ -457,6 +478,7 @@ size_t toscaIntrPrintInfo(const toscaIntrHandlerInfo_t* info, void* user)
             free(pname);
     }
     printf("\n");
+    prevIntrCount[info->index] = count;
     return 0;
 }
 
@@ -470,7 +492,9 @@ void toscaIntrShow(int level)
 
     if (level < 0)
     {
-        printf("\e[7mPress any key to stop periodic output \e[0m\n");
+        int istty = isatty(fileno(stdout));
+        printf("%sPress any key to stop periodic output %s\n",
+            istty?"\e[7m":"", istty?"\e[0m":"");
     }
     epicsTimeGetCurrent(&sched);
     do
