@@ -1,0 +1,16 @@
+epicsEnvSet D $(D=0)
+
+# Interrupts are not delivered before iocInit
+iocInit
+
+# clear interrupts
+toscaWrite $(D):TCSR:0x1184 0
+toscaIntrConnectHandler $(D):USER1-3 toscaDummyIntrHandler
+toscaIntrConnectHandler $(D):USER1-1-3;8 toscaDebugIntrHandler "Hello World"
+# set non-periodic
+toscaWrite $(D):USER1:0x30c 0
+# Fire interrupts
+toscaWrite $(D):TCSR:0x1184 0x000f000f
+
+# This should show +3 interrupts on 1,2,3 and +0 8
+toscaIntrShow 2
