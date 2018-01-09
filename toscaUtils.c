@@ -36,7 +36,7 @@ static void mallocFunc(const iocshArgBuf *args)
         p = valloc(toscaStrToSize(args[0].sval));
     sprintf(b, "%p", p);
     setenv("BUFFER", b, 1);
-    printf ("BUFFER = %s\n", b);
+    printf("BUFFER = %s\n", b);
 }
 
 static const iocshFuncDef memfillDef =
@@ -51,7 +51,7 @@ static const iocshFuncDef memfillDef =
 static jmp_buf memfillFail;
 void memfillSigAction(int sig __attribute__((unused)), siginfo_t *info, void *ctx __attribute__((unused)))
 {
-    fprintf(stdout, "\nInvalid address %p.\n", info->si_addr);
+    printf("\nInvalid address %p.\n", info->si_addr);
     longjmp(memfillFail, 1);
 }
 
@@ -383,7 +383,7 @@ static void memcompFunc(const iocshArgBuf *args)
             return;
     }
     if (i < size)
-        fprintf(stderr, "Mismatch: %s+0x%zx = 0x%0*llx but %s+0x%zx = 0x%0*llx\n", args[0].sval, i, abs(width)*2, s, args[1].sval, i, abs(width)*2, d);
+        printf("Mismatch: %s+0x%zx = 0x%0*llx but %s+0x%zx = 0x%0*llx\n", args[0].sval, i, abs(width)*2, s, args[1].sval, i, abs(width)*2, d);
     else
         printf("OK\n");
 }
