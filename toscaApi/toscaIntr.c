@@ -617,8 +617,7 @@ void* toscaIntrLoop()
                     free(fname);
                 handler->function(handler->parameter, inum, ivec);
             }
-            if (index >= TOSCA_INTR_INDX_VME(1,0) && index < TOSCA_INTR_INDX_ERR(0))
-                write(intrFd[index], NULL, 0);  /* re-enable VME interrupt */
+            write(intrFd[index], NULL, 0);  /* re-enable level interrupts (no-op for edge) */
         }
     }
     debug("interrupt handling ended");
