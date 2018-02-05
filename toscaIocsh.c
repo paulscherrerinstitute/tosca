@@ -891,4 +891,5 @@ epicsExportRegistrar(toscaIocshRegistrar);
 epicsExportAddress(int, toscaMapDebug);
 epicsExportAddress(int, toscaIntrDebug);
 epicsExportAddress(int, toscaDmaDebug);
+epicsExportAddress(int, toscaRegDebug);
 
