@@ -13,9 +13,11 @@ void handler(void* arg, int inum, int ivec) {
 }
 
 int main() {
+    unsigned int v;
     toscaIntrConnectHandler(TOSCA_USER1_INTR_ANY, handler, "USER1");
     toscaIntrConnectHandler(TOSCA_USER1_INTR_ANY, handler, "USER2");
-    toscaIntrConnectHandler(TOSCA_VME_INTR_ANY_VECS(0,255), handler, "VME");
+    for (v=0; v<=255; v++)
+        toscaIntrConnectHandler(TOSCA_VME_INTR_ANY_VEC(v), handler, "VME");
     toscaIntrLoop(NULL);
     return 0;
 }
