@@ -335,6 +335,7 @@ int toscaIntrMonitorFile(int index, const char* filepattern, ...)
         debugErrno("epoll_ctl ADD %d %s", intrFd[index], globresults.gl_pathv[0]);
     }
     globfree(&globresults);
+    write(intrFd[index], NULL, 0);  /* enable level interrupts (no-op for edge) */
     return 0;
 }
 
