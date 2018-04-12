@@ -77,6 +77,8 @@ void toscaInitHook(initHookState state)
             printf("Tosca device %u: %04x\n", device, type);
         }
     }
+    toscaInstallSpuriousVMEInterruptHandler();
+
     toscaIntrLoopStart();
     epicsAtExit(toscaIntrLoopStop,NULL);
 

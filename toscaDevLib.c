@@ -302,7 +302,6 @@ void toscaDevLibA24Free(void *pBlock __attribute__((unused))) {};
 /** Initialization *****************/
 long toscaDevLibInit(void)
 {
-    toscaInstallSpuriousVMEInterruptHandler();
     return S_dev_success;
 }
 
