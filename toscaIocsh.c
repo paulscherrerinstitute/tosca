@@ -592,7 +592,6 @@ static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
 {
     intrmask_t mask = toscaStrToIntrMask(args[0].sval);
     void (*function)() = symbolAddr(args[1].sval);
-    void* arg = args[2].sval ? strdup(args[2].sval) : strdup(args[0].sval);
     
     if (!args[0].sval)
     {
@@ -610,7 +609,9 @@ static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
         fprintf(stderr, "Invalid function \"%s\"\n", args[1].sval);
         return;
     }
-    if (toscaIntrConnectHandler(mask, function, arg) != 0) fprintf(stderr, "%m\n");
+    if (toscaIntrConnectHandler(mask, function, 
+        strdup(args[2].sval ? args[2].sval : args[0].sval)) != 0)
+        fprintf(stderr, "%m\n");
 }
 
 static const iocshFuncDef toscaIntrDisconnectHandlerDef =
