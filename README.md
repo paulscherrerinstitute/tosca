@@ -234,7 +234,7 @@ If the request cannot be fulfilled, the function returns `NULL` and
 sets `errno`.
 
 Master maps no not use the `res_address` argument.
-Pass `NULL` or use the macro _toscaMapMaster()_ which does exactly this.
+Pass 0 or use the macro _toscaMapMaster()_ which does exactly this.
 
 Be aware that Tosca resources may use byte orders different from the CPU
 and data may only be meaningful with correct data width and alignment.
@@ -290,7 +290,7 @@ Use `errno` to test for errors, that means set `errno` to 0 before
 calling _toscaMap()_ and check for a non-zero value immediately afterwards.
 
 To map program memory to VME set `addrspace` to `VME_SLAVE|VME_A32`
-and pass `NULL` for `res_address`.
+and pass 0 for `res_address`.
 The current IFC boards use big endian CPUs, thus one should not set
 `VME_SWAP`.
 This would be different if a Tosca device is accessed by a little endian
