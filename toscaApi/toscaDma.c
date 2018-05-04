@@ -630,6 +630,18 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         toscaDmaSpaceToStr(r->req.cycle));
     if (ioctl(r->fd, VME_DMA_SET, &r->req) != 0)
     {
+        debugErrno("ioctl(%d (%s), VME_DMA_SET, {route=%s(0x%x) src_type=%s(0x%02x) src_addr=0x%"PRIx64" dst_type=%s(0x%02x) dst_addr=0x%"PRIx64" size=0x%x dwidth=0x%x(%s) cycle=0x%x=%s})",
+            r->fd, filename,
+            toscaDmaRouteToStr(r->req.route), r->req.route,
+            toscaDmaTypeToStr(r->req.src_type), r->req.src_type, 
+            r->req.src_addr,
+            toscaDmaTypeToStr(r->req.dst_type), r->req.dst_type,
+            r->req.dst_addr,
+            r->req.size,
+            r->req.dwidth,
+            toscaDmaWidthToSwapStr(r->req.dwidth),
+            r->req.cycle,
+            toscaDmaSpaceToStr(r->req.cycle));
         toscaDmaRelease(r);
         return NULL;
     }
