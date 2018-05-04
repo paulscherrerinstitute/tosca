@@ -107,7 +107,7 @@ int toscaRegDevRead(
         return -1;
     }
     assert(pdata != NULL);
-    if (device->swap && nelem > 1)
+    if (device->swap)
         regDevCopy(device->swap, nelem*dlen/device->swap, device->baseptr + offset, pdata, NULL, REGDEV_DO_SWAP);
     else
         regDevCopy(dlen, nelem, device->baseptr + offset, pdata, NULL, device->swap ? REGDEV_DO_SWAP : REGDEV_NO_SWAP);
@@ -166,7 +166,7 @@ int toscaRegDevWrite(
     }
     assert(device->baseptr != NULL);
     assert(pdata != NULL);
-    if (device->swap && nelem > 1)
+    if (device->swap)
         regDevCopy(device->swap, nelem*dlen/device->swap, pdata, device->baseptr + offset, pmask, REGDEV_DO_SWAP);
     else
         regDevCopy(dlen, nelem, pdata, device->baseptr + offset, pmask, device->swap ? REGDEV_DO_SWAP : REGDEV_NO_SWAP);
