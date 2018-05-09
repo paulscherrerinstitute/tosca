@@ -124,7 +124,7 @@ void toscaInit()
             driverVersion = 1;
         }
         else
-            toscaDevices[i].bridgenum = -1;
+            toscaDevices[i].bridgenum = 0;
         debug ("found %04x at %s #%u", toscaDevices[i].type, globresults.gl_pathv[i], toscaDevices[i].bridgenum);
     }
     globfree(&globresults);
