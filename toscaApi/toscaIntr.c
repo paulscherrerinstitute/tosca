@@ -353,13 +353,23 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
     unsigned int i;
     int status = 0;
     unsigned int device = TOSCA_INTR_MASK_TO_DEV(intrmask);
+    unsigned int driverVersion;
 
     debug("intrmask=0x%016"PRIx64" device=%u, function=%s, parameter=%p",
         intrmask, device, fname=symbolName(function,0), parameter), free(fname);
         
     if (!function)
     {
-        debug("handler function is NULL");
+        error("handler function is NULL");
+        errno = EINVAL;
+        return -1;
+    }
+    
+    driverVersion = toscaDriverVersion();
+    
+    if (driverVersion == 0 && device > 0)
+    {
+        error("old driver can only handle interrupts of device 0");
         errno = EINVAL;
         return -1;
     }
@@ -371,8 +381,9 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
         {
             if (intrmask & TOSCA_USER_INTR(i))
             {
-                if (toscaIntrMonitorFile(IX(USER, i), "/dev/toscauserevent%u-%u.%u", device, i > 15 ? 2 : 1, i & 15) != 0 &&
-                    (device > 0 || toscaIntrMonitorFile(IX(USER, i), "/dev/toscauserevent%u.%u", i > 15 ? 2 : 1, i & 15) != 0))
+                if (driverVersion > 0 ?
+                    toscaIntrMonitorFile(IX(USER, i), "/dev/toscauserevent%u-%u.%u", device, i > 15 ? 2 : 1, i & 15) != 0 :
+                    toscaIntrMonitorFile(IX(USER, i), "/dev/toscauserevent%u.%u", i > 15 ? 2 : 1, i & 15) != 0)
                 {
                     intrmask &= ~TOSCA_USER_INTR(i);
                     status = -1;
@@ -395,8 +406,9 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
         {
             if (intrmask & TOSCA_VME_INTR(i))
             {
-                if (toscaIntrMonitorFile(IX(VME, i, ivec), "/dev/toscavmeevent%u-%u.%u", device, i, ivec) != 0 &&
-                    (device > 0 || toscaIntrMonitorFile(IX(VME, i, ivec), "/dev/toscavmeevent%u.%u", i, ivec) != 0))
+                if (driverVersion > 0 ?
+                    toscaIntrMonitorFile(IX(VME, i, ivec), "/dev/toscavmeevent%u-%u.%u", device, i, ivec) != 0 :
+                    toscaIntrMonitorFile(IX(VME, i, ivec), "/dev/toscavmeevent%u.%u", i, ivec) != 0)
                 {
                     intrmask &= ~TOSCA_VME_INTR(i);
                     status = -1;
@@ -406,8 +418,9 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
     }
     if (intrmask & TOSCA_VME_SYSFAIL)
     {
-        if (toscaIntrMonitorFile(IX(SYSFAIL), "/dev/toscavmesysfail%u", device) != 0 &&
-            (device > 0 || toscaIntrMonitorFile(IX(SYSFAIL), "/dev/toscavmesysfail") != 0))
+        if (driverVersion > 0 ?
+            toscaIntrMonitorFile(IX(SYSFAIL), "/dev/toscavmesysfail%u", device) != 0 :
+            toscaIntrMonitorFile(IX(SYSFAIL), "/dev/toscavmesysfail") != 0)
         {
             intrmask &= ~TOSCA_VME_SYSFAIL;
             status = -1;
@@ -415,8 +428,9 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
     }
     if (intrmask & TOSCA_VME_ACFAIL)
     {
-        if (toscaIntrMonitorFile(IX(ACFAIL), "/dev/toscavmeacfail%u", device) != 0 &&
-            (device > 0 || toscaIntrMonitorFile(IX(ACFAIL), "/dev/toscavmeacfail") != 0))
+        if (driverVersion > 0 ?
+            toscaIntrMonitorFile(IX(ACFAIL), "/dev/toscavmeacfail%u", device) != 0 :
+            toscaIntrMonitorFile(IX(ACFAIL), "/dev/toscavmeacfail") != 0)
         {
             intrmask &= ~TOSCA_VME_ACFAIL;
             status = -1;
@@ -424,8 +438,9 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
     }
     if (intrmask & TOSCA_VME_ERROR)
     {
-        if (toscaIntrMonitorFile(IX(ERROR), "/dev/toscavmeerror%u", device) != 0 &&
-            (device > 0 || toscaIntrMonitorFile(IX(ERROR), "/dev/toscavmeerror") != 0))
+        if (driverVersion > 0 ?
+            toscaIntrMonitorFile(IX(ERROR), "/dev/toscavmeerror%u", device) != 0 :
+            toscaIntrMonitorFile(IX(ERROR), "/dev/toscavmeerror") != 0)
         {
             intrmask &= ~TOSCA_VME_ERROR;
             status = -1;
@@ -676,14 +691,11 @@ int toscaSendVMEIntr(unsigned int level, unsigned int ivec)
     
     if (fd < 0)
     {   
-        sprintf(filename, "/dev/bus/vme/ctl%u", device);
-        
-        fd = open(filename, O_RDWR|O_CLOEXEC);
-        if (fd < 0 && errno == ENOENT && device == 0)
-        {
+        if (toscaDriverVersion > 0)
+            sprintf(filename, "/dev/bus/vme/ctl%u", device);
+        else
             sprintf(filename, "/dev/bus/vme/ctl");
-            fd = open(filename, O_RDWR|O_CLOEXEC);       
-        }
+        fd = open(filename, O_RDWR|O_CLOEXEC);
         if (fd < 0)
         {
             debugErrno("open %s", filename);
