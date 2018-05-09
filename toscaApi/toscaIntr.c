@@ -50,11 +50,19 @@ struct intr_handler {
     struct intr_handler* next;
 };
 
-static int epollfd = -1;
-
 static int intrFd[TOSCA_NUM_INTR];
 static unsigned long long totalIntrCount, intrCount[TOSCA_NUM_INTR];
 static struct intr_handler* handlers[TOSCA_NUM_INTR];
+
+static int epollfd = -1;
+
+void toscaIntrInit () __attribute__((__constructor__));
+void toscaIntrInit ()
+{
+    epollfd = epoll_create1(EPOLL_CLOEXEC);
+    if (epollfd < 0)
+        debugErrno("epoll_create");
+}
 
 #define TOSCA_USER_INTR(n)        TOSCA_USER1_INTR(n)
 #define TOSCA_INTR_DEVICE(m)      (m>>24&&0xff)
@@ -628,14 +636,6 @@ void* toscaIntrLoop()
 int toscaIntrLoopIsRunning(void)
 {
     return (toscaIntrLoopRunning);
-}
-
-void toscaIntrInit () __attribute__((constructor));
-void toscaIntrInit ()
-{
-    epollfd = epoll_create1(EPOLL_CLOEXEC);
-    if (epollfd < 0)
-        debugErrno("epoll_create");
 }
 
 void toscaIntrLoopStop()

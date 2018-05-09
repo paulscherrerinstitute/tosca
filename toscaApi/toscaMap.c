@@ -50,7 +50,6 @@ static struct toscaDevice {
     unsigned int bridgenum;
 } *toscaDevices;
 
-
 /* resources of different boards:
 
 IFC1210: device 0 (0x1210): TCSR, TIO, USER1, SHM1, VME
@@ -72,28 +71,6 @@ static unsigned int numDevices = 0;
 unsigned int toscaNumDevices()
 {
     return numDevices;
-}
-
-unsigned int toscaListDevices()
-{
-    unsigned int i;
-
-    printf("tosca driverVersion=%u\n", driverVersion);
-    for (i = 0; i < numDevices; i++)
-    {
-        printf("%u %04x:%02x:%02x.%d %04x bridgenum=%u\n",
-            i, toscaDevices[i].dom, toscaDevices[i].bus, toscaDevices[i].dev, toscaDevices[i].func,
-            toscaDevices[i].type, toscaDevices[i].bridgenum);
-    }
-    return i;
-}
-
-unsigned int toscaDeviceType(unsigned int device)
-{
-    if (device < numDevices)
-        return toscaDevices[device].type;
-    errno = ENODEV;
-    return 0;
 }
 
 #define TOSCA_PCI_DIR "/sys/bus/pci/drivers/tosca"
@@ -151,6 +128,28 @@ void toscaInit()
         debug ("found %04x at %s #%u", toscaDevices[i].type, globresults.gl_pathv[i], toscaDevices[i].bridgenum);
     }
     globfree(&globresults);
+}
+
+unsigned int toscaListDevices()
+{
+    unsigned int i;
+
+    printf("tosca driverVersion=%u\n", driverVersion);
+    for (i = 0; i < numDevices; i++)
+    {
+        printf("%u %04x:%02x:%02x.%d %04x bridgenum=%u\n",
+            i, toscaDevices[i].dom, toscaDevices[i].bus, toscaDevices[i].dev, toscaDevices[i].func,
+            toscaDevices[i].type, toscaDevices[i].bridgenum);
+    }
+    return i;
+}
+
+unsigned int toscaDeviceType(unsigned int device)
+{
+    if (device < numDevices)
+        return toscaDevices[device].type;
+    errno = ENODEV;
+    return 0;
 }
 
 int toscaOpen(unsigned int device, const char* resource)
