@@ -119,6 +119,7 @@ const char* toscaDmaSpaceToStr(unsigned int dmaspace)
     }
 }
 
+/* Old driver has VME_DMA_USER2 swapped with VME_DMA_SHM2 ! */
 static const char* toscaDmaTypeToStr(unsigned int type)
 {
     switch (type)
@@ -132,11 +133,11 @@ static const char* toscaDmaTypeToStr(unsigned int type)
         case VME_DMA_SHM1:
             return "VME_DMA_SHM1";
         case VME_DMA_SHM2:
-            return "VME_DMA_SHM2";
+            return toscaDriverVersion() > 0 ? "VME_DMA_SHM2" : "VME_DMA_USER2";
         case VME_DMA_USER1:
             return "VME_DMA_USER1";
         case VME_DMA_USER2:
-            return "VME_DMA_USER2";
+            return toscaDriverVersion() > 0 ? "VME_DMA_USER2" : "VME_DMA_SHM2";
         default:
             return "????";
     }
