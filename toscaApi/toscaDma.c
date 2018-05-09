@@ -152,7 +152,7 @@ int toscaStrToDmaSpace(const char* str, const char** end)
     unsigned int dmaspace = -1;
     unsigned long device = 0;
     const char *s;
-    
+
     if (!str || !*str)
     {
 fault:
@@ -160,7 +160,7 @@ fault:
         if (end) *end = str;
         return -1;
     }
-    
+
     device = strtoul(str, (char**)&s, 0);
     if (*s == ':')
         s++;
@@ -262,7 +262,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
 {
     struct dma_execute ex = {0,0};
     struct timespec start, finished;
- 
+
 #ifdef VME_DMA_TIMEOUT
     r->timeout = 1000;
     debugLvl(2, "ioctl(%d, VME_DMA_TIMEOUT, %ld ms)", r->fd, r->timeout);
@@ -324,7 +324,7 @@ void* toscaDmaLoop()
     toscaDmaCallback callback;
     void* user;
     int loopnumber;
-    
+
     LOCK;
     loopnumber = loopsRunning++;
     debug("DMA loop %d started", loopnumber);
@@ -374,7 +374,7 @@ void toscaDmaLoopsStop()
         usleep(10);
     }
     debug("DMA loops stopped");
-    
+
     pthread_t tid;
     pthread_create(&tid, NULL, toscaDmaLoop, NULL);
 }
@@ -405,18 +405,18 @@ struct dmaRequest* toscaDmaRequestCreate(void)
     if ((r = freelist) != NULL)
     {
         freelist = r->next;
-        debugLvl(3, "got request %p from freelist, freelist=%p", r, freelist);
+        debugLvl(4, "got request %p from freelist, freelist=%p", r, freelist);
     }
     UNLOCK;
     if (!r)
     {
         r = malloc(sizeof(struct dmaRequest));
-        if (!r) 
+        if (!r)
         {
             debugErrno("malloc struct dmaRequest");
             return NULL;
         }
-        debugLvl(3, "got request %p from malloc", r);
+        debugLvl(4, "got request %p from malloc", r);
     }
     memset(r, 0, sizeof(struct dmaRequest));
     return r;
@@ -429,7 +429,7 @@ void toscaDmaRelease(struct dmaRequest* r)
     if (r->fd > 0) close(r->fd);
     if (!r->next)
     {
-        debugLvl(3, "put back request %p to freelist, freelist = %p", r, freelist);
+        debugLvl(4, "put back request %p to freelist, freelist = %p", r, freelist);
         r->next = freelist;
         freelist = r;
     }
@@ -445,11 +445,13 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
     char filename[20];
     unsigned int sdev = source >> 16;
     unsigned int ddev = dest >> 16;
-    
+    unsigned int driverVersion;
+
     debugLvl(2, "%d:%s(0x%x):0x%"PRIx64"->%d:%s(0x%x):0x%"PRIx64"[0x%zx] swap=%d tout=%d cb=%s(%p)",
         sdev, toscaDmaSpaceToStr(source), source, source_addr,
         ddev, toscaDmaSpaceToStr(dest), dest, dest_addr,
         size, swap, timeout, fname=symbolName(callback,0), user), free(fname);
+        
     r = toscaDmaRequestCreate();
     if (!r) return NULL;
     r->timeout = timeout;
@@ -469,7 +471,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
 #endif
     r->req.size = size;
     r->req.cycle = 0;
-   
+
     switch (swap)
     {
         case 2:
@@ -488,7 +490,9 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             error("invalid swap = %u, using 0", swap);
             r->req.dwidth = 0;
     }
-        
+
+    /* Old driver has VME_DMA_USER2 swapped with VME_DMA_SHM2 ! */
+    driverVersion = toscaDriverVersion();
     switch (source & 0xffff)
     {
         case 0:
@@ -498,13 +502,13 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             r->req.src_type = VME_DMA_USER1;
             break;
         case TOSCA_USER2:
-            r->req.src_type = VME_DMA_USER2;
+            r->req.src_type = driverVersion > 0 ? VME_DMA_USER2 : VME_DMA_SHM2;
             break;
         case TOSCA_SMEM1:
             r->req.src_type = VME_DMA_SHM1;
             break;
         case TOSCA_SMEM2:
-            r->req.src_type = VME_DMA_SHM2;
+            r->req.src_type = driverVersion > 0 ? VME_DMA_SHM2 : VME_DMA_USER2;
             break;
         case VME_SCT:
         case VME_BLT:
@@ -518,61 +522,23 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             r->req.aspace = VME_A32;
             break;
     }
-    
-/* Old driver for ifc1210 needs route, newer driver does not need it */
-/* SHM2 and USER2 are only available in the new driver */
+
     switch (dest & 0xffff)
     {
         case 0:
             r->req.dst_type = VME_DMA_PCI;
-            switch (r->req.src_type)
-            {
-                case VME_DMA_USER1:
-                    r->req.route = VME_DMA_USER1_TO_MEM;
-                    break;
-                case VME_DMA_SHM1:
-                    r->req.route = VME_DMA_SHM1_TO_MEM;
-                    break;
-                case VME_DMA_VME:
-                    r->req.route = VME_DMA_VME_TO_MEM;
-                    break;
-            }
             break;
-        case TOSCA_USER1:
+        case TOSCA_USER:
             r->req.dst_type = VME_DMA_USER1;
-            switch (r->req.src_type)
-            {
-                case VME_DMA_PCI:
-                    r->req.route = VME_DMA_MEM_TO_USER1;
-                    break;
-                case VME_DMA_SHM1:
-                    r->req.route = VME_DMA_SHM1_TO_USER1;
-                    break;
-                case VME_DMA_VME:
-                    r->req.route = VME_DMA_VME_TO_USER1;
-                    break;
-            }
             break;
         case TOSCA_USER2:
-            r->req.dst_type = VME_DMA_USER2;
+            r->req.dst_type = driverVersion > 0 ? VME_DMA_USER2 : VME_DMA_SHM2;
             break;
         case TOSCA_SMEM1:
             r->req.dst_type = VME_DMA_SHM1;
-            switch (r->req.src_type)
-            {
-                case VME_DMA_PCI:
-                    r->req.route = VME_DMA_MEM_TO_SHM1;
-                    break;
-                case VME_DMA_USER1:
-                    r->req.route = VME_DMA_USER1_TO_SHM1;
-                    break;
-                case VME_DMA_VME:
-                    r->req.route = VME_DMA_VME_TO_SHM1;
-                    break;
-            }
             break;
         case TOSCA_SMEM2:
-            r->req.dst_type = VME_DMA_SHM2;
+            r->req.dst_type = driverVersion > 0 ? VME_DMA_SHM2 : VME_DMA_USER2;
             break;
         case VME_SCT:
         case VME_BLT:
@@ -584,23 +550,85 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
             r->req.dst_type = VME_DMA_VME;
             r->req.cycle = dest & 0xffff;
             r->req.aspace = VME_A32;
-            switch (r->req.src_type)
-            {
-                case VME_DMA_PCI:
-                    r->req.route = VME_DMA_MEM_TO_VME;
-                    break;
-                case VME_DMA_USER1:
-                    r->req.route = VME_DMA_USER1_TO_VME;
-                    break;
-                case VME_DMA_SHM1:
-                    r->req.route = VME_DMA_SHM1_TO_VME;
-                    break;
-                case VME_DMA_VME:
-                    if (source == dest) r->req.route = VME_DMA_VME_TO_VME;
-                    break;
-            }
             break;
     }
+
+    /* Old driver needs route, newer driver does not need it. */
+    /* But driver has only USER1 and SHM1 routes. */
+    if (driverVersion == 0)
+    {
+        switch (r->req.dst_type)
+        {
+            case VME_DMA_PCI:
+                switch (r->req.src_type)
+                {
+                    case VME_DMA_USER1:
+                    case VME_DMA_USER2:
+                        r->req.route = VME_DMA_USER1_TO_MEM;
+                        break;
+                    case VME_DMA_SHM1:
+                    case VME_DMA_SHM2:
+                        r->req.route = VME_DMA_SHM1_TO_MEM;
+                        break;
+                    case VME_DMA_VME:
+                        r->req.route = VME_DMA_VME_TO_MEM;
+                        break;
+                }
+                break;
+            case VME_DMA_USER1:
+            case VME_DMA_USER2:
+                switch (r->req.src_type)
+                {
+                    case VME_DMA_PCI:
+                        r->req.route = VME_DMA_MEM_TO_USER1;
+                        break;
+                     case VME_DMA_SHM1:
+                     case VME_DMA_SHM2:
+                       r->req.route = VME_DMA_SHM1_TO_USER1;
+                        break;
+                    case VME_DMA_VME:
+                        r->req.route = VME_DMA_VME_TO_USER1;
+                        break;
+                }
+                break;
+            case VME_DMA_SHM1:
+            case VME_DMA_SHM2:
+                switch (r->req.src_type)
+                {
+                    case VME_DMA_PCI:
+                        r->req.route = VME_DMA_MEM_TO_SHM1;
+                        break;
+                    case VME_DMA_USER1:
+                    case VME_DMA_USER2:
+                        r->req.route = VME_DMA_USER1_TO_SHM1;
+                        break;
+                    case VME_DMA_VME:
+                        r->req.route = VME_DMA_VME_TO_SHM1;
+                        break;
+                }
+                break;
+            case VME_DMA_VME:
+                switch (r->req.src_type)
+                {
+                    case VME_DMA_PCI:
+                        r->req.route = VME_DMA_MEM_TO_VME;
+                        break;
+                    case VME_DMA_USER1:
+                    case VME_DMA_USER2:
+                        r->req.route = VME_DMA_USER1_TO_VME;
+                        break;
+                    case VME_DMA_SHM1:
+                    case VME_DMA_SHM2:
+                        r->req.route = VME_DMA_SHM1_TO_VME;
+                        break;
+                    case VME_DMA_VME:
+                        r->req.route = VME_DMA_VME_TO_VME;
+                        break;
+                }
+                break;
+        }
+    }
+
     if (!r->req.src_type || !r->req.dst_type)
     {
         errno = EINVAL;
@@ -619,7 +647,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
     debugLvl(2, "ioctl(%d (%s), VME_DMA_SET, {route=%s(0x%x) src_type=%s(0x%02x) src_addr=0x%"PRIx64" dst_type=%s(0x%02x) dst_addr=0x%"PRIx64" size=0x%x dwidth=0x%x(%s) cycle=0x%x=%s})",
         r->fd, filename,
         toscaDmaRouteToStr(r->req.route), r->req.route,
-        toscaDmaTypeToStr(r->req.src_type), r->req.src_type, 
+        toscaDmaTypeToStr(r->req.src_type), r->req.src_type,
         r->req.src_addr,
         toscaDmaTypeToStr(r->req.dst_type), r->req.dst_type,
         r->req.dst_addr,
@@ -633,7 +661,7 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         debugErrno("ioctl(%d (%s), VME_DMA_SET, {route=%s(0x%x) src_type=%s(0x%02x) src_addr=0x%"PRIx64" dst_type=%s(0x%02x) dst_addr=0x%"PRIx64" size=0x%x dwidth=0x%x(%s) cycle=0x%x=%s})",
             r->fd, filename,
             toscaDmaRouteToStr(r->req.route), r->req.route,
-            toscaDmaTypeToStr(r->req.src_type), r->req.src_type, 
+            toscaDmaTypeToStr(r->req.src_type), r->req.src_type,
             r->req.src_addr,
             toscaDmaTypeToStr(r->req.dst_type), r->req.dst_type,
             r->req.dst_addr,
