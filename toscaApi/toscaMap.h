@@ -38,6 +38,7 @@ extern int toscaMapDebug;
 extern FILE* toscaMapDebugFile;
 
 /* Report found Tosca devices */
+unsigned int toscaDriverVersion();
 unsigned int toscaNumDevices();
 unsigned int toscaListDevices();
 unsigned int toscaDeviceType(unsigned int device);

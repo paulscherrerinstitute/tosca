@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <glob.h>
+#include <inttypes.h>
 
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 02000000
@@ -47,8 +48,8 @@ static struct toscaDevice {
     pthread_mutex_t maplist_mutex;
     unsigned int type;  /* 0x1210, 0x1211 = Tosca, 0x1001 = Althea */
     unsigned int bridgenum;
-    unsigned int driververs;
 } *toscaDevices;
+
 
 /* resources of different boards:
 
@@ -59,7 +60,14 @@ IFC1410: device 0 (0x1410): TCSR, TIO, USER1, USER2, SHM1, SHM2
 
 */
 
-unsigned int numDevices = 0;
+static unsigned int driverVersion = 0;
+
+unsigned int toscaDriverVersion()
+{
+    return driverVersion;
+}
+
+static unsigned int numDevices = 0;
 
 unsigned int toscaNumDevices()
 {
@@ -69,11 +77,13 @@ unsigned int toscaNumDevices()
 unsigned int toscaListDevices()
 {
     unsigned int i;
+
+    printf("tosca driverVersion=%u\n", driverVersion);
     for (i = 0; i < numDevices; i++)
     {
-        printf("%d %04x:%02x:%02x.%d %04x bridgenum=%d driververs=%d\n",
+        printf("%u %04x:%02x:%02x.%d %04x bridgenum=%u\n",
             i, toscaDevices[i].dom, toscaDevices[i].bus, toscaDevices[i].dev, toscaDevices[i].func,
-            toscaDevices[i].type, toscaDevices[i].bridgenum, toscaDevices[i].driververs);
+            toscaDevices[i].type, toscaDevices[i].bridgenum);
     }
     return i;
 }
@@ -105,7 +115,7 @@ void toscaInit()
     }
     numDevices = globresults.gl_pathc;
     toscaDevices = calloc(globresults.gl_pathc, sizeof(struct toscaDevice));
-    debug("found %zd tosca device%s", globresults.gl_pathc, globresults.gl_pathc==1?"":"s");
+    debug("found %zu tosca device%s", globresults.gl_pathc, globresults.gl_pathc==1?"":"s");
     for (i = 0; i < globresults.gl_pathc; i++)
     {
         unsigned int dom, bus, dev, func;
@@ -134,11 +144,11 @@ void toscaInit()
             toscaDevices[i].bridgenum = sysfsReadULong(fd);
             close(fd);
             /* If we have ToscaBridgeNr it is a newer driver with new device paths. */
-            toscaDevices[i].driververs = 1;
+            driverVersion = 1;
         }
         else
             toscaDevices[i].bridgenum = -1;
-        debug ("found %04x at %s #%d", toscaDevices[i].type, globresults.gl_pathv[i], toscaDevices[i].bridgenum);
+        debug ("found %04x at %s #%u", toscaDevices[i].type, globresults.gl_pathv[i], toscaDevices[i].bridgenum);
     }
     globfree(&globresults);
 }
@@ -602,7 +612,7 @@ check_existing_maps:
                 errno = ENOMEM;
                 goto fail;
             }
-            if (toscaDevices[device].driververs > 0)
+            if (driverVersion > 0)
                 sprintf(filename, "/dev/bus/vme/s%u-%u", toscaDevices[device].bridgenum, 0);
             else
                 sprintf(filename, "/dev/bus/vme/s%u", device);
@@ -621,7 +631,7 @@ check_existing_maps:
                 goto fail;
             }
 
-            if (toscaDevices[device].driververs > 0)
+            if (driverVersion > 0)
                 sprintf(filename, "/dev/bus/vme/m%u-%u", toscaDevices[device].bridgenum, 0);
             else
                 sprintf(filename, "/dev/bus/vme/m%u", device);
@@ -644,7 +654,7 @@ check_existing_maps:
                 debug("overlap with existing SLAVE map");
                 errno = EADDRINUSE;
             }
-            debugErrno("ioctl(%d (%s), VME_SET_%s, {enable=%d addr=0x%"PRIx64" size=0x%"PRIx64" addrspace=0x%x cycle=0x%x, resource_offset=0x%x})",
+            debugErrno("ioctl(%d (%s), VME_SET_%s, {enable=%u addr=0x%"PRIx64" size=0x%"PRIx64" addrspace=0x%x cycle=0x%x, resource_offset=0x%x})",
                 fd, filename, setcmd == VME_SET_MASTER ? "MASTER" : "SLAVE",
                 vme_window.enable,
                 vme_window.vme_addr,
@@ -663,8 +673,8 @@ check_existing_maps:
             */
             if (ioctl(fd, getcmd, &vme_window) != 0)
             {
-                debugErrno("ioctl(%d, VME_GET_%s)",
-                    fd, getcmd == VME_GET_MASTER ? "MASTER" : "SLAVE");
+                debugErrno("ioctl(%d (%s), VME_GET_%s)",
+                    fd, filename, getcmd == VME_GET_MASTER ? "MASTER" : "SLAVE");
                 goto fail;
             }
             debug("got window address=0x%"PRIx64" size=0x%"PRIx64,
