@@ -628,9 +628,6 @@ void* toscaIntrLoop()
 int toscaIntrLoopIsRunning(void)
 {
     return (toscaIntrLoopRunning);
-    
-    pthread_t tid;
-    pthread_create(&tid, NULL, toscaIntrLoop, NULL);
 }
 
 void toscaIntrInit () __attribute__((constructor));

@@ -374,9 +374,6 @@ void toscaDmaLoopsStop()
         usleep(10);
     }
     debug("DMA loops stopped");
-
-    pthread_t tid;
-    pthread_create(&tid, NULL, toscaDmaLoop, NULL);
 }
 
 int toscaDmaExecute(struct dmaRequest* r)
