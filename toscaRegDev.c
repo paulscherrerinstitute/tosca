@@ -259,7 +259,16 @@ static IOSCANPVT toscaRegDevGetIoScanPvt(
             device->addrspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? TOSCA_VME_INTR_ANY_VEC(ivec) : TOSCA_USER1_INTR(ivec),
             toscaScanIoRequest, device->ioscanpvt[ivec]) != 0)
         {
-            error("%s: toscaIntrConnectHandler(0x%x,...) failed", user, ivec);
+            if (errno == EBUSY)
+            {
+                error("%s: Cannot connect to %s interrupt %d because another program already uses it.",
+                    user, toscaAddrSpaceToStr(device->addrspace), ivec);
+            }
+            else
+            {
+                error("%s: Cannot connect to %s interrupt %d: %m",
+                    user, toscaAddrSpaceToStr(device->addrspace), ivec);
+            }
             return NULL;
         }
     }
