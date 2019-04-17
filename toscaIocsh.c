@@ -575,6 +575,7 @@ static void toscaStrToIntrMaskFunc(const iocshArgBuf *args __attribute__((unused
     if (!mask)
     {
         fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].aval.av[1]);
+        fprintf(stderr, maskhelp);
         return;
     }
     printf("0x%016"PRIx64"\n", mask);
@@ -602,6 +603,7 @@ static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
     if (!mask)
     {
         fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].sval);
+        fprintf(stderr, maskhelp);
         return;
     }
     if (!function)
@@ -635,6 +637,7 @@ static void toscaIntrDisconnectHandlerFunc(const iocshArgBuf *args)
     if (!mask)
     {
         fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].sval);
+        fprintf(stderr, maskhelp);
         return;
     }
     if (!function)
@@ -672,6 +675,7 @@ static void toscaIntrEnableFunc(const iocshArgBuf *args)
     if (!mask)
     {
         fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].sval);
+        fprintf(stderr, maskhelp);
         return;
     }
     if (toscaIntrEnable(mask) != 0) fprintf(stderr, "%m\n");
@@ -694,6 +698,7 @@ static void toscaIntrDisableFunc(const iocshArgBuf *args)
     if (!mask)
     {
         fprintf(stderr, "Invalid mask \"%s\"\n" , args[0].sval);
+        fprintf(stderr, maskhelp);
         return;
     }
     if (toscaIntrDisable(mask) != 0) fprintf(stderr, "%m\n");
