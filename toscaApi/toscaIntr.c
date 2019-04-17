@@ -691,7 +691,7 @@ int toscaSendVMEIntr(unsigned int level, unsigned int ivec)
     
     if (fd < 0)
     {   
-        if (toscaDriverVersion > 0)
+        if (toscaDriverVersion() > 0)
             sprintf(filename, "/dev/bus/vme/ctl%u", device);
         else
             sprintf(filename, "/dev/bus/vme/ctl");
