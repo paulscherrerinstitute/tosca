@@ -582,6 +582,15 @@ static void toscaStrToIntrMaskFunc(const iocshArgBuf *args __attribute__((unused
 }
 
 
+void toscaDebugIntrHandler(void* param, unsigned int inum, unsigned int ivec)
+{
+    printf("interrupt: param %s level %u vector %u\n", (char*)param, inum, ivec);
+}
+
+void toscaDummyIntrHandler(void* param, unsigned int inum, unsigned int ivec)
+{
+}
+
 static const iocshFuncDef toscaIntrConnectHandlerDef =
     { "toscaIntrConnectHandler", 3, (const iocshArg *[]) {
     &(iocshArg) { "intmask", iocshArgString },
@@ -592,7 +601,7 @@ static const iocshFuncDef toscaIntrConnectHandlerDef =
 static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
 {
     intrmask_t mask = toscaStrToIntrMask(args[0].sval);
-    void (*function)() = symbolAddr(args[1].sval);
+    void (*function)() = args[1].sval ? symbolAddr(args[1].sval) : toscaDebugIntrHandler;
     
     if (!args[0].sval)
     {
@@ -647,15 +656,6 @@ static void toscaIntrDisconnectHandlerFunc(const iocshArgBuf *args)
     }
     n = toscaIntrDisconnectHandler(mask, function, NULL);
     printf("%d handlers disconnected\n", n);
-}
-
-void toscaDebugIntrHandler(void* param, unsigned int inum, unsigned int ivec)
-{
-    printf("interrupt: param %s level %u vector %u\n", (char*)param, inum, ivec);
-}
-
-void toscaDummyIntrHandler(void* param, unsigned int inum, unsigned int ivec)
-{
 }
 
 static const iocshFuncDef toscaIntrEnableDef =
