@@ -107,10 +107,32 @@ int toscaRegDevRead(
         return -1;
     }
     assert(pdata != NULL);
-    if (device->swap)
-        regDevCopy(device->swap, nelem*dlen/device->swap, device->baseptr + offset, pdata, NULL, REGDEV_DO_SWAP);
+    if (device->swap) {
+        size_t words;
+        size_t misalignment = (device->baseaddr + offset) % device->swap;
+        if (misalignment)
+        {
+            size_t len;
+            char tmp[8];
+            if (device->swap > 8) {
+                debug("cannot handle misalignment with swap > 8");
+                return -1;
+            }
+            len = device->swap - misalignment;
+            if (len > nelem * dlen) len = nelem * dlen;
+            offset -= misalignment;
+            regDevCopy(device->swap, 1, device->baseptr + offset, tmp, NULL, REGDEV_DO_SWAP);
+            memcpy(pdata, tmp + misalignment, len);
+            offset += device->swap;
+            pdata += misalignment;
+        }
+        words = (nelem * dlen - misalignment) / device->swap;
+        if (words)
+            regDevCopy(device->swap, words, device->baseptr + offset, pdata, NULL, REGDEV_DO_SWAP);
+        
+    }
     else
-        regDevCopy(dlen, nelem, device->baseptr + offset, pdata, NULL, device->swap ? REGDEV_DO_SWAP : REGDEV_NO_SWAP);
+        regDevCopy(dlen, nelem, device->baseptr + offset, pdata, NULL, REGDEV_NO_SWAP);
     return SUCCESS;
 };
 
