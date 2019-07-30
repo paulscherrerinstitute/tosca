@@ -14,10 +14,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-#ifndef CLOCK_MONOTONIC_RAW
-#define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC
-#endif
-
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 02000000
 #define open(path,flags) ({int _fd=open(path,(flags)&~O_CLOEXEC); if ((flags)&O_CLOEXEC) fcntl(_fd, F_SETFD, fcntl(_fd, F_GETFD)|FD_CLOEXEC); _fd; })
@@ -275,7 +271,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
     }
 #endif
     if (toscaDmaDebug)
-        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+        clock_gettime(CLOCK_MONOTONIC, &start);
     debugLvl(2, "ioctl(%d, VME_DMA_EXECUTE)",
         r->fd);
     if (ioctl(r->fd, VME_DMA_EXECUTE, &ex) != 0)
@@ -296,7 +292,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
     if (toscaDmaDebug)
     {
         double sec;
-        clock_gettime(CLOCK_MONOTONIC_RAW, &finished);
+        clock_gettime(CLOCK_MONOTONIC, &finished);
         finished.tv_sec  -= start.tv_sec;
         if ((finished.tv_nsec -= start.tv_nsec) < 0)
         {
