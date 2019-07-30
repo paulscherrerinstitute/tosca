@@ -176,30 +176,52 @@ int toscaRegDevWrite(
 /* Instead of relaying the record processing to a
    callback thread do it directly in the interrupt
    handler thread to save one thread context switch.
+
+   The structures changed in 3.15.
 */
+
+#ifdef EPICS_VERSION_INT
+#define EPICS_3_15_plus
+#endif
+
 #include <callback.h>
+
 typedef struct scan_list{
     epicsMutexId        lock;
     ELLLIST             list;
     short               modified;
 } scan_list;
+
 typedef struct io_scan_list {
     CALLBACK            callback;
     scan_list           scan_list;
+#ifndef EPICS_3_15_plus
     struct io_scan_list *next;
+#endif
 } io_scan_list;
 
-void toscaScanIoRequest(IOSCANPVT pioscanpvt)
+#ifdef EPICS_3_15_plus
+typedef struct ioscan_head {
+    struct ioscan_head *next;
+    struct io_scan_list iosl[NUM_CALLBACK_PRIORITIES];
+    io_scan_complete cb;
+    void *arg;
+} ioscan_head;
+#endif
+
+void toscaScanIoRequest(IOSCANPVT piosh)
 {
     int prio;
     
     if(!interruptAccept) return;
-    for (prio = 0; prio < 3; prio++) {
-        io_scan_list *piosl = (io_scan_list *)pioscanpvt+prio;
+    for (prio = 0; prio < NUM_CALLBACK_PRIORITIES; prio++) {
+#ifdef EPICS_3_15_plus
+        io_scan_list *piosl = &piosh->iosl[prio];
+#else
+        io_scan_list *piosl = &piosh[prio];
+#endif
         if (ellCount(&piosl->scan_list.list) > 0)
-        {
             piosl->callback.callback(&piosl->callback);
-        }
     }
 }
 
