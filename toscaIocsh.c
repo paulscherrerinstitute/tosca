@@ -736,7 +736,7 @@ static const iocshFuncDef toscaDmaTransferDef =
 static void toscaDmaTransferFunc(const iocshArgBuf *args)
 {
     int source = 0, dest = 0, swap = 0;
-    ssize_t source_addr, dest_addr, size;
+    size_t source_addr, dest_addr, size;
     const char *s;
     
     if (!args[0].sval || !args[1].sval) 
