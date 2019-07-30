@@ -249,11 +249,13 @@ struct dmaRequest
     int source;
     int dest;
     long timeout;
-    int oneShot;
+    int flags;
     toscaDmaCallback callback;
     void *user;
     struct dmaRequest* next;
 } *pending, *freelist, **insert=&pending;
+
+#define FLAG_CLOSE 1
 
 int toscaDmaDoTransfer(struct dmaRequest* r)
 {
@@ -286,7 +288,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
             toscaDmaWidthToSwapStr(r->req.dwidth),
             r->req.cycle,
             toscaDmaSpaceToStr(r->req.cycle));
-        if (r->oneShot) toscaDmaRelease(r);
+        if (r->flags & FLAG_CLOSE) toscaDmaRelease(r);
         return errno;
     }
     if (toscaDmaDebug)
@@ -307,7 +309,7 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
             r->req.size >= 0x00100000 ? "Mi" : r->req.size >= 0x00000400 ? "Ki" : "",
             sec * 1000, r->req.size/sec/0x00100000, r->req.size/sec/1000000);
     }
-    if (r->oneShot) toscaDmaRelease(r);
+    if (r->flags & FLAG_CLOSE) toscaDmaRelease(r);
     return 0;
 }
 
@@ -336,7 +338,7 @@ void* toscaDmaLoop()
             UNLOCK;
             if (r->fd <= 0) /* may have been canceled while we handled other transfers */
             {
-                if (r->oneShot) toscaDmaRelease(r);
+                if (r->flags & FLAG_CLOSE) toscaDmaRelease(r);
             }
             else
             {
@@ -678,6 +680,6 @@ int toscaDmaTransfer(
 {
     struct dmaRequest* r = toscaDmaSetup(source, source_addr, dest, dest_addr, size, swap, timeout, callback, user);
     if (!r) return errno;
-    r->oneShot = 1;
+    r->flags = FLAG_CLOSE;
     return toscaDmaExecute(r);
 }
