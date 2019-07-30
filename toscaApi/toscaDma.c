@@ -262,16 +262,6 @@ int toscaDmaDoTransfer(struct dmaRequest* r)
     struct dma_execute ex = {0,0};
     struct timespec start, finished;
 
-#ifdef VME_DMA_TIMEOUT
-    r->timeout = 1000;
-    debugLvl(2, "ioctl(%d, VME_DMA_TIMEOUT, %ld ms)", r->fd, r->timeout);
-    if (ioctl(r->fd, VME_DMA_TIMEOUT, &r->timeout) != 0)
-    {
-        debugErrno("ioctl(%d, VME_DMA_TIMEOUT, %ld ms)", r->fd, r->timeout);
-        /* ignore and do dma anyway */
-        errno = 0;
-    }
-#endif
     if (toscaDmaDebug)
         clock_gettime(CLOCK_MONOTONIC, &start);
     debugLvl(2, "ioctl(%d, VME_DMA_EXECUTE)",
@@ -640,6 +630,15 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         toscaDmaRelease(r);
         return NULL;
     }
+#ifdef VME_DMA_TIMEOUT
+    debugLvl(2, "ioctl(%d, VME_DMA_TIMEOUT, %ld ms)", r->fd, r->timeout);
+    if (ioctl(r->fd, VME_DMA_TIMEOUT, &r->timeout) != 0)
+    {
+        debugErrno("ioctl(%d, VME_DMA_TIMEOUT, %ld ms)", r->fd, r->timeout);
+        /* ignore and do dma anyway */
+        errno = 0;
+    }
+#endif
     debugLvl(2, "ioctl(%d (%s), VME_DMA_SET, {route=%s(0x%x) src_type=%s(0x%02x) src_addr=0x%"PRIx64" dst_type=%s(0x%02x) dst_addr=0x%"PRIx64" size=0x%x dwidth=0x%x(%s) cycle=0x%x=%s})",
         r->fd, filename,
         toscaDmaRouteToStr(r->req.route), r->req.route,
