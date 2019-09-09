@@ -437,7 +437,36 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
         sdev, toscaDmaSpaceToStr(source), source, source_addr,
         ddev, toscaDmaSpaceToStr(dest), dest, dest_addr,
         size, swap, timeout, fname=symbolName(callback,0), user), free(fname);
-        
+
+    if (size & 7)
+    {
+        error("invalid size 0x%zx, must be multiple of 8", size);
+        errno = EINVAL;
+        return NULL;
+    }
+    if (size == 0)
+    {
+        error("invalid size 0");
+        errno = EINVAL;
+        return NULL;
+    }
+    if (size > 0x1000000) /* 16M */
+    {
+        error("invalid size 0x%zx, max size is 16M", size);
+        errno = EINVAL;
+        return NULL;
+    }
+    if (source_addr & 7) {
+        error("invalid source address 0x%"PRIx64", must be multiple of 8", source_addr);
+        errno = EINVAL;
+        return NULL;
+    }
+    if (dest_addr & 7) {
+        error("invalid destination address 0x%"PRIx64", must be multiple of 8", dest_addr);
+        errno = EINVAL;
+        return NULL;
+    }
+
     r = toscaDmaRequestCreate();
     if (!r) return NULL;
     r->timeout = timeout;
@@ -447,14 +476,6 @@ struct dmaRequest* toscaDmaSetup(unsigned int source, uint64_t source_addr, unsi
     r->user = user;
     r->req.src_addr = source_addr;
     r->req.dst_addr = dest_addr;
-#if __WORDSIZE > 32
-    if (size >= 0x100000000ULL)
-    {
-        errno = EINVAL;
-        error("size too long (max 32 bit)");
-        return  NULL;
-    }
-#endif
     r->req.size = size;
     r->req.cycle = 0;
 
