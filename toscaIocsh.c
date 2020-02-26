@@ -602,7 +602,7 @@ static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
 {
     intrmask_t mask = toscaStrToIntrMask(args[0].sval);
     void (*function)() = args[1].sval ? symbolAddr(args[1].sval) : toscaDebugIntrHandler;
-    
+
     if (!args[0].sval)
     {
         iocshCmd("help toscaIntrConnectHandler");
@@ -620,7 +620,7 @@ static void toscaIntrConnectHandlerFunc(const iocshArgBuf *args)
         fprintf(stderr, "Invalid function \"%s\"\n", args[1].sval);
         return;
     }
-    if (toscaIntrConnectHandler(mask, function, 
+    if (toscaIntrConnectHandler(mask, function,
         strdup(args[2].sval ? args[2].sval : args[0].sval)) != 0)
         fprintf(stderr, "%m\n");
 }
@@ -636,7 +636,7 @@ static void toscaIntrDisconnectHandlerFunc(const iocshArgBuf *args)
     intrmask_t mask = toscaStrToIntrMask(args[0].sval);
     void (*function)() = symbolAddr(args[1].sval);
     int n;
-    
+
     if (!args[0].sval)
     {
         iocshCmd("help toscaIntrDisconnectHandler");
@@ -666,7 +666,7 @@ static const iocshFuncDef toscaIntrEnableDef =
 static void toscaIntrEnableFunc(const iocshArgBuf *args)
 {
     intrmask_t mask = toscaStrToIntrMask(args[0].sval);
-    if (!args[0].sval) 
+    if (!args[0].sval)
     {
         iocshCmd("help toscaIntrDisable");
         printf(maskhelp);
@@ -689,7 +689,7 @@ static const iocshFuncDef toscaIntrDisableDef =
 static void toscaIntrDisableFunc(const iocshArgBuf *args)
 {
     intrmask_t mask = toscaStrToIntrMask(args[0].sval);
-    if (!args[0].sval) 
+    if (!args[0].sval)
     {
         iocshCmd("help toscaIntrDisable");
         printf(maskhelp);
@@ -738,8 +738,8 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
     int source = 0, dest = 0, swap = 0;
     size_t source_addr, dest_addr, size;
     const char *s;
-    
-    if (!args[0].sval || !args[1].sval) 
+
+    if (!args[0].sval || !args[1].sval)
     {
         iocshCmd("help toscaDmaTransfer");
         printf("addrspaces: USER[1|2], SMEM[1|2], A32, BLT, MBLT, 2eVME, 2eVMEFast, 2eSST(160|267|320)\n");
@@ -791,7 +791,7 @@ static void toscaDmaTransferFunc(const iocshArgBuf *args)
             return;
         }
     }
-    
+
     errno = 0;
     toscaDmaTransfer(source, source_addr, dest, dest_addr, size, swap, args[4].ival, NULL, NULL);
     printf("%m\n");

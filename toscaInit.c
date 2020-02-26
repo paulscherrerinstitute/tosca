@@ -26,7 +26,7 @@ int toscaIntrLoopStart(void)
         epicsThreadGetStackSize(epicsThreadStackMedium),
         (EPICSTHREADFUNC)toscaIntrLoop, NULL);
     if (!tid) {
-        debugErrno("starting irq-TOSCA thread"); 
+        debugErrno("starting irq-TOSCA thread");
         return -1;
     }
     debug("irq-TOSCA tid = %p", tid);
@@ -58,10 +58,10 @@ int toscaDmaLoopsStart(unsigned int n)
 
 void toscaInitHook(initHookState state)
 {
-    unsigned int n; 
+    unsigned int n;
 
     if (state != initHookAfterInitDrvSup) return;
-    
+
     n = toscaNumDevices();
     if (n == 0)
     {

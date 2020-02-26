@@ -109,52 +109,52 @@ void toscaIntrInit ()
 
 const char* toscaIntrBitToStr(intrmask_t intrmaskbit)
 {
-    switch(intrmaskbit & 0xffffffff0000ffffLL)
+    switch (intrmaskbit & 0xffffffff0000ffffLL)
     {
-        case TOSCA_VME_INTR(1):    return "VME-1";       
-        case TOSCA_VME_INTR(2):    return "VME-2";       
-        case TOSCA_VME_INTR(3):    return "VME-3";       
-        case TOSCA_VME_INTR(4):    return "VME-4";       
-        case TOSCA_VME_INTR(5):    return "VME-5";       
-        case TOSCA_VME_INTR(6):    return "VME-6";       
-        case TOSCA_VME_INTR(7):    return "VME-7";       
-        case TOSCA_VME_SYSFAIL:    return "VME-SYSFAIL"; 
-        case TOSCA_VME_ACFAIL:     return "VME-ACFAIL";  
-        case TOSCA_VME_ERROR:      return "VME-ERROR";   
-        case TOSCA_USER1_INTR(0):  return "USER1-0";     
-        case TOSCA_USER1_INTR(1):  return "USER1-1";     
-        case TOSCA_USER1_INTR(2):  return "USER1-2";     
-        case TOSCA_USER1_INTR(3):  return "USER1-3";     
-        case TOSCA_USER1_INTR(4):  return "USER1-4";     
-        case TOSCA_USER1_INTR(5):  return "USER1-5";     
-        case TOSCA_USER1_INTR(6):  return "USER1-6";     
-        case TOSCA_USER1_INTR(7):  return "USER1-7";     
-        case TOSCA_USER1_INTR(8):  return "USER1-8";     
-        case TOSCA_USER1_INTR(9):  return "USER1-9";     
-        case TOSCA_USER1_INTR(10): return "USER1-10";    
-        case TOSCA_USER1_INTR(11): return "USER1-11";    
-        case TOSCA_USER1_INTR(12): return "USER1-12";    
-        case TOSCA_USER1_INTR(13): return "USER1-13";    
-        case TOSCA_USER1_INTR(14): return "USER1-14";    
-        case TOSCA_USER1_INTR(15): return "USER1-15";    
-        case TOSCA_USER2_INTR(0):  return "USER2-0";     
-        case TOSCA_USER2_INTR(1):  return "USER2-1";     
-        case TOSCA_USER2_INTR(2):  return "USER2-2";     
-        case TOSCA_USER2_INTR(3):  return "USER2-3";     
-        case TOSCA_USER2_INTR(4):  return "USER2-4";     
-        case TOSCA_USER2_INTR(5):  return "USER2-5";     
-        case TOSCA_USER2_INTR(6):  return "USER2-6";     
-        case TOSCA_USER2_INTR(7):  return "USER2-7";     
-        case TOSCA_USER2_INTR(8):  return "USER2-8";     
-        case TOSCA_USER2_INTR(9):  return "USER2-9";     
-        case TOSCA_USER2_INTR(10): return "USER2-10";    
-        case TOSCA_USER2_INTR(11): return "USER2-11";    
-        case TOSCA_USER2_INTR(12): return "USER2-12";    
-        case TOSCA_USER2_INTR(13): return "USER2-13";    
-        case TOSCA_USER2_INTR(14): return "USER2-14";    
-        case TOSCA_USER2_INTR(15): return "USER2-15";    
-        default:                   return "unknown";     
-    }  
+        case TOSCA_VME_INTR(1):    return "VME-1";
+        case TOSCA_VME_INTR(2):    return "VME-2";
+        case TOSCA_VME_INTR(3):    return "VME-3";
+        case TOSCA_VME_INTR(4):    return "VME-4";
+        case TOSCA_VME_INTR(5):    return "VME-5";
+        case TOSCA_VME_INTR(6):    return "VME-6";
+        case TOSCA_VME_INTR(7):    return "VME-7";
+        case TOSCA_VME_SYSFAIL:    return "VME-SYSFAIL";
+        case TOSCA_VME_ACFAIL:     return "VME-ACFAIL";
+        case TOSCA_VME_ERROR:      return "VME-ERROR";
+        case TOSCA_USER1_INTR(0):  return "USER1-0";
+        case TOSCA_USER1_INTR(1):  return "USER1-1";
+        case TOSCA_USER1_INTR(2):  return "USER1-2";
+        case TOSCA_USER1_INTR(3):  return "USER1-3";
+        case TOSCA_USER1_INTR(4):  return "USER1-4";
+        case TOSCA_USER1_INTR(5):  return "USER1-5";
+        case TOSCA_USER1_INTR(6):  return "USER1-6";
+        case TOSCA_USER1_INTR(7):  return "USER1-7";
+        case TOSCA_USER1_INTR(8):  return "USER1-8";
+        case TOSCA_USER1_INTR(9):  return "USER1-9";
+        case TOSCA_USER1_INTR(10): return "USER1-10";
+        case TOSCA_USER1_INTR(11): return "USER1-11";
+        case TOSCA_USER1_INTR(12): return "USER1-12";
+        case TOSCA_USER1_INTR(13): return "USER1-13";
+        case TOSCA_USER1_INTR(14): return "USER1-14";
+        case TOSCA_USER1_INTR(15): return "USER1-15";
+        case TOSCA_USER2_INTR(0):  return "USER2-0";
+        case TOSCA_USER2_INTR(1):  return "USER2-1";
+        case TOSCA_USER2_INTR(2):  return "USER2-2";
+        case TOSCA_USER2_INTR(3):  return "USER2-3";
+        case TOSCA_USER2_INTR(4):  return "USER2-4";
+        case TOSCA_USER2_INTR(5):  return "USER2-5";
+        case TOSCA_USER2_INTR(6):  return "USER2-6";
+        case TOSCA_USER2_INTR(7):  return "USER2-7";
+        case TOSCA_USER2_INTR(8):  return "USER2-8";
+        case TOSCA_USER2_INTR(9):  return "USER2-9";
+        case TOSCA_USER2_INTR(10): return "USER2-10";
+        case TOSCA_USER2_INTR(11): return "USER2-11";
+        case TOSCA_USER2_INTR(12): return "USER2-12";
+        case TOSCA_USER2_INTR(13): return "USER2-13";
+        case TOSCA_USER2_INTR(14): return "USER2-14";
+        case TOSCA_USER2_INTR(15): return "USER2-15";
+        default:                   return "unknown";
+    }
 }
 
 static unsigned int toscaStrToRangeMask(unsigned int min, unsigned int max, const char* s, const char** end)
@@ -165,7 +165,7 @@ static unsigned int toscaStrToRangeMask(unsigned int min, unsigned int max, cons
     int range = -1;
 
     if (!s || !*s) return 0;
-    while(*s) {
+    while (*s) {
         n = strtoul(s, (char**)&p, 0);
         if (p == s) break;
         s = p;
@@ -209,7 +209,7 @@ intrmask_t toscaStrToIntrMask(const char* str)
     unsigned int device = 0;
 
     if (!s || !s[0]) return 0;
-    
+
     if (strchr(s, ':')) {
         const char* e;
         device = strtoul(s, (char**)&e, 0);
@@ -223,7 +223,7 @@ intrmask_t toscaStrToIntrMask(const char* str)
         }
         else s = e+1;
     }
-    
+
     if (strncasecmp(s, "TOSCA_", 6) == 0) s+=6;
     if ((strncasecmp(s, "USR", 3) == 0 && (s+=3)) ||
         (strncasecmp(s, "USER", 4) == 0 && (s+=4)))
@@ -335,7 +335,7 @@ int toscaIntrMonitorFile(int index, const char* filepattern, ...)
         debugErrno("%s open %s", toscaIntrIndexToStr(index), globresults.gl_pathv[0]);
         globfree(&globresults);
         return -1;
-    } 
+    }
     ev.events = EPOLLIN;
     ev.data.u32 = index;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, intrFd[index], &ev) < 0)
@@ -357,16 +357,16 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
 
     debug("intrmask=0x%016"PRIx64" device=%u, function=%s, parameter=%p",
         intrmask, device, fname=symbolName(function,0), parameter), free(fname);
-        
+
     if (!function)
     {
         error("handler function is NULL");
         errno = EINVAL;
         return -1;
     }
-    
+
     driverVersion = toscaDriverVersion();
-    
+
     if (driverVersion == 0 && device > 0)
     {
         error("old driver can only handle interrupts of device 0");
@@ -401,7 +401,7 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
             errno = EINVAL;
             return -1;
         }
-        
+
         for (i = 1; i <= 7; i++)
         {
             if (intrmask & TOSCA_VME_INTR(i))
@@ -462,7 +462,7 @@ int toscaIntrConnectHandler(intrmask_t intrmask, void (*function)(), void* param
             device, toscaIntrBitToStr(bit), INTR_INDEX_TO_IVEC(i),                   \
             fname=symbolName(handler->function,0), handler->parameter), free(fname); \
     }
-    
+
     FOREACH_MASKBIT(intrmask, INSTALL_HANDLER);
     UNLOCK;
     return status;
@@ -476,7 +476,7 @@ int toscaIntrDisconnectHandler(intrmask_t intrmask, void (*function)(), void* pa
 
     debug("intrmask=0x%016"PRIx64" device=%u, function=%s, parameter=%p",
         intrmask, device, fname=symbolName(function,0), parameter), free(fname);
-        
+
     #define REMOVE_HANDLER(i, bit)                                 \
     {                                                              \
         struct intr_handler** phandler, *handler;                  \
@@ -503,7 +503,7 @@ int toscaIntrDisable(intrmask_t intrmask)
 {
     struct epoll_event ev;
     unsigned int device = TOSCA_INTR_MASK_TO_DEV(intrmask);
-    
+
     debug("intrmask=0x%016"PRIx64" device=%u", intrmask, device);
     ev.events = 0;
     ev.data.u32 = 0;
@@ -554,7 +554,7 @@ size_t toscaIntrForEachHandler(size_t (*callback)(const toscaIntrHandlerInfo_t*,
     #define REPORT_HANDLER(i, bit)                     \
     {                                                  \
         FOREACH_HANDLER(handler, i) {                  \
-            if(intrFd[i]>0)debug("index=%u, device=%u, vec=%u", i, handler->device, INTR_INDEX_TO_IVEC(i)); \
+            if (intrFd[i]>0)debug("index=%u, device=%u, vec=%u", i, handler->device, INTR_INDEX_TO_IVEC(i)); \
             info.intrmaskbit = bit;                    \
             info.device = handler->device;             \
             info.index = i;                            \
@@ -581,11 +581,11 @@ static int intrLoopStopEvent[2];
 void* toscaIntrLoop()
 {
     unsigned int i, n, index, inum, ivec;
-    
+
     /* handle up to 64 simultaneous interrupts in one system call */
     #define MAX_EVENTS 64
     struct epoll_event events[MAX_EVENTS];
-    
+
     if (toscaIntrLoopRunning)
     {
         debug("interrupt loop already running");
@@ -595,12 +595,12 @@ void* toscaIntrLoop()
 
     debug("starting interrupt handling");
     pipe2(intrLoopStopEvent, O_NONBLOCK|O_CLOEXEC);
-    
+
     events[0].events = EPOLLIN;
     events[0].data.u32 = (uint32_t)-1;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, intrLoopStopEvent[0], &events[0]) < 0)
         debugErrno("epoll_ctl ADD %d", intrLoopStopEvent[0]);
-    
+
     while (toscaIntrLoopRunning)
     {
         debugLvl(2,"waiting for interrupts");
@@ -687,10 +687,10 @@ int toscaSendVMEIntr(unsigned int level, unsigned int ivec)
         __u8 level;
         __u8 ivec;
     } irq;
-    
-    
+
+
     if (fd < 0)
-    {   
+    {
         if (toscaDriverVersion() > 0)
             sprintf(filename, "/dev/bus/vme/ctl%u", device);
         else

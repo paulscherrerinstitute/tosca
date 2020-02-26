@@ -8,10 +8,10 @@
 #include "memDisplay.h"
 
 /* VME access modes */
-#define VME_A16	          0x1
-#define VME_A24	          0x2
-#define	VME_A32	          0x4
-#define VME_A64	          0x8
+#define VME_A16           0x1
+#define VME_A24           0x2
+#define VME_A32           0x4
+#define VME_A64           0x8
 #define VME_CRCSR        0x10
 #define TOSCA_USER       0x20
 #define TOSCA_USER1      0x20
@@ -23,9 +23,9 @@
 #define TOSCA_IO        0x200
 #define TOSCA_SRAM      0x400
 #define VME_SLAVE       0x800
-#define	VME_SUPER      0x1000
-#define	VME_PROG       0x4000
-#define	VME_SWAP       0x8000
+#define VME_SUPER      0x1000
+#define VME_PROG       0x4000
+#define VME_SWAP       0x8000
 
 #ifdef __cplusplus
 extern "C" {

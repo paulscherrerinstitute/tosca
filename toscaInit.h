@@ -10,7 +10,7 @@ extern "C" {
    at startup by toscaDevLib but are exported to
    be accessible from the ioc shell for debugging
    purposes.
-*/ 
+*/
 int toscaIntrLoopStart(void);
 int toscaDmaLoopsStart(unsigned int number_of_threads);
 

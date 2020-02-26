@@ -5,13 +5,13 @@
 #include "stdio.h"
 
 /* VME block transfer access modes from vme.h */
-#define VME_SCT		0x1
-#define VME_BLT		0x2
-#define VME_MBLT	0x4
-#define VME_2eVME	0x8
-#define VME_2eSST160	0x100
-#define VME_2eSST267	0x200
-#define VME_2eSST320	0x400
+#define VME_SCT         0x1
+#define VME_BLT         0x2
+#define VME_MBLT        0x4
+#define VME_2eVME       0x8
+#define VME_2eSST160    0x100
+#define VME_2eSST267    0x200
+#define VME_2eSST320    0x400
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ typedef void (*toscaDmaCallback)(void* usr, int status);
 /* You can set up a DMA once and use the handle for multiple transfers.
    Release the handle after it is no longer in use (after callback returned).
 */
-   
+
 struct dmaRequest* toscaDmaSetup(
     unsigned int source, uint64_t source_addr, unsigned int dest, uint64_t dest_addr,
     size_t size, unsigned int swap, int timeout, toscaDmaCallback callback, void* user);

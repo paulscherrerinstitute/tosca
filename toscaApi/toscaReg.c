@@ -207,7 +207,7 @@ int toscaPonFd(unsigned int address)
 {
     static int fd[11] = {0};
     unsigned int reg;
-    
+
     address &= ~3;
     if (address >= 0x28 && address != 0x40)
     {
@@ -301,7 +301,7 @@ unsigned int toscaSbcWriteMasked(unsigned int fmc, unsigned int reg, unsigned in
         (void) csr[addr+1]; /* read back to flush */
         csr[addr] = htole32(reg | 0xc000000); /* write cmd */
         while ((le32toh(csr[addr]) & 0x80000000) && tries_left--); /* wait for write complete */
-        
+
         /* read back value */
         csr[addr] = htole32(reg | 0x8000000); /* read cmd */
         while ((le32toh(csr[addr]) & 0x80000000) && tries_left--); /* wait for read complete */

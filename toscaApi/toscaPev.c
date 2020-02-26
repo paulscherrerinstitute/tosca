@@ -227,7 +227,7 @@ float pev_bmr_conv_11bit_u(ushort value)
     h = value >> 11;
     h |= 0xffe0;
     h = ~h + 1;
-    return(((float)l/(1 << h)));
+    return (float)l/(1 << h);
 }
 
 float pev_bmr_conv_11bit_s(ushort value)
@@ -235,16 +235,16 @@ float pev_bmr_conv_11bit_s(ushort value)
     short h,l;
 
     l = value & 0x7ff;
-    if( l & 0x400) l |= 0xf800;
+    if (l & 0x400) l |= 0xf800;
     h = value >> 11;
     h |= 0xffe0;
     h = ~h + 1;
-    return(((float)l/(1 << h)));
+    return (float)l/(1 << h);
 }
 
 float pev_bmr_conv_16bit_u(ushort value)
 {
-    return(((float)value/(1 << 13)));
+    return (float)value/(1 << 13);
 }
 
 /** MAPS **************************************************/
@@ -269,7 +269,7 @@ int pevx_map_alloc(uint crate, struct pev_ioctl_map_pg *map_p)
 {
     volatile void* ptr;
     toscaMapInfo_t mapInfo;
-    
+
     map_p->offset = 0;
     map_p->win_size = 0;
     map_p->rem_base = 0;
@@ -653,7 +653,7 @@ static int pev_dmaspace_to_tosca_addrspace(int dmaspace)
 int pevx_dma_move(uint crate, struct pev_ioctl_dma_req *req)
 {
     int source, dest, swap=0, timeout=-1, status;
-    
+
     if (crate != 0)
     {
         debug("can only access crate 0");
@@ -718,7 +718,7 @@ volatile void* pevMapExt(unsigned int card, unsigned int sg_id, unsigned int map
     size_t logicalAddress, size_t size, unsigned int flags __attribute__((unused)), size_t localAddress)
 {
     unsigned int addrspace;
-    
+
     addrspace = pev_mode_to_tosca_addrspace(map_mode);
     if (sg_id == MAP_SLAVE_VME) addrspace |= VME_SLAVE;
     if (!addrspace)
@@ -727,7 +727,7 @@ volatile void* pevMapExt(unsigned int card, unsigned int sg_id, unsigned int map
         return NULL;
     }
     addrspace |= (card << 16);
-    return toscaMap(addrspace, logicalAddress, size, localAddress);                
+    return toscaMap(addrspace, logicalAddress, size, localAddress);
 }
 
 void pevUnmap(volatile void* ptr __attribute__((unused)))
@@ -794,5 +794,5 @@ int pevDmaTransfer(
     if ((des_space & DMA_SPACE_MASK) != DMA_SPACE_VME && des_space & 0x30)
         swap = 1 << (des_space >> 4 & 0x3);
 
-    return toscaDmaTransfer(source, src_addr, dest, des_addr, size, swap, -1, callback, usr);  
+    return toscaDmaTransfer(source, src_addr, dest, des_addr, size, swap, -1, callback, usr);
 }

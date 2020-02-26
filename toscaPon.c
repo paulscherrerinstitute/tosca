@@ -36,7 +36,7 @@ int toscaPonDevRead(
     const char* user)
 {
     size_t i;
-    
+
     if (dlen == 0) return 0; /* any way to check online status ? */
     if (dlen != 4)
     {
@@ -67,7 +67,7 @@ int toscaPonDevWrite(
     const char* user)
 {
     size_t i;
-    
+
     if (dlen != 4)
     {
         error("%s %s: only 4 bytes supported", user, regDevName(device));
@@ -103,7 +103,7 @@ struct regDevSupport toscaPonDevRegDev = {
 int toscaPonDevConfigure(const char* name)
 {
     regDevice *device = NULL;
-    
+
     if (!name || !name[0])
     {
         printf("usage: toscaPonDevConfigure name\n");

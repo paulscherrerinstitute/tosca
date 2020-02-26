@@ -73,41 +73,41 @@ long devIfc1210InitRecord(dbCommon* record, struct link* link)
     p->address = link->value.vmeio.signal;
     p->card  = link->value.vmeio.card;
 
-    if(strncmp(link->value.vmeio.parm, "ELB", 3) == 0)
+    if (strncmp(link->value.vmeio.parm, "ELB", 3) == 0)
     {
         p->devType = IFC_ELB;
-        if(strncmp(link->value.vmeio.parm, "ELB ", 4) == 0)
+        if (strncmp(link->value.vmeio.parm, "ELB ", 4) == 0)
             p->count = atoi(strchr( link->value.vmeio.parm, ' ')+1);
     }
     else
-    if(strcmp(link->value.vmeio.parm, "SMON") == 0)
+    if (strcmp(link->value.vmeio.parm, "SMON") == 0)
         p->devType = IFC_SMON;
     else
-    if(strcmp(link->value.vmeio.parm, "SMON_10S") == 0)
+    if (strcmp(link->value.vmeio.parm, "SMON_10S") == 0)
         p->devType = IFC_SMON_10S;
     else
-    if(strcmp(link->value.vmeio.parm, "PIO") == 0)
+    if (strcmp(link->value.vmeio.parm, "PIO") == 0)
         p->devType = PCI_IO;
     else
-    if(strncmp(link->value.vmeio.parm, "BMR_11U", 7) == 0)
+    if (strncmp(link->value.vmeio.parm, "BMR_11U", 7) == 0)
     {
         p->devType = BMR_11U;
         p->count = atoi(strchr( link->value.vmeio.parm, ' ')+1);
     }
     else
-    if(strncmp(link->value.vmeio.parm, "BMR_11S", 7) == 0)
+    if (strncmp(link->value.vmeio.parm, "BMR_11S", 7) == 0)
     {
         p->devType = BMR_11S;
         p->count = atoi(strchr( link->value.vmeio.parm, ' ')+1);
     }
     else
-    if(strncmp(link->value.vmeio.parm, "BMR_16U", 7) == 0)
+    if (strncmp(link->value.vmeio.parm, "BMR_16U", 7) == 0)
     {
         p->devType = BMR_16U;
         p->count = atoi(strchr( link->value.vmeio.parm, ' ')+1);
     }
     else
-    if(strncmp(link->value.vmeio.parm, "BMR", 3) == 0)
+    if (strncmp(link->value.vmeio.parm, "BMR", 3) == 0)
     {
         p->devType = BMR;
         p->count = atoi(strchr( link->value.vmeio.parm, ' ')+1);
@@ -164,7 +164,7 @@ long devIfc1210AiRead(aiRecord* record)
             break;
         default:
             status = pev_bmr_read( p->card,  p->address, &rval, p->count);
-            if((status&I2CEXEC_MASK) != I2CEXEC_OK)
+            if ((status&I2CEXEC_MASK) != I2CEXEC_OK)
             {
                 error("%s: pev_bmr_read bmr=%d addr=%d failed: %m",
                     record->name, p->card, p->address);
@@ -237,16 +237,16 @@ long devIfc1210AoWrite(aoRecord* record)
         return -1;
     }
 
-    if(p->devType == IFC_ELB)
+    if (p->devType == IFC_ELB)
         pev_elb_wr( p->address, record->rval );
     else
-    if(p->devType == IFC_SMON)
+    if (p->devType == IFC_SMON)
         pev_smon_wr( p->address, record->rval );
     else
-    if(p->devType == PCI_IO)
+    if (p->devType == PCI_IO)
         pev_csr_wr( p->address | 0x80000000, record->rval);
     else
-    if(p->devType == BMR)
+    if (p->devType == BMR)
         pev_bmr_write(p->card, p->address, record->rval, p->count);
 
     return 0;
@@ -311,7 +311,7 @@ long devIfc1210LonginRead(longinRecord* record)
             break;
         default:
             status = pev_bmr_read( p->card,  p->address, &rval, p->count);
-            if((status&I2CEXEC_MASK) != I2CEXEC_OK)
+            if ((status&I2CEXEC_MASK) != I2CEXEC_OK)
             {
                 error("%s: pev_bmr_read bmr=%d addr=%d failed: %m",
                     record->name, p->card, p->address);
@@ -379,16 +379,16 @@ long devIfc1210LongoutWrite(longoutRecord* record)
         return -1;
     }
 
-    if(p->devType == IFC_ELB)
+    if (p->devType == IFC_ELB)
         pev_elb_wr( p->address, record->val );
     else
-    if(p->devType == IFC_SMON)
+    if (p->devType == IFC_SMON)
         pev_smon_wr( p->address, record->val );
     else
-    if(p->devType == PCI_IO)
+    if (p->devType == PCI_IO)
         pev_csr_wr( p->address | 0x80000000, record->val);
     else
-    if(p->devType == BMR)
+    if (p->devType == BMR)
         pev_bmr_write(p->card, p->address, record->val, p->count);
 
     return 0;

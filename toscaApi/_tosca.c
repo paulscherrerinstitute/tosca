@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     char* end;
     void* buffer = NULL;
     size_t buffersize = 0;
-    
+
     if (argc < 2)
     {
         fprintf(stderr, "usage: tosca addrspace:address [wordsize] [size]\n");
@@ -46,7 +46,7 @@ int main(int argc, char** argv)
             return 1;
         }
     }
-    
+
     volatile void* map = toscaMap(addr.addrspace, addr.address, size ? size : 1, 0);
     if (!map)
     {
@@ -57,14 +57,14 @@ int main(int argc, char** argv)
     toscaMapInfo_t mapinfo = toscaMapFind(map);
     mapsize = mapinfo.size - (mapinfo.baseptr - map);
     if (size) mapsize = size;
-    
+
     if (wordsize < 0)
     {
         buffersize = 0x1000;
         if (buffersize > mapsize) buffersize = mapsize;
         buffer = malloc(buffersize);
     }
-    
+
     if (!isatty(0))
     {
         cur = 0;
@@ -169,7 +169,7 @@ int main(int argc, char** argv)
             {
                 int j = 0;
                 if (mapsize - i * -wordsize < buffersize) buffersize = mapsize - i * -wordsize;
-                switch( wordsize)
+                switch (wordsize)
                 {
                     case -2:
                         while (j <= (buffersize-1) / 2)

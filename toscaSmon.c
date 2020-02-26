@@ -18,7 +18,7 @@ static const char* smonAddrToStr(unsigned int addr)
 {
     switch (addr)
     {
-        case 0x00: return "Temp"; 
+        case 0x00: return "Temp";
         case 0x01: return "Vccint";
         case 0x02: return "Vccaux";
         case 0x03: return "Vadj";
@@ -95,7 +95,7 @@ static void smonFormat(unsigned int addr, unsigned int val)
         case 0x26: /* Vccaux Min */
         case 0x04: /* VrepP */
         case 0x05: /* VrepN */
-        
+
         case 0x03: /*VP/VN */
         case 0x08: /* supply Offset */
         case 0x09: /* ADC Offset */
@@ -335,7 +335,7 @@ struct regDevSupport smonDev = {
 int toscaSmonDevConfigure(const char* name)
 {
     regDevice *device = NULL;
-    
+
     if (!name || !name[0])
     {
         printf("usage: toscaSmonDevConfigure name\n");

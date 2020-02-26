@@ -235,7 +235,7 @@ void toscaScanIoRequest(IOSCANPVT piosh)
 {
     int prio;
 
-    if(!interruptAccept) return;
+    if (!interruptAccept) return;
     for (prio = 0; prio < NUM_CALLBACK_PRIORITIES; prio++) {
 #ifdef EPICS_3_15_plus
         io_scan_list *piosl = &piosh->iosl[prio];

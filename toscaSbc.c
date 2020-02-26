@@ -35,7 +35,7 @@ int toscaSbcDevRead(
 {
     size_t i;
     epicsUInt32 value;
-    
+
     debugLvl(2, "%s %s(FMC%d):0x%zx dlen=%d nelm=%zd", user, regDevName(device), device->fmc, offset, dlen, nelem);
     if (dlen == 0) return 0; /* any way to check online status ? */
     offset += device->base;
@@ -72,7 +72,7 @@ int toscaSbcDevWrite(
     size_t i;
     epicsUInt32 value;
     epicsUInt32 mask = 0xffffffff;
-    
+
     if (pmask)
     {
         switch (dlen)
@@ -113,7 +113,7 @@ struct regDevSupport toscaSbcDevRegDev = {
 int toscaSbcDevConfigure(const char* name, unsigned int fmc, unsigned int addr, unsigned int size)
 {
     regDevice *device = NULL;
-    
+
     if (!name || !name[0])
     {
         iocshCmd("help toscaSbcDevConfigure");

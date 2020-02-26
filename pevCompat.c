@@ -55,7 +55,7 @@ static void pevConfigureFunc(const iocshArgBuf *args)
     card = args[0].ival;
     resource = args[2].sval;
     addrspace = toscaStrToAddrSpace(resource, NULL);
-    
+
     if (args[5].ival) /* intrVec */
         l += sprintf(flags+l, "intr=%d ", args[5].ival - (addrspace & (VME_A16|VME_A24|VME_A32|VME_A64) ? 0 : 1));
     if (args[7].ival & 1 && l < sizeof(flags) - 6) /* blockMode */
@@ -77,9 +77,9 @@ static void pevConfigureFunc(const iocshArgBuf *args)
         l += sprintf(flags+l, "%.*s ", (int)sizeof(flags)-1-l, args[8].sval);
     /* args[9] = vmePktSize ignored */
     if (l) flags[l-1] = 0;
-    
+
     if (card) sprintf(cardstr, "%u:", card);
-    
+
     printf("Compatibility mode! pev[Asyn]Configure replaced by:\n"
         "toscaRegDevConfigure %s \"%s%s:0x%x\" 0x%x %s\n",
         args[1].sval, cardstr, toscaAddrSpaceToStr(addrspace), args[3].ival, args[6].ival, flags);
@@ -122,7 +122,7 @@ static const iocshFuncDef pevVmeSlaveTargetConfigDef =
     &(iocshArg) { "targetOffset", iocshArgInt },
     &(iocshArg) { "swapping", iocshArgString },
 }};
-    
+
 static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
 {
     char* slaveAddrSpace = args[0].sval;
@@ -148,12 +148,12 @@ static void pevVmeSlaveTargetConfigFunc (const iocshArgBuf *args)
     addrspace |= VME_SLAVE;
     if (swapping && strcmp(swapping, "AUTO") == 0)
         addrspace |= VME_SWAP;
-    
+
     printf("Compatibility mode! pevVmeSlaveMainConfig and pevVmeSlaveTargetConfig replaced by:\n"
         "toscaMap SLAVE:0x%x 0x%x %s:0x%x%s\n",
         mainBase+winBase, winSize,
         toscaAddrSpaceToStr(addrspace & ~(VME_SLAVE|VME_SWAP)),
-        targetOffset,  
+        targetOffset,
         addrspace & VME_SWAP ? " SWAP" : "");
     toscaMap(addrspace, mainBase+winBase, winSize, targetOffset);
 }
@@ -181,8 +181,8 @@ static void pevI2cConfigureFunc(const iocshArgBuf *args)
     unsigned int pev_i2c_bus = controlword >> 29;
     unsigned int pon_addr = 0x80 + (pev_i2c_bus << 4);
     char sysfspattern[80];
-    
-    debug("card=%d, name=%s, controlword=0x%08x bus=elb-%d ponaddr=0x%02x addr=0x%02x", 
+
+    debug("card=%d, name=%s, controlword=0x%08x bus=elb-%d ponaddr=0x%02x addr=0x%02x",
         card, name, controlword, pev_i2c_bus, pon_addr, i2c_addr);
 
     /* pev i2c adapters are the ones on localbus/pon */

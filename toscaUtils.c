@@ -88,7 +88,7 @@ static void memfillFunc(const iocshArgBuf *args)
     size = toscaStrToSize(args[2].sval);
     width = args[3].ival;
     increment = args[4].ival;
-    
+
     if (addr.addrspace)
         address = toscaMap(addr.addrspace, addr.address, size, 0);
     else
