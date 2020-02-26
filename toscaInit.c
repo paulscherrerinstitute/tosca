@@ -60,30 +60,38 @@ void toscaInitHook(initHookState state)
 {
     unsigned int n;
 
-    if (state != initHookAfterInitDrvSup) return;
-
-    n = toscaNumDevices();
-    if (n == 0)
-    {
-        fprintf(stderr, "No Tosca device found. Kernel driver not loaded?\n");
-        return;
+    switch (state) {
+        case initHookAfterInitDrvSup:
+            n = toscaNumDevices();
+            if (n == 0)
+            {
+                fprintf(stderr,
+                    "No Tosca device found. Kernel driver not loaded?\n");
+                return;
+            }
+            if (toscaInitDebug > 0)
+            {
+                unsigned int device, type;
+                for (device = 0; device < n; device++)
+                {
+                    type = toscaDeviceType(device);
+                    printf("Tosca device %u: %04x\n", device, type);
+                }
+            }
+            toscaInstallSpuriousVMEInterruptHandler();
+            break;
+        case initHookAfterInterruptAccept:
+            toscaIntrLoopStart();
+            toscaDmaLoopsStart(toscaDeviceType(0) == 0x1210 ? 2 : 4);
+            break;
+        case initHookAtEnd:
+            /* register as late as possible to run as early as possible */
+            epicsAtExit(toscaDmaLoopsStop,NULL);
+            epicsAtExit(toscaIntrLoopStop,NULL);
+            break;
+        default:
+            break;
     }
-    if (toscaInitDebug > 0)
-    {
-        unsigned int device, type;
-        for (device = 0; device < n; device++)
-        {
-            type = toscaDeviceType(device);
-            printf("Tosca device %u: %04x\n", device, type);
-        }
-    }
-    toscaInstallSpuriousVMEInterruptHandler();
-
-    toscaIntrLoopStart();
-    epicsAtExit(toscaIntrLoopStop,NULL);
-
-    toscaDmaLoopsStart(toscaDeviceType(0) == 0x1210 ? 2 : 4);
-    epicsAtExit(toscaDmaLoopsStop,NULL);
 }
 
 static void toscaInitRegistrar ()
